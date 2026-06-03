@@ -206,7 +206,15 @@ export async function handleLogout(setUserCallback) {
 export function loginMockUser(userId, setUserCallback) {
   let profiles = [...MOCK_PROFILES];
   const extraProfiles = JSON.parse(localStorage.getItem('cyclo_mock_profiles') || '[]');
-  profiles = [...profiles, ...extraProfiles];
+  
+  extraProfiles.forEach(extra => {
+    const idx = profiles.findIndex(p => p.id === extra.id);
+    if (idx !== -1) {
+      profiles[idx] = extra;
+    } else {
+      profiles.push(extra);
+    }
+  });
   
   const user = profiles.find(p => p.id === userId) || profiles[0];
   localStorage.setItem('cyclo_demo_user', user.id);

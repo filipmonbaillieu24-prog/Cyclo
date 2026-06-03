@@ -141,7 +141,17 @@ export function loadMockDashboardData() {
     }
   ];
   const extraProfiles = JSON.parse(localStorage.getItem('cyclo_mock_profiles') || '[]');
-  state.profiles = [...mockProfiles, ...extraProfiles];
+  
+  let profiles = [...mockProfiles];
+  extraProfiles.forEach(extra => {
+    const idx = profiles.findIndex(p => p.id === extra.id);
+    if (idx !== -1) {
+      profiles[idx] = extra;
+    } else {
+      profiles.push(extra);
+    }
+  });
+  state.profiles = profiles;
   
   const savedDemoUser = localStorage.getItem('cyclo_demo_user');
   const currentMockProfile = state.profiles.find(p => p.id === savedDemoUser) || state.profiles[0];

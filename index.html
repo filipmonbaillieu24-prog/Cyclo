@@ -417,6 +417,75 @@
             <div class="avatar-preset-chip" data-seed="sagan" title="Peter Sagan" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=sagan" class="avatar" style="width: 28px; height: 28px;"></div>
           </div>
         </div>
+
+        <!-- Customizer Details Toggle & Form -->
+        <div class="form-group mt-3 text-center">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-customizer" style="width: 100%;"><i data-lucide="sliders" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Details Handmatig Aanpassen</button>
+        </div>
+
+        <div id="avatar-customizer-options" style="display: none; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass); padding: 12px; border-radius: var(--radius-sm); margin-top: 12px; text-align: left;">
+          <h4 style="font-size: 13px; margin-bottom: 8px; color: var(--primary);">Avatar Customizer</h4>
+          
+          <div class="form-group mb-2">
+            <label for="custom-avatar-skin" style="font-size: 11px;">Huidskleur</label>
+            <select id="custom-avatar-skin" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
+              <option value="f5c096">Licht</option>
+              <option value="e5a073">Medium</option>
+              <option value="b16a5b">Donker</option>
+            </select>
+          </div>
+          
+          <div class="form-group mb-2">
+            <label for="custom-avatar-hair" style="font-size: 11px;">Haarstijl</label>
+            <select id="custom-avatar-hair" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
+              <option value="short01">Kort</option>
+              <option value="long01">Lang</option>
+              <option value="short05">Krullend</option>
+              <option value="long03">Bob</option>
+              <option value="none">Kaal</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-2">
+            <label for="custom-avatar-haircolor" style="font-size: 11px;">Haarkleur</label>
+            <select id="custom-avatar-haircolor" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
+              <option value="090807">Zwart</option>
+              <option value="6b3f23">Bruin</option>
+              <option value="b58143">Blond</option>
+              <option value="d66e2c">Rood</option>
+              <option value="a0a0a0">Grijs</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-2">
+            <label for="custom-avatar-eyes" style="font-size: 11px;">Ogen</label>
+            <select id="custom-avatar-eyes" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
+              <option value="normal">Normaal</option>
+              <option value="happy">Blij</option>
+              <option value="wink">Knipoog</option>
+              <option value="squint">Spleetogen</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-2">
+            <label for="custom-avatar-mouth" style="font-size: 11px;">Mond</label>
+            <select id="custom-avatar-mouth" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
+              <option value="smile">Glimlach</option>
+              <option value="serious">Serieus</option>
+              <option value="open">Open Mond</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-0">
+            <label for="custom-avatar-features" style="font-size: 11px;">Extra Kenmerken</label>
+            <select id="custom-avatar-features" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
+              <option value="none">Geen</option>
+              <option value="glasses">Bril</option>
+              <option value="mustache">Snor</option>
+            </select>
+          </div>
+        </div>
+
         <button type="submit" class="btn btn-primary w-full mt-4">Profiel Opslaan</button>
       </form>
     </div>
