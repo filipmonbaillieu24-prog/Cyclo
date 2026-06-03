@@ -1,4 +1,4 @@
-// Cyclo - Group Rides Module
+﻿// Cyclo - Group Rides Module
 import { state, elements, config, showToast } from './state.js';
 
 // ─────────────────────────────────────────────
@@ -147,6 +147,7 @@ export function exportRideToIcal(ride) {
 let editingRideId = null;
 
 export async function renderRidesList() {
+  console.trace('[renderRidesList] aangeroepen om:', new Date().toISOString());
   elements.ridesListContainer.innerHTML = '';
 
   if (state.rides.length === 0) {
