@@ -11,6 +11,62 @@ export function translateBikeType(type) {
   return mapping[type] || type || 'Racefiets';
 }
 
+function updatePhysicalWidget(profile) {
+  const container = document.getElementById('widget-user-physical');
+  if (!container) return;
+
+  const genderEl = document.getElementById('widget-physical-gender');
+  const ageEl = document.getElementById('widget-physical-age');
+  const heightEl = document.getElementById('widget-physical-height');
+  const weightEl = document.getElementById('widget-physical-weight');
+
+  let hasAny = false;
+
+  // Gender
+  if (profile.gender) {
+    const genderMap = { 'Male': '♂ Man', 'Female': '♀ Vrouw', 'Other': '⚧ Anders' };
+    genderEl.textContent = genderMap[profile.gender] || profile.gender;
+    genderEl.style.display = 'inline';
+    hasAny = true;
+  } else {
+    genderEl.style.display = 'none';
+  }
+
+  // Age from birthdate
+  if (profile.birthdate) {
+    const birth = new Date(profile.birthdate);
+    const now = new Date();
+    let age = now.getFullYear() - birth.getFullYear();
+    const m = now.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+    ageEl.textContent = `${age} jaar`;
+    ageEl.style.display = 'inline';
+    hasAny = true;
+  } else {
+    ageEl.style.display = 'none';
+  }
+
+  // Height
+  if (profile.height) {
+    heightEl.textContent = `${profile.height} cm`;
+    heightEl.style.display = 'inline';
+    hasAny = true;
+  } else {
+    heightEl.style.display = 'none';
+  }
+
+  // Weight
+  if (profile.weight) {
+    weightEl.textContent = `${profile.weight} kg`;
+    weightEl.style.display = 'inline';
+    hasAny = true;
+  } else {
+    weightEl.style.display = 'none';
+  }
+
+  container.style.display = hasAny ? 'block' : 'none';
+}
+
 export function setUser(userProfile, setUserCallback) {
   state.user = userProfile;
   
@@ -29,6 +85,9 @@ export function setUser(userProfile, setUserCallback) {
     elements.widgetUserUsername.textContent = `@${userProfile.username}`;
     elements.widgetUserAvatar.src = userProfile.avatar_url;
     elements.widgetUserBiketype.textContent = translateBikeType(userProfile.bike_type);
+    
+    // Update fyzieke gegevens widget
+    updatePhysicalWidget(userProfile);
     
     if (userProfile.rider_score) {
       elements.widgetUserScoreVal.textContent = userProfile.rider_score;
@@ -397,6 +456,13 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
       state.profiles.push(updatedProfile);
     }
 
+    // Update sidebar direct
+    elements.widgetUserName.textContent = fullName;
+    elements.widgetUserUsername.textContent = `@${username}`;
+    elements.widgetUserAvatar.src = avatarUrl;
+    elements.widgetUserBiketype.textContent = translateBikeType(bikeType);
+    updatePhysicalWidget(updatedProfile);
+
     showToast("Profiel lokaal bijgewerkt!", "success");
     closeEditProfileModal();
     if (typeof onProfileUpdatedCallback === 'function') onProfileUpdatedCallback();
@@ -440,6 +506,13 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
       state.profiles[pIdx].height = height;
       state.profiles[pIdx].weight = weight;
     }
+
+    // Update sidebar direct
+    elements.widgetUserName.textContent = fullName;
+    elements.widgetUserUsername.textContent = `@${username}`;
+    elements.widgetUserAvatar.src = avatarUrl;
+    elements.widgetUserBiketype.textContent = translateBikeType(bikeType);
+    updatePhysicalWidget(state.user);
 
     showToast("Profiel succesvol bijgewerkt!", "success");
     closeEditProfileModal();
