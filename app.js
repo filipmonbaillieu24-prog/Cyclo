@@ -41,8 +41,7 @@ import {
 } from './activities.js';
 import { setupRealtimeSubscriptions } from './realtime.js';
 import { setupZwiftImporter } from './zwift-importer.js';
-import { loadSocialFeed, renderFeedCard, searchUsers, followUser, unfollowUser, getFollowStatus, getFollowCounts, renderLeaderboard as renderSocialLeaderboard } from './social.js';
-import { initRouteBuilder, downloadRouteAsGpx, clearRoute, undoLastWaypoint } from './route-builder.js';
+import { loadSocialFeed, renderFeedCard, searchUsers, followUser, unfollowUser, getFollowStatus, getFollowCounts } from './social.js';
 
 let activeRealtimeChannel = null;
 
