@@ -6,8 +6,9 @@
   <title>Cyclo - Plan samen ritten en deel je beschikbaarheid</title>
   <meta name="description" content="De ultieme webapplicatie voor wielrenners om samen ritten te plannen en prestaties te analyseren.">
   
-  <!-- CSS Stylesheet -->
+  <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="redesign.css">
   
   <!-- Supabase JS Client Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -36,16 +37,49 @@
       </a>
       <nav>
         <ul class="nav-menu">
-          <li><a href="#" class="nav-link active" id="link-home">Home</a></li>
-          <li><a href="#" class="nav-link" id="link-dashboard"><i data-lucide="calendar" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:3px;"></i> Planner</a></li>
-          <li class="auth-only"><a href="#" class="nav-link" id="link-rides"><i data-lucide="activity" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:3px;"></i> Mijn Ritten</a></li>
+          <li><a href="#" class="nav-link" id="link-home">
+            <i data-lucide="home" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:3px;"></i> Feed
+          </a></li>
+          <li><a href="#" class="nav-link" id="link-dashboard">
+            <i data-lucide="calendar" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:3px;"></i> Planner
+          </a></li>
+          <li class="auth-only"><a href="#" class="nav-link" id="link-rides">
+            <i data-lucide="activity" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:3px;"></i> Mijn Ritten
+          </a></li>
           <li id="nav-auth-item">
             <a href="#" class="btn btn-primary btn-sm" id="btn-login-nav">Inloggen</a>
+          </li>
+          <!-- Profiel avatar (zichtbaar na inloggen) -->
+          <li class="auth-only" id="nav-profile-item" style="display:none;">
+            <button id="btn-nav-profile" style="background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:8px;" title="Mijn Profiel">
+              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=demo" id="nav-avatar-img" alt="Avatar" style="width:32px;height:32px;border-radius:50%;border:2px solid var(--primary);object-fit:cover;transition:border-color .2s;">
+              <span id="nav-username-label" style="font-size:12px;font-weight:600;color:var(--text-primary);"></span>
+            </button>
           </li>
         </ul>
       </nav>
     </div>
   </header>
+
+  <!-- Mobile Bottom Navigation (alleen op mobiel) -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+    <a href="#" class="mobile-nav-item active" id="mob-link-home">
+      <i data-lucide="home"></i>
+      <span>Feed</span>
+    </a>
+    <a href="#" class="mobile-nav-item" id="mob-link-planner">
+      <i data-lucide="calendar"></i>
+      <span>Planner</span>
+    </a>
+    <a href="#" class="mobile-nav-item auth-only" id="mob-link-rides">
+      <i data-lucide="activity"></i>
+      <span>Ritten</span>
+    </a>
+    <a href="#" class="mobile-nav-item auth-only" id="mob-link-profile">
+      <i data-lucide="user"></i>
+      <span>Profiel</span>
+    </a>
+  </nav>
 
   <!-- Notification Banner -->
   <div id="toast" class="toast">
@@ -55,44 +89,116 @@
 
   <main>
     
-    <!-- 1. LANDING PAGE SECTION -->
-    <section id="section-home" class="app-section active">
-      <div class="hero-section">
-        <div class="hero-content">
-          <h1>Plan samen ritten met <span>Cyclo.</span></h1>
-          <p>Deel je beschikbare dagen in een handige kalenderweergave. Zie direct wanneer je fietsvrienden beschikbaar zijn en plan moeiteloos de volgende groepsrit. Binnenkort upload je ook je TCX-bestanden voor een geavanceerde Rider Score!</p>
-          <div class="hero-cta">
-            <button class="btn btn-primary" id="hero-btn-start">Start met Plannen</button>
-            <button class="btn btn-secondary" id="hero-btn-demo">Bekijk Demo</button>
-          </div>
+  <!-- LANDING PAGE (redirect naar feed als ingelogd) -->
+  <section id="section-home" class="app-section">
+    <div class="hero-section">
+      <div class="hero-content">
+        <h1>Plan samen ritten met <span>Cyclo.</span></h1>
+        <p>Deel je beschikbare dagen, plan groepsritten en analyseer je prestaties. De sociale app voor wielerliefhebbers.</p>
+        <div class="hero-cta">
+          <button class="btn btn-primary" id="hero-btn-start">Aan de slag</button>
+          <button class="btn btn-secondary" id="hero-btn-demo">Bekijk Demo</button>
         </div>
-        <div class="hero-graphic">
-          <div class="hero-card hero-card-1 glass-panel">
-            <div class="d-flex align-center gap-8 mb-4">
-              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" alt="Wout" class="avatar" style="width:32px; height:32px;">
-              <div>
-                <h4 style="font-size: 14px;">Wout van Aert</h4>
-                <p style="font-size: 11px; color: var(--primary);">Beschikbaar op Zondag</p>
-              </div>
+      </div>
+      <div class="hero-graphic">
+        <div class="hero-card hero-card-1 glass-panel">
+          <div class="d-flex align-center gap-8 mb-4">
+            <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" alt="Wout" class="avatar" style="width:32px;height:32px;">
+            <div>
+              <h4 style="font-size:14px;">Wout van Aert</h4>
+              <p style="font-size:11px;color:var(--primary);">Beschikbaar op Zondag</p>
             </div>
-            <p style="font-size: 12px; line-height: 1.4;">"Zondag zin in een lange duurrit richting de Vlaamse Ardennen? 120km, tempo ~30km/u."</p>
           </div>
-          <div class="hero-card hero-card-2 glass-panel">
-            <h4 class="ride-date" style="font-size:11px;">WOENSDAG 10 JUNI</h4>
-            <h3 style="font-size: 16px; margin-bottom: 8px;">Woensdagavondrit (Hersteltempo)</h3>
-            <div class="ride-participants">
-              <span style="font-size: 12px; color: var(--text-secondary);">4 renners beschikbaar:</span>
-              <div class="ride-participants-avatars">
-                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=mathieu" class="avatar" alt="Avatar">
-                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=remco" class="avatar" alt="Avatar">
-                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=marianne" class="avatar" alt="Avatar">
-                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" class="avatar" alt="Avatar">
-              </div>
+          <p style="font-size:12px;line-height:1.4;">"Zondag zin in een lange duurrit richting de Vlaamse Ardennen? 120km, tempo ~30km/u."</p>
+        </div>
+        <div class="hero-card hero-card-2 glass-panel">
+          <h4 class="ride-date" style="font-size:11px;">WOENSDAG 10 JUNI</h4>
+          <h3 style="font-size:16px;margin-bottom:8px;">Woensdagavondrit</h3>
+          <div class="ride-participants">
+            <span style="font-size:12px;color:var(--text-secondary);">4 renners beschikbaar:</span>
+            <div class="ride-participants-avatars">
+              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=mathieu" class="avatar" alt="Avatar">
+              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=remco" class="avatar" alt="Avatar">
+              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=marianne" class="avatar" alt="Avatar">
+              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" class="avatar" alt="Avatar">
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
+
+  <!-- SOCIALE FEED SECTIE -->
+  <section id="section-feed" class="app-section">
+    <div class="feed-container">
+
+      <!-- Feed: hoofd kolom -->
+      <div class="feed-main">
+
+        <!-- Zoekbalk -->
+        <div class="glass-panel mb-4" style="padding:12px 16px;">
+          <div style="position:relative;">
+            <i data-lucide="search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-muted);"></i>
+            <input type="text" id="user-search-input" class="form-control" placeholder="Zoek renners op naam of @username..." style="padding-left:36px;">
+          </div>
+          <!-- Zoekresultaten -->
+          <div id="user-search-results" style="display:none;margin-top:10px;"></div>
+        </div>
+
+        <!-- Feed tabs -->
+        <div class="d-flex gap-8 mb-4">
+          <button class="feed-tab-btn active" id="tab-feed-all">🌍 Iedereen</button>
+          <button class="feed-tab-btn" id="tab-feed-following">👥 Volgend</button>
+        </div>
+
+        <!-- Feed activiteiten -->
+        <div id="social-feed-list">
+          <div class="empty-state">Activiteiten laden...</div>
+        </div>
+      </div>
+
+      <!-- Feed: rechter sidebar -->
+      <div class="feed-sidebar">
+
+        <!-- Mijn stats (als ingelogd) -->
+        <div class="glass-panel mb-4" id="feed-my-stats-panel" style="display:none;">
+          <div class="d-flex align-center gap-12 mb-3">
+            <img src="" id="feed-my-avatar" alt="" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--primary);">
+            <div>
+              <div style="font-size:13px;font-weight:700;" id="feed-my-name"></div>
+              <div style="font-size:11px;color:var(--text-muted);" id="feed-my-username"></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="text-align:center;background:rgba(255,255,255,0.03);border-radius:8px;padding:8px;">
+              <div style="font-size:18px;font-weight:800;color:var(--primary);" id="feed-stat-score">0</div>
+              <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">Rider Score</div>
+            </div>
+            <div style="text-align:center;background:rgba(255,255,255,0.03);border-radius:8px;padding:8px;">
+              <div style="font-size:18px;font-weight:800;color:var(--secondary);" id="feed-stat-rides">0</div>
+              <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">Ritten</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;justify-content:center;margin-top:10px;font-size:11px;color:var(--text-muted);">
+            <span><strong id="feed-stat-following" style="color:var(--text-primary);">0</strong> volgend</span>
+            <span><strong id="feed-stat-followers" style="color:var(--text-primary);">0</strong> volgers</span>
+          </div>
+        </div>
+
+        <!-- Klassement -->
+        <div class="glass-panel mb-4">
+          <h3 class="widget-title"><i data-lucide="trophy" style="color:var(--primary)"></i> Klassement</h3>
+          <div id="leaderboard-list"></div>
+        </div>
+
+        <!-- Suggesties -->
+        <div class="glass-panel" id="feed-suggestions-panel">
+          <h3 class="widget-title"><i data-lucide="users" style="color:var(--secondary)"></i> Renners</h3>
+          <div id="feed-suggestions-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
 
     <!-- 2. AUTHENTICATION SECTION (Login/Registreren) -->
     <section id="section-auth" class="app-section">
@@ -729,6 +835,102 @@
       </form>
     </div>
   </div>
+
+  <!-- PROFIEL PAGINA -->
+  <section id="section-profile" class="app-section">
+    <div class="profile-page-container">
+
+      <!-- Profiel header -->
+      <div class="glass-panel profile-hero mb-4">
+        <div class="profile-hero-bg"></div>
+        <div class="profile-hero-content">
+          <div style="position:relative;display:inline-block;">
+            <img src="" id="profile-page-avatar" alt="Avatar" class="profile-page-avatar-img">
+            <button id="btn-change-avatar-profile" style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:var(--primary);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Avatar wijzigen">
+              <i data-lucide="camera" style="width:12px;height:12px;color:#000;"></i>
+            </button>
+          </div>
+          <div class="profile-hero-info">
+            <h2 id="profile-page-name" style="font-size:22px;font-weight:800;margin:0;"></h2>
+            <div id="profile-page-username" style="font-size:13px;color:var(--text-muted);"></div>
+            <div style="display:flex;gap:16px;margin-top:10px;">
+              <span style="font-size:12px;"><strong id="profile-page-riders" style="color:var(--primary);font-size:16px;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">RITTEN</span></span>
+              <span style="font-size:12px;"><strong id="profile-page-score" style="color:var(--primary);font-size:16px;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">SCORE</span></span>
+              <span style="font-size:12px;"><strong id="profile-page-following-cnt" style="color:var(--primary);font-size:16px;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">VOLGEND</span></span>
+              <span style="font-size:12px;"><strong id="profile-page-followers-cnt" style="color:var(--primary);font-size:16px;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">VOLGERS</span></span>
+            </div>
+          </div>
+          <div style="margin-left:auto;display:flex;flex-direction:column;gap:8px;">
+            <button class="btn btn-secondary btn-sm" id="btn-profile-page-logout" style="gap:6px;">
+              <i data-lucide="log-out" style="width:13px;height:13px;"></i> Uitloggen
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+        <!-- Links: Profiel bewerken -->
+        <div class="glass-panel">
+          <h3 class="widget-title mb-4"><i data-lucide="settings" style="color:var(--primary)"></i> Profiel Bewerken</h3>
+          <form id="form-profile-page" style="display:flex;flex-direction:column;gap:14px;">
+            <div class="form-group">
+              <label>Volledige naam</label>
+              <input type="text" id="profile-page-fullname-input" class="form-control" placeholder="Jouw naam">
+            </div>
+            <div class="form-group">
+              <label>Gebruikersnaam</label>
+              <input type="text" id="profile-page-username-input" class="form-control" placeholder="@gebruikersnaam">
+            </div>
+            <div class="form-group">
+              <label>Type fiets</label>
+              <select id="profile-page-biketype-input" class="form-control">
+                <option value="Road">Racefiets</option>
+                <option value="Gravel">Gravelbike</option>
+                <option value="MTB">Mountainbike</option>
+                <option value="E-Bike">Elektrische Fiets</option>
+              </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group">
+                <label>Lengte (cm)</label>
+                <input type="number" id="profile-page-height-input" class="form-control" min="50" max="250" placeholder="180">
+              </div>
+              <div class="form-group">
+                <label>Gewicht (kg)</label>
+                <input type="number" id="profile-page-weight-input" class="form-control" step="0.1" min="10" max="300" placeholder="75">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-full">Opslaan</button>
+          </form>
+        </div>
+
+        <!-- Rechts: Avatar editor -->
+        <div class="glass-panel">
+          <h3 class="widget-title mb-4"><i data-lucide="user-circle" style="color:var(--secondary)"></i> Avatar</h3>
+          <!-- Preview -->
+          <div class="text-center mb-4">
+            <img src="" id="profile-page-preview-avatar" style="width:90px;height:90px;border-radius:50%;border:3px solid var(--primary);margin:0 auto;display:block;">
+            <div class="d-flex gap-8 justify-center mt-3">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-profile-randomize">
+                <i data-lucide="shuffle" style="width:12px;height:12px;"></i> Verras me
+              </button>
+            </div>
+          </div>
+          <!-- Presets -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;">
+            <div class="avatar-preset-chip" data-seed="wout" title="Wout van Aert" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" style="width:26px;height:26px;border-radius:50%;"></div>
+            <div class="avatar-preset-chip" data-seed="remco" title="Remco Evenepoel" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=remco" style="width:26px;height:26px;border-radius:50%;"></div>
+            <div class="avatar-preset-chip" data-seed="mathieu" title="Mathieu van der Poel" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=mathieu" style="width:26px;height:26px;border-radius:50%;"></div>
+            <div class="avatar-preset-chip" data-seed="marianne" title="Marianne Vos" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=marianne" style="width:26px;height:26px;border-radius:50%;"></div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm w-full" id="btn-profile-save-avatar">
+            <i data-lucide="save" style="width:12px;height:12px;"></i> Avatar Opslaan
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- Scripts -->
   <script src="activity-parser.js"></script>

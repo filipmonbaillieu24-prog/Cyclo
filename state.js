@@ -7,13 +7,19 @@ export const elements = {
   linkHome: document.getElementById('link-home'),
   linkDashboard: document.getElementById('link-dashboard'),
   linkRides: document.getElementById('link-rides'),
+  linkProfile: document.getElementById('btn-nav-profile'),
   navAuthItem: document.getElementById('nav-auth-item'),
+  navProfileItem: document.getElementById('nav-profile-item'),
+  navAvatarImg: document.getElementById('nav-avatar-img'),
+  navUsernameLabel: document.getElementById('nav-username-label'),
   
   // Secties (SPA)
   sectionHome: document.getElementById('section-home'),
+  sectionFeed: document.getElementById('section-feed'),
   sectionAuth: document.getElementById('section-auth'),
   sectionDashboard: document.getElementById('section-dashboard'),
   sectionRides: document.getElementById('section-rides'),
+  sectionProfile: document.getElementById('section-profile'),
   
   // Hero Knoppen
   heroBtnStart: document.getElementById('hero-btn-start'),
@@ -154,38 +160,60 @@ export function showToast(message, type = 'info') {
 }
 
 // 6. ROUTING HELPER
+const ALL_SECTIONS = ['sectionHome','sectionFeed','sectionAuth','sectionDashboard','sectionRides','sectionProfile'];
+const ALL_NAV_LINKS = ['linkHome','linkDashboard','linkRides'];
+
 export function navigateTo(section, onPageLoad = null) {
-  elements.linkHome.classList.remove('active');
-  elements.linkDashboard.classList.remove('active');
-  if (elements.linkRides) elements.linkRides.classList.remove('active');
-  
-  elements.sectionHome.classList.remove('active');
-  elements.sectionAuth.classList.remove('active');
-  elements.sectionDashboard.classList.remove('active');
-  if (elements.sectionRides) elements.sectionRides.classList.remove('active');
-  
-  if (section === 'home') {
-    elements.sectionHome.classList.add('active');
-    elements.linkHome.classList.add('active');
-  } else if (section === 'auth') {
-    elements.sectionAuth.classList.add('active');
-  } else if (section === 'dashboard') {
-    if (!state.user) {
-      showToast("Log eerst in om de planner te bekijken.", "error");
-      elements.sectionAuth.classList.add('active');
-    } else {
-      elements.sectionDashboard.classList.add('active');
-      elements.linkDashboard.classList.add('active');
-      if (typeof onPageLoad === 'function') onPageLoad();
-    }
-  } else if (section === 'rides') {
-    if (!state.user) {
-      showToast("Log eerst in om je ritten te bekijken.", "error");
-      elements.sectionAuth.classList.add('active');
-    } else {
-      elements.sectionRides.classList.add('active');
-      if (elements.linkRides) elements.linkRides.classList.add('active');
-      if (typeof onPageLoad === 'function') onPageLoad();
-    }
+  // Verwijder actieve klasse van alle nav-links
+  ALL_NAV_LINKS.forEach(k => { if (elements[k]) elements[k].classList.remove('active'); });
+
+  // Verberg alle secties
+  ALL_SECTIONS.forEach(k => { if (elements[k]) elements[k].classList.remove('active'); });
+
+  // Mobiele nav bijwerken
+  document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
+
+  const requiresAuth = ['dashboard','rides','profile','feed'];
+  if (requiresAuth.includes(section) && !state.user) {
+    showToast('Log eerst in.', 'error');
+    if (elements.sectionAuth) elements.sectionAuth.classList.add('active');
+    return;
   }
+
+  if (section === 'home') {
+    // Als ingelogd: stuur naar feed
+    if (state.user) { navigateTo('feed', onPageLoad); return; }
+    if (elements.sectionHome) elements.sectionHome.classList.add('active');
+    if (elements.linkHome) elements.linkHome.classList.add('active');
+    const mob = document.getElementById('mob-link-home');
+    if (mob) mob.classList.add('active');
+  } else if (section === 'feed') {
+    if (elements.sectionFeed) elements.sectionFeed.classList.add('active');
+    if (elements.linkHome) elements.linkHome.classList.add('active');
+    const mob = document.getElementById('mob-link-home');
+    if (mob) mob.classList.add('active');
+    if (typeof onPageLoad === 'function') onPageLoad();
+  } else if (section === 'auth') {
+    if (elements.sectionAuth) elements.sectionAuth.classList.add('active');
+  } else if (section === 'dashboard') {
+    if (elements.sectionDashboard) elements.sectionDashboard.classList.add('active');
+    if (elements.linkDashboard) elements.linkDashboard.classList.add('active');
+    const mob = document.getElementById('mob-link-planner');
+    if (mob) mob.classList.add('active');
+    if (typeof onPageLoad === 'function') onPageLoad();
+  } else if (section === 'rides') {
+    if (elements.sectionRides) elements.sectionRides.classList.add('active');
+    if (elements.linkRides) elements.linkRides.classList.add('active');
+    const mob = document.getElementById('mob-link-rides');
+    if (mob) mob.classList.add('active');
+    if (typeof onPageLoad === 'function') onPageLoad();
+  } else if (section === 'profile') {
+    if (elements.sectionProfile) elements.sectionProfile.classList.add('active');
+    const mob = document.getElementById('mob-link-profile');
+    if (mob) mob.classList.add('active');
+    if (typeof onPageLoad === 'function') onPageLoad();
+  }
+
+  // Scroll naar boven
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }

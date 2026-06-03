@@ -41,6 +41,8 @@ import {
 } from './activities.js';
 import { setupRealtimeSubscriptions } from './realtime.js';
 import { setupZwiftImporter } from './zwift-importer.js';
+import { loadSocialFeed, renderFeedCard, searchUsers, followUser, unfollowUser, getFollowStatus, getFollowCounts, renderLeaderboard as renderSocialLeaderboard } from './social.js';
+import { initRouteBuilder, downloadRouteAsGpx, clearRoute, undoLastWaypoint } from './route-builder.js';
 
 let activeRealtimeChannel = null;
 
@@ -127,6 +129,9 @@ export async function loadDashboardData() {
 
     // Rider Score herberekenen op basis van alle activiteiten
     _displayRiderScoreFromActivities();
+
+    // Sociale Feed bijwerken
+    loadFeedSection();
 
     // Realtime synchronisatie opzetten (eenmalig)
     if (!activeRealtimeChannel) {
@@ -398,11 +403,318 @@ function setupEventListeners() {
     });
   }
 
+  // Feed navigatie
+  if (elements.linkHome) {
+    elements.linkHome.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigateTo(state.user ? 'feed' : 'home', loadFeedSection);
+    });
+  }
+
+  // Profiel knop in nav
+  if (elements.linkProfile) {
+    elements.linkProfile.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigateTo('profile', loadProfilePage);
+    });
+  }
+
+  // Profiel uitlog knop op profielpagina
+  const btnProfileLogout = document.getElementById('btn-profile-page-logout');
+  if (btnProfileLogout) {
+    btnProfileLogout.addEventListener('click', () => handleLogout(loadDashboardData));
+  }
+
+  // Profiel bewerken formulier op profielpagina
+  const formProfilePage = document.getElementById('form-profile-page');
+  if (formProfilePage) {
+    formProfilePage.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fullname = document.getElementById('profile-page-fullname-input')?.value;
+      const username = document.getElementById('profile-page-username-input')?.value;
+      const biketype = document.getElementById('profile-page-biketype-input')?.value;
+      const height   = document.getElementById('profile-page-height-input')?.value;
+      const weight   = document.getElementById('profile-page-weight-input')?.value;
+
+      // Hergebruik bestaande saveProfileUpdate logica via form-edit-profile
+      if (elements.profileModalFullname)  elements.profileModalFullname.value  = fullname || '';
+      if (elements.profileModalUsername)  elements.profileModalUsername.value  = username || '';
+      if (elements.profileModalBiketype)  elements.profileModalBiketype.value  = biketype || 'Road';
+      const heightInput = document.getElementById('profile-modal-height');
+      const weightInput = document.getElementById('profile-modal-weight');
+      if (heightInput) heightInput.value = height || '';
+      if (weightInput) weightInput.value = weight || '';
+
+      const fakeEvent = { preventDefault: () => {} };
+      await saveProfileUpdate(fakeEvent, loadDashboardData);
+      loadProfilePage();
+    });
+  }
+
+  // Mobiele navigatie
+  const mobLinks = [
+    ['mob-link-home',    () => navigateTo(state.user ? 'feed' : 'home', loadFeedSection)],
+    ['mob-link-planner', () => navigateTo('dashboard', loadDashboardData)],
+    ['mob-link-rides',   () => navigateTo('rides', loadDashboardData)],
+    ['mob-link-profile', () => navigateTo('profile', loadProfilePage)],
+  ];
+  mobLinks.forEach(([id, fn]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', (e) => { e.preventDefault(); fn(); });
+  });
+
+  // Gebruikerszoeken
+  const searchInput = document.getElementById('user-search-input');
+  const searchResults = document.getElementById('user-search-results');
+  if (searchInput && searchResults) {
+    let searchTimer;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const q = searchInput.value.trim();
+      if (q.length < 2) { searchResults.style.display = 'none'; return; }
+      searchTimer = setTimeout(async () => {
+        const users = await searchUsers(q);
+        searchResults.style.display = 'block';
+        searchResults.innerHTML = users.length === 0
+          ? '<div style="font-size:12px;color:var(--text-muted);padding:8px;">Geen renners gevonden.</div>'
+          : users.map(u => `
+            <div class="user-search-result" data-user-id="${u.id}">
+              <img src="${u.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.id}" alt="${u.full_name}">
+              <div>
+                <div class="user-search-result-name">${u.full_name}</div>
+                <div class="user-search-result-username">@${u.username} &middot; ${u.rider_score || 0} pts</div>
+              </div>
+              <button class="btn-follow" data-user-id="${u.id}" style="margin-left:auto;">Volgen</button>
+            </div>`).join('');
+        // Bind follow buttons
+        searchResults.querySelectorAll('.btn-follow').forEach(btn => {
+          btn.addEventListener('click', async (ev) => {
+            ev.stopPropagation();
+            await followUser(btn.dataset.userId);
+            btn.textContent = '✓ Volgend';
+            btn.classList.add('following');
+          });
+        });
+      }, 350);
+    });
+  }
+
+  // Feed tabs
+  const tabAll       = document.getElementById('tab-feed-all');
+  const tabFollowing = document.getElementById('tab-feed-following');
+  if (tabAll && tabFollowing) {
+    tabAll.addEventListener('click', () => {
+      tabAll.classList.add('active'); tabFollowing.classList.remove('active');
+      loadFeedSection(false);
+    });
+    tabFollowing.addEventListener('click', () => {
+      tabFollowing.classList.add('active'); tabAll.classList.remove('active');
+      loadFeedSection(true);
+    });
+  }
+
   // "Naar Planner" knop op Mijn Ritten pagina
   const btnGoPlanner = document.getElementById('btn-go-planner');
   if (btnGoPlanner) {
     btnGoPlanner.addEventListener('click', () => navigateTo('dashboard', loadDashboardData));
   }
+}
+
+// ─── Sociale Feed Laden & Renderen ──────────────────────────────────
+export async function loadFeedSection(followingOnly = false) {
+  // Update nav avatar
+  updateNavProfile();
+
+  // Feed mini-stats
+  if (state.user) {
+    const feedPanel = document.getElementById('feed-my-stats-panel');
+    if (feedPanel) {
+      feedPanel.style.display = 'block';
+      const myAct = (state.activities || []).filter(a => a.user_id === state.user.id);
+      const nameEl = document.getElementById('feed-my-name');
+      const unEl   = document.getElementById('feed-my-username');
+      const avEl   = document.getElementById('feed-my-avatar');
+      const scEl   = document.getElementById('feed-stat-score');
+      const rdEl   = document.getElementById('feed-stat-rides');
+      if (nameEl) nameEl.textContent = state.user.full_name || '';
+      if (unEl)   unEl.textContent   = state.user.username ? '@' + state.user.username : '';
+      if (avEl)   avEl.src           = state.user.avatar_url || '';
+      if (scEl)   scEl.textContent   = state.user.rider_score || 0;
+      if (rdEl)   rdEl.textContent   = myAct.length;
+
+      // Volg statistieken
+      if (!config.isDemoMode && state.user) {
+        const counts = await getFollowCounts(state.user.id).catch(() => ({ followers: 0, following: 0 }));
+        const fwEl = document.getElementById('feed-stat-following');
+        const frEl = document.getElementById('feed-stat-followers');
+        if (fwEl) fwEl.textContent = counts.following;
+        if (frEl) frEl.textContent = counts.followers;
+      }
+    }
+  }
+
+  // Leaderboard renderen
+  try { renderLeaderboard(); } catch(e) {}
+
+  // Suggesties (andere renners)
+  const suggList = document.getElementById('feed-suggestions-list');
+  if (suggList && state.profiles) {
+    const others = state.profiles.filter(p => p.id !== state.user?.id).slice(0, 8);
+    suggList.innerHTML = others.map(p => `
+      <div class="feed-suggestion-row">
+        <img src="${p.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + p.id}" alt="${p.full_name}">
+        <div>
+          <div class="feed-suggestion-name">${p.full_name}</div>
+          <div class="feed-suggestion-score">${p.rider_score || 0} pts</div>
+        </div>
+        <button class="btn-follow btn-sm" data-user-id="${p.id}" style="font-size:10px;padding:3px 10px;">Volgen</button>
+      </div>`).join('');
+    // Volg knoppen binden
+    suggList.querySelectorAll('.btn-follow').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await followUser(btn.dataset.userId);
+        btn.textContent = '✓'; btn.classList.add('following');
+      });
+    });
+  }
+
+  // Feed activiteiten laden
+  const feedList = document.getElementById('social-feed-list');
+  if (!feedList) return;
+  feedList.innerHTML = '<div class="empty-state">Feed laden...</div>';
+
+  let activities;
+  if (config.isDemoMode) {
+    activities = [...(state.activities || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+  } else {
+    activities = await loadSocialFeed();
+    if (followingOnly) {
+      // Filter op gevolgden (al gedaan in loadSocialFeed maar ook eigen activiteiten zichtbaar)
+    }
+  }
+
+  if (!activities || activities.length === 0) {
+    feedList.innerHTML = '<div class="empty-state">Nog geen activiteiten in je feed.<br>Upload een rit of volg andere renners!</div>';
+    return;
+  }
+
+  feedList.innerHTML = '';
+  for (const act of activities.slice(0, 30)) {
+    const profileData = act.profiles || state.profiles?.find(p => p.id === act.user_id);
+    const card = renderFeedCard(act, profileData);
+    feedList.appendChild(card);
+    // Volg knop binden
+    card.querySelectorAll('.btn-follow').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await followUser(btn.dataset.userId);
+        btn.innerHTML = '<i data-lucide="user-check" style="width:12px;height:12px;"></i> Volgend';
+        btn.classList.add('following');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      });
+    });
+  }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// ─── Profiel Pagina Laden ───────────────────────────────────────────
+function loadProfilePage() {
+  if (!state.user) return;
+  const u = state.user;
+
+  // Header info
+  const avatarEl  = document.getElementById('profile-page-avatar');
+  const previewEl = document.getElementById('profile-page-preview-avatar');
+  const nameEl    = document.getElementById('profile-page-name');
+  const unEl      = document.getElementById('profile-page-username');
+  const ridersEl  = document.getElementById('profile-page-riders');
+  const scoreEl   = document.getElementById('profile-page-score');
+
+  if (avatarEl)  avatarEl.src  = u.avatar_url || '';
+  if (previewEl) previewEl.src = u.avatar_url || '';
+  if (nameEl)    nameEl.textContent = u.full_name || '';
+  if (unEl)      unEl.textContent   = u.username ? '@' + u.username : '';
+  const myAct = (state.activities || []).filter(a => a.user_id === u.id);
+  if (ridersEl)  ridersEl.textContent = myAct.length;
+  if (scoreEl)   scoreEl.textContent  = u.rider_score || 0;
+
+  // Volg stats
+  if (!config.isDemoMode) {
+    getFollowCounts(u.id).then(counts => {
+      const fwEl = document.getElementById('profile-page-following-cnt');
+      const frEl = document.getElementById('profile-page-followers-cnt');
+      if (fwEl) fwEl.textContent = counts.following;
+      if (frEl) frEl.textContent = counts.followers;
+    }).catch(() => {});
+  }
+
+  // Vul formulier in
+  const fnInput = document.getElementById('profile-page-fullname-input');
+  const unInput = document.getElementById('profile-page-username-input');
+  const btInput = document.getElementById('profile-page-biketype-input');
+  const htInput = document.getElementById('profile-page-height-input');
+  const wtInput = document.getElementById('profile-page-weight-input');
+  if (fnInput) fnInput.value = u.full_name || '';
+  if (unInput) unInput.value = u.username || '';
+  if (btInput) btInput.value = u.bike_type || 'Road';
+  if (htInput) htInput.value = u.height || '';
+  if (wtInput) wtInput.value = u.weight || '';
+
+  // Avatar presets binden
+  const profilePresets = document.querySelectorAll('#section-profile .avatar-preset-chip');
+  profilePresets.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const seed = chip.dataset.seed;
+      const url  = `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`;
+      if (previewEl) previewEl.src = url;
+      chip._selectedUrl = url;
+    });
+  });
+
+  // Willekeurig avatar
+  const randomBtn = document.getElementById('btn-profile-randomize');
+  if (randomBtn) {
+    randomBtn.addEventListener('click', () => {
+      const seed = Math.random().toString(36).substring(2, 8);
+      const url  = `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`;
+      if (previewEl) previewEl.src = url;
+    });
+  }
+
+  // Avatar opslaan
+  const saveAvatarBtn = document.getElementById('btn-profile-save-avatar');
+  if (saveAvatarBtn) {
+    saveAvatarBtn.onclick = async () => {
+      const url = previewEl?.src;
+      if (!url) return;
+      if (elements.profileModalAvatar) elements.profileModalAvatar.value = url;
+      const fakeEvent = { preventDefault: () => {} };
+      await saveProfileUpdate(fakeEvent, loadDashboardData);
+      if (avatarEl) avatarEl.src = url;
+      updateNavProfile();
+      showToast('Avatar opgeslagen!', 'success');
+    };
+  }
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// ─── Nav Avatar Updaten ─────────────────────────────────────────────
+function updateNavProfile() {
+  if (!state.user) return;
+  const navAvatar   = document.getElementById('nav-avatar-img');
+  const navUsername = document.getElementById('nav-username-label');
+  const navAuthItem = elements.navAuthItem;
+  const navProfItem = document.getElementById('nav-profile-item');
+
+  if (navAvatar)   navAvatar.src       = state.user.avatar_url || '';
+  if (navUsername) navUsername.textContent = state.user.full_name?.split(' ')[0] || '';
+  if (navAuthItem) navAuthItem.style.display = 'none';
+  if (navProfItem) navProfItem.style.display = 'flex';
+
+  // Toon auth-only elementen
+  document.querySelectorAll('.auth-only').forEach(el => {
+    el.style.display = el.classList.contains('nav-profile-item') ? 'flex' : '';
+  });
 }
 
 // 5. APPLICATIE INITIALISATIE RUN

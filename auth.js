@@ -101,14 +101,26 @@ export function setUser(userProfile, setUserCallback) {
       if (elements.widgetUserScoreContainer) elements.widgetUserScoreContainer.style.display = 'none';
     }
     
-    // Toon rittenlink
-    document.querySelectorAll('.auth-only').forEach(el => el.style.display = 'block');
+    // Toon auth-only items
+    document.querySelectorAll('.auth-only').forEach(el => el.style.display = '');
     
-    // Ga naar dashboard
-    navigateTo('dashboard', setUserCallback);
+    // Toon profiel avatar in nav, verberg login knop
+    const navProfItem = document.getElementById('nav-profile-item');
+    const navAvatar   = document.getElementById('nav-avatar-img');
+    const navLabel    = document.getElementById('nav-username-label');
+    if (navProfItem) navProfItem.style.display = 'flex';
+    if (navAvatar && userProfile?.avatar_url)  navAvatar.src = userProfile.avatar_url;
+    if (navLabel  && userProfile?.full_name)   navLabel.textContent = userProfile.full_name.split(' ')[0];
+    if (elements.navAuthItem) elements.navAuthItem.style.display = 'none';
+
+    // Ga naar sociale feed (Home) na inloggen
+    navigateTo('feed', setUserCallback);
   } else {
     // Uitgelogd
     elements.navAuthItem.innerHTML = `<a href="#" class="btn btn-primary btn-sm" id="btn-login-nav">Inloggen</a>`;
+    elements.navAuthItem.style.display = '';
+    const navProfItem = document.getElementById('nav-profile-item');
+    if (navProfItem) navProfItem.style.display = 'none';
     document.querySelectorAll('.auth-only').forEach(el => el.style.display = 'none');
     navigateTo('home');
   }
