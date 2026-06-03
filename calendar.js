@@ -1,4 +1,4 @@
-// Cyclo - Calendar & Availability Module
+﻿// Cyclo - Calendar & Availability Module
 import { state, elements, config, showToast } from './state.js';
 import { fetchWeatherForDate, WMO_CODES } from './rides.js';
 
@@ -67,23 +67,29 @@ export function renderCalendar() {
   refreshMultiSelectVisuals();
 }
 
+// Helper: lokale datum als YYYY-MM-DD (tijdzone-veilig)
+function localDateStr(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
   const cell = document.createElement('div');
   cell.classList.add('calendar-day');
-  
-  const dateStr = date.toISOString().split('T')[0];
+
+  const dateStr = localDateStr(date);  // ✅ lokale tijdzone, geen UTC-verschuiving
   cell.dataset.date = dateStr;
-  
+
   if (isOtherMonth) {
     cell.classList.add('other-month');
   }
-  
-  const todayStr = new Date().toISOString().split('T')[0];
+
+  const todayStr = localDateStr(new Date());  // ✅ lokale datum van vandaag
   if (dateStr === todayStr) {
     cell.classList.add('today');
   }
-  
-  const selectedStr = state.selectedDate.toISOString().split('T')[0];
+
+  const selectedStr = localDateStr(state.selectedDate);  // ✅ lokale geselecteerde datum
   if (dateStr === selectedStr) {
     cell.classList.add('selected');
   }
@@ -190,7 +196,7 @@ export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
   }
 
   // ─── Weersverwachting voor toekomstige dagen ───────────────────
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  const todayDateStr = localDateStr(new Date());
   if (dateStr >= todayDateStr && !isOtherMonth) {
     // Asynchroon: update de cel zodra data binnen is
     fetchWeatherForDate(dateStr).then(weather => {
@@ -276,7 +282,7 @@ export function selectWeekends() {
     const d = new Date(year, month, i);
     const dow = d.getDay(); // 0=zo, 6=za
     if (dow === 0 || dow === 6) {
-      selectedDates.push(d.toISOString().split('T')[0]);
+      selectedDates.push(localDateStr(d));
     }
   }
 
@@ -376,7 +382,7 @@ export async function saveBulkAvailability(loadDashboardDataCallback) {
 }
 export function updateAvailabilityEditor() {
   if (!state.user) return;
-  const dateStr = state.selectedDate.toISOString().split('T')[0];
+  const dateStr = localDateStr(state.selectedDate);
   
   const opt = { weekday: 'long', day: 'numeric', month: 'long' };
   const formatter = new Intl.DateTimeFormat('nl-NL', opt);
@@ -400,7 +406,7 @@ export function updateAvailabilityEditor() {
 }
 
 export async function saveAvailability(loadDashboardDataCallback) {
-  const dateStr = state.selectedDate.toISOString().split('T')[0];
+  const dateStr = localDateStr(state.selectedDate);
   const notes = elements.availabilityNotes.value;
   
   if (config.isDemoMode) {
