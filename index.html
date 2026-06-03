@@ -14,6 +14,10 @@
   
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Leaflet CSS & JS for Interactive Route Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
 
@@ -184,6 +188,17 @@
               </div>
             </div>
           </div>
+          
+          <!-- Rittenhistorie Panel -->
+          <div class="glass-panel mt-4">
+            <h2 class="widget-title"><i data-lucide="history" style="color:var(--secondary)"></i> Mijn Rittenhistorie</h2>
+            <div id="activities-list-container">
+              <!-- Geüploade ritten komen hier -->
+              <div class="empty-state">
+                Je hebt nog geen ritten geüpload.
+              </div>
+            </div>
+          </div>
 
         </div>
 
@@ -202,7 +217,27 @@
                 <span>Rider Score</span>
               </div>
               
+              <!-- Statische Totalen in Profiel -->
+              <div id="profile-stats-container" style="display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; border-top: 1px solid var(--border-glass); padding-top: 12px;">
+                <div>
+                  <div style="font-size:16px; font-weight:700; color:var(--primary);" id="profile-stat-distance">0.0</div>
+                  <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Totale KM</div>
+                </div>
+                <div>
+                  <div style="font-size:16px; font-weight:700; color:var(--secondary);" id="profile-stat-ascent">0</div>
+                  <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Hoogtemeters</div>
+                </div>
+              </div>
+              
               <button class="btn btn-secondary btn-sm w-full mt-4" id="btn-logout"><i data-lucide="log-out"></i> Uitloggen</button>
+            </div>
+          </div>
+
+          <!-- Leaderboard Widget -->
+          <div class="glass-panel" id="leaderboard-panel">
+            <h3 class="widget-title"><i data-lucide="trophy" style="color:var(--primary)"></i> Klassement</h3>
+            <div id="leaderboard-list">
+              <!-- Wordt dynamisch opgebouwd -->
             </div>
           </div>
 
@@ -273,10 +308,8 @@
                 </div>
               </div>
 
-              <!-- Kaart Canvas -->
-              <div class="route-canvas-container">
-                <canvas id="route-map-canvas" width="300" height="200"></canvas>
-              </div>
+              <!-- Route Kaart (Leaflet) -->
+            <div class="route-canvas-container" id="route-map"></div>
             </div>
           </div>
 

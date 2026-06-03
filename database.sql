@@ -138,3 +138,34 @@ SELECT
   p.rider_score
 FROM public.availabilities a
 JOIN public.profiles p ON a.user_id = p.id;
+
+
+-- 6. Create a table for Activities (Geüploade Ritten)
+CREATE TABLE IF NOT EXISTS public.activities (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  date TIMESTAMP WITH TIME ZONE NOT NULL,
+  distance_km NUMERIC NOT NULL,
+  duration_secs NUMERIC NOT NULL,
+  ascent_m INTEGER NOT NULL,
+  avg_speed_kmh NUMERIC NOT NULL,
+  avg_heart_rate INTEGER,
+  avg_power_watts INTEGER,
+  rider_score INTEGER NOT NULL,
+  coordinates JSONB, -- Array of [{lat, lng, alt}]
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS for Activities
+ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow authenticated users to read all activities" ON public.activities
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Allow users to insert their own activities" ON public.activities
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow users to delete their own activities" ON public.activities
+  FOR DELETE TO authenticated USING (auth.uid() = user_id);
+

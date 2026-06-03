@@ -864,3 +864,161 @@ header {
   padding: 24px;
   color: var(--text-muted);
 }
+
+/* Leaderboard / Klassement Styles */
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border-glass);
+  margin-bottom: 8px;
+  transition: all var(--transition-fast);
+}
+
+.leaderboard-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.leaderboard-rank {
+  width: 24px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 14px;
+  text-align: center;
+}
+
+.leaderboard-rank.rank-1 { color: #ffd700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.4); } /* Gold */
+.leaderboard-rank.rank-2 { color: #c0c0c0; } /* Silver */
+.leaderboard-rank.rank-3 { color: #cd7f32; } /* Bronze */
+
+.leaderboard-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border-glass);
+  margin-left: 8px;
+}
+
+.leaderboard-info {
+  flex-grow: 1;
+  margin-left: 10px;
+}
+
+.leaderboard-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.leaderboard-username {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.leaderboard-score {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--primary);
+  background: rgba(212, 255, 0, 0.05);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(212, 255, 0, 0.1);
+}
+
+/* Activities History Styles */
+.activity-item {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid var(--border-glass);
+  margin-bottom: 12px;
+  transition: all var(--transition-fast);
+}
+
+.activity-item:hover {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--border-active);
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.activity-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.activity-date {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.activity-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+  border-top: 1px solid var(--border-glass);
+  padding-top: 10px;
+}
+
+.activity-stat-card {
+  text-align: center;
+}
+
+.activity-stat-val {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.activity-stat-lbl {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.activity-badge {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--text-on-primary);
+  background: var(--primary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  margin-left: 8px;
+}
+
+/* Leaflet Container Overrides */
+.leaflet-container {
+  background-color: var(--bg-main) !important;
+  font-family: var(--font-body) !important;
+  z-index: 10;
+}
+
+.leaflet-bar {
+  border: 1px solid var(--border-glass) !important;
+  box-shadow: var(--shadow-premium) !important;
+}
+
+.leaflet-bar a {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-glass) !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+

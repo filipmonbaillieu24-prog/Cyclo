@@ -317,6 +317,86 @@ class TcxParser {
     ctx.stroke();
   }
 
+  static activeMap = null;
+
+  /**
+   * Tekent een route op een interactieve Leaflet kaart.
+   * @param {string} mapDivId 
+   * @param {Array} coordinates [{lat, lng}]
+   * @param {string} strokeColor 
+   */
+  static drawRouteOnLeaflet(mapDivId, coordinates, strokeColor = "#d4ff00") {
+    if (!coordinates || coordinates.length === 0) return;
+    if (typeof L === 'undefined') {
+      console.error("Leaflet is niet geladen.");
+      return;
+    }
+
+    const latLngs = coordinates.map(c => [c.lat, c.lng]);
+
+    try {
+      // 1. Initialiseer kaart als dat nog niet is gebeurd
+      if (!this.activeMap) {
+        this.activeMap = L.map(mapDivId, {
+          zoomControl: true,
+          attributionControl: false
+        });
+
+        // Voeg een donkere kaartstijl toe (CartoDB Dark Matter)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          maxZoom: 19
+        }).addTo(this.activeMap);
+      } else {
+        // Als de kaart al bestaat, wis alle bestaande polyline en marker lagen
+        this.activeMap.eachLayer(layer => {
+          if (layer instanceof L.Polyline || layer instanceof L.Marker) {
+            this.activeMap.removeLayer(layer);
+          }
+        });
+      }
+
+      // 2. Teken de route polyline
+      const polyline = L.polyline(latLngs, {
+        color: strokeColor,
+        weight: 4,
+        opacity: 0.95
+      }).addTo(this.activeMap);
+
+      // 3. Zoom de kaart automatisch naar de route grenzen
+      this.activeMap.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+
+      // 4. Voeg start- en eindmarkers toe
+      const startPoint = latLngs[0];
+      const endPoint = latLngs[latLngs.length - 1];
+
+      // Custom markers met CSS styling
+      const startIcon = L.divIcon({
+        className: 'custom-map-marker-start',
+        html: '<div style="background-color:#00F0FF; width:12px; height:12px; border-radius:50%; border:2px solid #fff; box-shadow: 0 0 10px #00F0FF;"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
+      });
+
+      const endIcon = L.divIcon({
+        className: 'custom-map-marker-end',
+        html: '<div style="background-color:#FF007F; width:12px; height:12px; border-radius:50%; border:2px solid #fff; box-shadow: 0 0 10px #FF007F;"></div>',
+        iconSize: [12, 12],
+        iconAnchor: [6, 6]
+      });
+
+      L.marker(startPoint, { icon: startIcon }).addTo(this.activeMap);
+      L.marker(endPoint, { icon: endIcon }).addTo(this.activeMap);
+
+      // Zorg dat Leaflet de layout ververst (voorkomt grijze vlakken als de map in een verborgen element zat)
+      setTimeout(() => {
+        if (this.activeMap) this.activeMap.invalidateSize();
+      }, 200);
+
+    } catch (e) {
+      console.error("Fout bij tekenen Leaflet routekaart:", e);
+    }
+  }
+
   /**
    * Genereert een mock TCX-bestand voor testdoeleinden.
    * @returns {string} XML string van een mock rit

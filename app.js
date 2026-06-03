@@ -84,7 +84,15 @@ const elements = {
   // Toast Notificaties
   toast: document.getElementById('toast'),
   toastMessage: document.getElementById('toast-message'),
-  toastIcon: document.getElementById('toast-icon')
+  toastIcon: document.getElementById('toast-icon'),
+  
+  // Nieuwe uitbreidingen elements
+  leaderboardList: document.getElementById('leaderboard-list'),
+  activitiesListContainer: document.getElementById('activities-list-container'),
+  profileStatsContainer: document.getElementById('profile-stats-container'),
+  profileStatDistance: document.getElementById('profile-stat-distance'),
+  profileStatAscent: document.getElementById('profile-stat-ascent'),
+  routeMap: document.getElementById('route-map')
 };
 
 // 2. SUPABASE INITIALISATIE
@@ -119,13 +127,9 @@ const state = {
   selectedStatus: 'available' // Huidig geselecteerde status in editor
 };
 
-// MOCK DATA VOOR DEMO MODUS
+// MOCK DATA VOOR DEMO MODUS (Alleen actieve demo-gebruiker)
 const MOCK_PROFILES = [
-  { id: 'demo-user-id', username: 'demorider', full_name: 'Jij (Demo Rider)', avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=demo', rider_score: 100 },
-  { id: 'wout-id', username: 'wout', full_name: 'Wout van Aert', avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=wout', rider_score: 950 },
-  { id: 'mathieu-id', username: 'mathieu', full_name: 'Mathieu v.d. Poel', avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=mathieu', rider_score: 980 },
-  { id: 'remco-id', username: 'remco', full_name: 'Remco Evenepoel', avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=remco', rider_score: 920 },
-  { id: 'marianne-id', username: 'marianne', full_name: 'Marianne Vos', avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=marianne', rider_score: 890 }
+  { id: 'demo-user-id', username: 'demorider', full_name: 'Jij (Demo Rider)', avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=demo', rider_score: 100 }
 ];
 
 // 4. BOOTSTRAP / INITIALISATIE RUN
@@ -222,6 +226,20 @@ function setupEventListeners() {
   
   // TCX Drag & Drop & Upload
   setupTcxUploader();
+  
+  // Rittenhistorie link in navbar
+  if (elements.linkRides) {
+    elements.linkRides.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigateTo('dashboard');
+      setTimeout(() => {
+        const activitiesPanel = document.getElementById('activities-list-container');
+        if (activitiesPanel) {
+          activitiesPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    });
+  }
 }
 
 // 6. ROUTING (SPA)
@@ -535,9 +553,12 @@ async function loadDashboardData() {
     if (rError) throw rError;
     state.rides = rides;
     
-    // Render de kalender en ritten opnieuw
+    // Laad activiteiten en render alles
+    await loadActivities();
     renderCalendar();
     renderRidesList();
+    renderActivitiesList();
+    renderLeaderboard();
   } catch (err) {
     console.error("Fout bij ophalen dashboard data:", err);
     showToast("Fout bij laden van live data. Switchen naar demo data.", "error");
@@ -586,8 +607,11 @@ function loadMockDashboardData() {
     return d >= startOfMonth && d <= endOfMonth;
   });
   
+  loadActivities();
   renderCalendar();
   renderRidesList();
+  renderActivitiesList();
+  renderLeaderboard();
 }
 
 // Genereert test beschikbaarheid in demo modus
@@ -595,27 +619,14 @@ function seedMockAvailabilities() {
   const avails = [];
   const today = new Date();
   
-  // Genereer voor de komende 30 dagen
-  for (let i = -10; i < 30; i++) {
+  // Genereer enkele beschikbare zondagen voor de demo-gebruiker
+  for (let i = 0; i < 30; i++) {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
     const dateStr = d.toISOString().split('T')[0];
-    const dayOfWeek = d.getDay(); // 0 is zondag, 6 is zaterdag
+    const dayOfWeek = d.getDay();
     
-    // Wout is er op zondagen
     if (dayOfWeek === 0) {
-      avails.push({ id: `a-wout-${i}`, user_id: 'wout-id', date: dateStr, status: 'available', notes: 'Lange duurtraining' });
-    }
-    // Mathieu is er op zaterdagen en woensdagen
-    if (dayOfWeek === 6 || dayOfWeek === 3) {
-      avails.push({ id: `a-mathieu-${i}`, user_id: 'mathieu-id', date: dateStr, status: 'available', notes: 'Tempo rit' });
-    }
-    // Remco is er op zaterdagen
-    if (dayOfWeek === 6) {
-      avails.push({ id: `a-remco-${i}`, user_id: 'remco-id', date: dateStr, status: 'available', notes: 'Klimmen Ardennen' });
-    }
-    // Marianne is er op zondagen en dinsdagen
-    if (dayOfWeek === 0 || dayOfWeek === 2) {
-      avails.push({ id: `a-marianne-${i}`, user_id: 'marianne-id', date: dateStr, status: 'tentative', notes: 'Optioneel ritje' });
+      avails.push({ id: `a-demo-${i}`, user_id: 'demo-user-id', date: dateStr, status: 'available', notes: 'Zondagse koffierit' });
     }
   }
   
@@ -627,30 +638,17 @@ function seedMockRides() {
   const rides = [];
   const today = new Date();
   
-  // Rit 1: over 3 dagen
-  const d1 = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 3);
+  // Een rit voor komende zondag
+  const d1 = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (7 - today.getDay()));
   const dateStr1 = d1.toISOString().split('T')[0];
   rides.push({
-    id: 'r-1',
-    created_by: 'mathieu-id',
+    id: 'r-demo-1',
+    created_by: 'demo-user-id',
     date: dateStr1,
-    title: 'Kassei & Wind training',
-    description: 'We gaan windkracht trotseren over de kasseistroken. Gemiddeld tempo ~32km/u.',
+    title: 'Cyclo Opening Ride',
+    description: 'Gezamenlijke rit om de app te vieren! Tempo ~28km/u. Iedereen welkom.',
     route_link: 'https://www.komoot.com',
-    participants: ['mathieu-id', 'wout-id']
-  });
-  
-  // Rit 2: over 6 dagen (zaterdag)
-  const d2 = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 6);
-  const dateStr2 = d2.toISOString().split('T')[0];
-  rides.push({
-    id: 'r-2',
-    created_by: 'remco-id',
-    date: dateStr2,
-    title: 'Ardennen Heuvelrit',
-    description: 'Heuvels pakken rond Spa. 1500 stijgingsmeters. 100km lang.',
-    route_link: 'https://www.strava.com',
-    participants: ['remco-id', 'marianne-id']
+    participants: ['demo-user-id']
   });
   
   localStorage.setItem('cyclo_mock_rides', JSON.stringify(rides));
@@ -1177,16 +1175,19 @@ function processTcxFile(file) {
       
       elements.calculatedRiderScore.textContent = parsedRide.riderScore;
       
-      // Teken de route op canvas
+      // Teken de route op Leaflet kaart
       if (parsedRide.coordinates && parsedRide.coordinates.length > 0) {
-        elements.routeMapCanvas.style.display = 'block';
-        window.TcxParser.drawRouteOnCanvas(elements.routeMapCanvas, parsedRide.coordinates);
+        elements.routeMap.style.display = 'block';
+        window.TcxParser.drawRouteOnLeaflet('route-map', parsedRide.coordinates);
       } else {
-        elements.routeMapCanvas.style.display = 'none';
+        elements.routeMap.style.display = 'none';
       }
       
       // Panel tonen
       elements.tcxResultPanel.style.display = 'block';
+      
+      // 1. Sla de activiteit op in de database of localStorage
+      await saveActivity(parsedRide, file.name);
       
       // 2. Rider score updaten voor de gebruiker
       await updateUserRiderScore(parsedRide.riderScore);
@@ -1254,5 +1255,282 @@ async function updateUserRiderScore(newScore) {
   } catch (err) {
     console.error("Fout bij opslaan Rider Score:", err);
     showToast("Kon Rider Score niet updaten in database.", "error");
+  }
+}
+
+
+// 14. LEADERBOARD, RITTENHISTORIE EN LEAFLET HELPER FUNCTIES
+
+// Slaat de geüploade rit permanent op
+async function saveActivity(parsedRide, fileName) {
+  const activityData = {
+    user_id: state.user.id,
+    name: fileName.replace('.tcx', '').replace(/[-_]/g, ' '),
+    date: parsedRide.startTime ? parsedRide.startTime.toISOString() : new Date().toISOString(),
+    distance_km: parsedRide.distanceKm,
+    duration_secs: parsedRide.totalTimeSeconds,
+    ascent_m: parsedRide.totalAscentMeters,
+    avg_speed_kmh: parsedRide.avgSpeedKmh,
+    avg_heart_rate: parsedRide.avgHeartRate,
+    avg_power_watts: parsedRide.avgPowerWatts,
+    rider_score: parsedRide.riderScore,
+    coordinates: parsedRide.coordinates
+  };
+
+  if (isDemoMode) {
+    let mockActivities = JSON.parse(localStorage.getItem('cyclo_mock_activities') || '[]');
+    activityData.id = `act-${Date.now()}`;
+    mockActivities.push(activityData);
+    localStorage.setItem('cyclo_mock_activities', JSON.stringify(mockActivities));
+    
+    // Herlaad
+    loadMockDashboardData();
+    return;
+  }
+
+  try {
+    const { error } = await supabaseClient
+      .from('activities')
+      .insert([activityData]);
+      
+    if (error) throw error;
+    
+    loadDashboardData();
+  } catch (err) {
+    console.error("Fout bij opslaan activiteit:", err);
+    showToast("Kon rit niet opslaan in database.", "error");
+  }
+}
+
+// Laadt alle activiteiten van de ingelogde gebruiker en vrienden
+async function loadActivities() {
+  if (isDemoMode) {
+    const mockActivities = JSON.parse(localStorage.getItem('cyclo_mock_activities') || '[]');
+    state.activities = mockActivities;
+    return;
+  }
+
+  try {
+    const { data: activities, error } = await supabaseClient
+      .from('activities')
+      .select('*')
+      .order('date', { ascending: false });
+      
+    if (error) throw error;
+    state.activities = activities;
+  } catch (err) {
+    console.error("Fout bij laden activiteiten:", err);
+    state.activities = [];
+  }
+}
+
+// Rendert het klassement (Leaderboard) op basis van Rider Scores
+function renderLeaderboard() {
+  if (!elements.leaderboardList) return;
+  elements.leaderboardList.innerHTML = '';
+
+  // Sorteer profielen op rider score descending
+  const sortedProfiles = [...state.profiles].sort((a, b) => (b.rider_score || 0) - (a.rider_score || 0));
+
+  if (sortedProfiles.length === 0) {
+    elements.leaderboardList.innerHTML = '<div class="empty-state" style="font-size:12px;">Geen renners gevonden.</div>';
+    return;
+  }
+
+  sortedProfiles.forEach((profile, index) => {
+    const rank = index + 1;
+    const row = document.createElement('div');
+    row.className = 'leaderboard-row';
+    
+    let medalClass = '';
+    if (rank === 1) medalClass = 'rank-1';
+    else if (rank === 2) medalClass = 'rank-2';
+    else if (rank === 3) medalClass = 'rank-3';
+
+    row.innerHTML = `
+      <div class="leaderboard-rank ${medalClass}">${rank}</div>
+      <img src="${profile.avatar_url}" alt="Avatar" class="leaderboard-avatar">
+      <div class="leaderboard-info">
+        <div class="leaderboard-name">${profile.full_name}</div>
+        <div class="leaderboard-username">@${profile.username}</div>
+      </div>
+      <div class="leaderboard-score">${profile.rider_score || 100}</div>
+    `;
+
+    elements.leaderboardList.appendChild(row);
+  });
+}
+
+// Rendert de geüploade rittenlijst (Mijn Rittenhistorie)
+function renderActivitiesList() {
+  if (!elements.activitiesListContainer) return;
+  elements.activitiesListContainer.innerHTML = '';
+
+  // Filter activiteiten van de huidige gebruiker
+  const myActivities = (state.activities || []).filter(act => act.user_id === state.user.id);
+
+  // Update profiel totalen
+  if (myActivities.length > 0) {
+    let totalDist = 0;
+    let totalAsc = 0;
+    
+    myActivities.forEach(act => {
+      totalDist += parseFloat(act.distance_km || 0);
+      totalAsc += parseInt(act.ascent_m || 0);
+    });
+
+    elements.profileStatDistance.textContent = totalDist.toFixed(1);
+    elements.profileStatAscent.textContent = totalAsc;
+    elements.profileStatsContainer.style.display = 'grid';
+  } else {
+    elements.profileStatsContainer.style.display = 'none';
+  }
+
+  if (myActivities.length === 0) {
+    elements.activitiesListContainer.innerHTML = `
+      <div class="empty-state">
+        Je hebt nog geen ritten geüpload. Upload een TCX bestand hiernaast!
+      </div>
+    `;
+    return;
+  }
+
+  myActivities.forEach(act => {
+    const actDiv = document.createElement('div');
+    actDiv.className = 'activity-item';
+    
+    const formattedDate = new Intl.DateTimeFormat('nl-NL', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(new Date(act.date));
+
+    // Bereken uren/minuten
+    const durSec = parseFloat(act.duration_secs || 0);
+    const hours = Math.floor(durSec / 3600);
+    const minutes = Math.floor((durSec % 3600) / 60);
+    const formattedDur = hours > 0 ? `${hours}u ${minutes}m` : `${minutes}m`;
+
+    actDiv.innerHTML = `
+      <div class="activity-header">
+        <div>
+          <span class="activity-title" style="cursor:pointer; text-decoration:underline; color:var(--primary);" class="btn-view-activity">${act.name}</span>
+          <span class="activity-badge">${act.rider_score} pts</span>
+        </div>
+        <div class="d-flex align-center gap-8">
+          <span class="activity-date">${formattedDate}</span>
+          <button class="btn-delete-activity" style="background:none; border:none; color:var(--status-unavailable); cursor:pointer;" title="Rit verwijderen">
+            <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="activity-stats-grid">
+        <div class="activity-stat-card">
+          <div class="activity-stat-val">${parseFloat(act.distance_km).toFixed(1)}</div>
+          <div class="activity-stat-lbl">KM</div>
+        </div>
+        <div class="activity-stat-card">
+          <div class="activity-stat-val">${formattedDur}</div>
+          <div class="activity-stat-lbl">Tijd</div>
+        </div>
+        <div class="activity-stat-card">
+          <div class="activity-stat-val">${act.ascent_m}m</div>
+          <div class="activity-stat-lbl">Hoogte</div>
+        </div>
+        <div class="activity-stat-card">
+          <div class="activity-stat-val">${parseFloat(act.avg_speed_kmh).toFixed(1)}</div>
+          <div class="activity-stat-lbl">km/u</div>
+        </div>
+      </div>
+    `;
+
+    // Klik event op de ritnaam om deze weer te geven op de kaart en in de upload panel
+    actDiv.querySelector('.activity-title').addEventListener('click', () => showActivityDetails(act));
+    
+    // Klik event voor verwijderen
+    actDiv.querySelector('.btn-delete-activity').addEventListener('click', () => deleteActivity(act.id));
+
+    elements.activitiesListContainer.appendChild(actDiv);
+  });
+
+  lucide.createIcons();
+}
+
+// Toont details van een geselecteerde rit in het upload panel en tekent de Leaflet routekaart
+function showActivityDetails(activity) {
+  elements.metricDistance.textContent = parseFloat(activity.distance_km).toFixed(1);
+  
+  const durSec = parseFloat(activity.duration_secs || 0);
+  const hours = Math.floor(durSec / 3600);
+  const minutes = Math.floor((durSec % 3600) / 60);
+  const seconds = Math.floor(durSec % 60);
+  elements.metricDuration.textContent = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
+  
+  elements.metricAscent.textContent = activity.ascent_m;
+  elements.metricSpeed.textContent = parseFloat(activity.avg_speed_kmh).toFixed(1);
+  elements.metricHr.textContent = activity.avg_heart_rate || '-';
+  elements.metricPower.textContent = activity.avg_power_watts || '-';
+  
+  elements.calculatedRiderScore.textContent = activity.rider_score;
+  
+  // Teken de route
+  if (activity.coordinates && activity.coordinates.length > 0) {
+    elements.routeMap.style.display = 'block';
+    window.TcxParser.drawRouteOnLeaflet('route-map', activity.coordinates);
+  } else {
+    elements.routeMap.style.display = 'none';
+  }
+  
+  elements.tcxResultPanel.style.display = 'block';
+  showToast(`Rit "${activity.name}" geladen op de kaart!`, "success");
+}
+
+// Verwijdert een activiteit uit de rittenhistorie
+async function deleteActivity(activityId) {
+  if (!confirm("Weet je zeker dat je deze rit wilt verwijderen? Dit zal je Rider Score mogelijk ook verlagen.")) return;
+
+  if (isDemoMode) {
+    let mockActivities = JSON.parse(localStorage.getItem('cyclo_mock_activities') || '[]');
+    
+    // Zoek activiteit om de score te verminderen
+    const act = mockActivities.find(a => a.id === activityId);
+    let scoreDiff = 0;
+    if (act) scoreDiff = act.rider_score;
+    
+    mockActivities = mockActivities.filter(a => a.id !== activityId);
+    localStorage.setItem('cyclo_mock_activities', JSON.stringify(mockActivities));
+    
+    // Verlaag Rider Score
+    const newScore = Math.max(100, (state.user.rider_score || 100) - scoreDiff);
+    await updateUserRiderScore(newScore);
+    
+    showToast("Rit succesvol verwijderd.", "info");
+    loadMockDashboardData();
+    return;
+  }
+
+  try {
+    // Zoek de activiteit op om de score te bepalen
+    const act = state.activities.find(a => a.id === activityId);
+    let scoreDiff = 0;
+    if (act) scoreDiff = act.rider_score;
+
+    const { error } = await supabaseClient
+      .from('activities')
+      .delete()
+      .eq('id', activityId);
+      
+    if (error) throw error;
+    
+    // Verlaag Rider Score
+    const newScore = Math.max(100, (state.user.rider_score || 100) - scoreDiff);
+    await updateUserRiderScore(newScore);
+    
+    showToast("Rit succesvol verwijderd uit database.", "info");
+    loadDashboardData();
+  } catch (err) {
+    console.error("Fout bij verwijderen activiteit:", err);
+    showToast("Kon rit niet verwijderen uit database.", "error");
   }
 }
