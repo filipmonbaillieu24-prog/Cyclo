@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyclo - Plan samen ritten en deel je beschikbaarheid</title>
+  <meta name="description" content="De ultieme webapplicatie voor wielrenners om samen ritten te plannen en prestaties te analyseren.">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Supabase JS Client Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- App Header & Navigation -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="logo" id="nav-logo">
+        <div class="logo-icon">C</div>
+        Cyclo<span>.</span>
+      </a>
+      <nav>
+        <ul class="nav-menu">
+          <li><a href="#" class="nav-link active" id="link-home">Home</a></li>
+          <li><a href="#" class="nav-link" id="link-dashboard">Kalender</a></li>
+          <li class="auth-only"><a href="#" class="nav-link" id="link-rides">Mijn Ritten</a></li>
+          <li id="nav-auth-item">
+            <a href="#" class="btn btn-primary btn-sm" id="btn-login-nav">Inloggen</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Notification Banner -->
+  <div id="toast" class="toast">
+    <i data-lucide="info" id="toast-icon"></i>
+    <span id="toast-message">Melding tekst</span>
+  </div>
+
+  <main>
+    
+    <!-- 1. LANDING PAGE SECTION -->
+    <section id="section-home" class="app-section active">
+      <div class="hero-section">
+        <div class="hero-content">
+          <h1>Plan samen ritten met <span>Cyclo.</span></h1>
+          <p>Deel je beschikbare dagen in een handige kalenderweergave. Zie direct wanneer je fietsvrienden beschikbaar zijn en plan moeiteloos de volgende groepsrit. Binnenkort upload je ook je TCX-bestanden voor een geavanceerde Rider Score!</p>
+          <div class="hero-cta">
+            <button class="btn btn-primary" id="hero-btn-start">Start met Plannen</button>
+            <button class="btn btn-secondary" id="hero-btn-demo">Bekijk Demo</button>
+          </div>
+        </div>
+        <div class="hero-graphic">
+          <div class="hero-card hero-card-1 glass-panel">
+            <div class="d-flex align-center gap-8 mb-4">
+              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" alt="Wout" class="avatar" style="width:32px; height:32px;">
+              <div>
+                <h4 style="font-size: 14px;">Wout van Aert</h4>
+                <p style="font-size: 11px; color: var(--primary);">Beschikbaar op Zondag</p>
+              </div>
+            </div>
+            <p style="font-size: 12px; line-height: 1.4;">"Zondag zin in een lange duurrit richting de Vlaamse Ardennen? 120km, tempo ~30km/u."</p>
+          </div>
+          <div class="hero-card hero-card-2 glass-panel">
+            <h4 class="ride-date" style="font-size:11px;">WOENSDAG 10 JUNI</h4>
+            <h3 style="font-size: 16px; margin-bottom: 8px;">Woensdagavondrit (Hersteltempo)</h3>
+            <div class="ride-participants">
+              <span style="font-size: 12px; color: var(--text-secondary);">4 renners beschikbaar:</span>
+              <div class="ride-participants-avatars">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=mathieu" class="avatar" alt="Avatar">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=remco" class="avatar" alt="Avatar">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=marianne" class="avatar" alt="Avatar">
+                <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" class="avatar" alt="Avatar">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. AUTHENTICATION SECTION (Login/Registreren) -->
+    <section id="section-auth" class="app-section">
+      <div class="auth-container glass-panel">
+        <div class="auth-tabs">
+          <div class="auth-tab active" id="tab-login">Inloggen</div>
+          <div class="auth-tab" id="tab-register">Registreren</div>
+        </div>
+        
+        <!-- Login Form -->
+        <form id="form-login" class="auth-form">
+          <div class="form-group">
+            <label for="login-email">E-mailadres</label>
+            <input type="email" id="login-email" class="form-control" placeholder="naam@voorbeeld.nl" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="login-password">Wachtwoord</label>
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary w-full mt-4">Inloggen</button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="form-register" class="auth-form" style="display: none;">
+          <div class="form-group">
+            <label for="register-username">Gebruikersnaam</label>
+            <input type="text" id="register-username" class="form-control" placeholder="bijv. pedaalridder" required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="register-fullname">Volledige Naam</label>
+            <input type="text" id="register-fullname" class="form-control" placeholder="bijv. Remco Evenepoel" required autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label for="register-email">E-mailadres</label>
+            <input type="email" id="register-email" class="form-control" placeholder="naam@voorbeeld.nl" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="register-password">Wachtwoord (min. 6 tekens)</label>
+            <input type="password" id="register-password" class="form-control" placeholder="••••••••" required minlength="6" autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary w-full mt-4">Registreren</button>
+        </form>
+
+        <div class="text-center mt-4">
+          <p style="font-size: 12px; color: var(--text-muted);">
+            Of gebruik de <a href="#" id="auth-bypass-link" style="color: var(--primary); text-decoration: underline;">Demo Modus</a> (offline testen).
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. DASHBOARD SECTION -->
+    <section id="section-dashboard" class="app-section">
+      <div class="dashboard-container">
+        
+        <!-- Kalender & Ritten Planner (Links/Hoofd) -->
+        <div class="main-dashboard-content">
+          
+          <!-- Kalender Panel -->
+          <div class="glass-panel mb-4">
+            <div class="calendar-header">
+              <h2 class="calendar-title" id="calendar-month-year">Juni 2026</h2>
+              <div class="calendar-nav">
+                <button class="btn btn-secondary btn-sm" id="btn-prev-month">
+                  <i data-lucide="chevron-left"></i>
+                </button>
+                <button class="btn btn-secondary btn-sm" id="btn-today">Vandaag</button>
+                <button class="btn btn-secondary btn-sm" id="btn-next-month">
+                  <i data-lucide="chevron-right"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div class="calendar-grid-header">
+              <div>ma</div>
+              <div>di</div>
+              <div>wo</div>
+              <div>do</div>
+              <div>vr</div>
+              <div>za</div>
+              <div>zo</div>
+            </div>
+            
+            <div class="calendar-grid" id="calendar-days-grid">
+              <!-- Kalenderdagen worden hier dynamisch gegenereerd -->
+            </div>
+          </div>
+
+          <!-- Geplande Ritten Panel -->
+          <div class="glass-panel">
+            <div class="d-flex justify-between align-center mb-4">
+              <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="map-pin" style="color:var(--secondary)"></i> Geplande Ritten</h2>
+              <button class="btn btn-primary btn-sm" id="btn-plan-ride"><i data-lucide="plus"></i> Plan een Rit</button>
+            </div>
+            <div id="rides-list-container">
+              <!-- Ritten worden hier dynamisch getoond -->
+              <div class="empty-state">
+                Er zijn nog geen ritten gepland voor deze maand.
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Sidebar Widgets (Rechts) -->
+        <div class="sidebar">
+          
+          <!-- Profiel / Account Info Widget -->
+          <div class="glass-panel text-center">
+            <div id="user-profile-widget">
+              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=demo" alt="Avatar" class="avatar mb-4" id="widget-user-avatar" style="width: 80px; height: 80px; margin: 0 auto 12px; border: 3px solid var(--primary);">
+              <h3 id="widget-user-name">Demo Wielrenner</h3>
+              <p id="widget-user-username">@demorider</p>
+              
+              <div class="score-badge" id="widget-user-score-container" style="display: none;">
+                <div id="widget-user-score-val">100</div>
+                <span>Rider Score</span>
+              </div>
+              
+              <button class="btn btn-secondary btn-sm w-full mt-4" id="btn-logout"><i data-lucide="log-out"></i> Uitloggen</button>
+            </div>
+          </div>
+
+          <!-- Beschikbaarheid Editor Widget -->
+          <div class="glass-panel" id="availability-editor-panel">
+            <h3 class="widget-title"><i data-lucide="calendar"></i> Beschikbaarheid</h3>
+            <div class="editor-date" id="selected-date-str">Geselecteerde Datum</div>
+            
+            <div class="status-options">
+              <div class="status-btn" data-status="available" id="status-btn-avail">Kan Fietsen</div>
+              <div class="status-btn" data-status="tentative" id="status-btn-tent">Misschien</div>
+              <div class="status-btn" data-status="unavailable" id="status-btn-unavail">Kan Niet</div>
+            </div>
+            
+            <div class="form-group">
+              <label for="availability-notes">Opmerking / Details</label>
+              <textarea id="availability-notes" class="form-control" rows="2" placeholder="Bijv. Enkel in de voormiddag, of tempo ~28km/u."></textarea>
+            </div>
+            
+            <button class="btn btn-primary w-full" id="btn-save-availability">Opslaan</button>
+          </div>
+
+          <!-- TCX Uploader & Rider Score Widget -->
+          <div class="glass-panel">
+            <h3 class="widget-title"><i data-lucide="upload-cloud"></i> TCX Rit Upload</h3>
+            <p style="font-size: 12px; margin-bottom: 12px;">Upload een Garmin/Wahoo TCX-bestand van je rit om je route te visualiseren en je Rider Score te berekenen!</p>
+            
+            <div class="uploader-box" id="tcx-dropzone">
+              <i data-lucide="file-up" class="upload-icon"></i>
+              <p style="font-size: 13px; font-weight: 500;">Sleep je TCX bestand hierheen</p>
+              <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">of klik om te bladeren</p>
+              <input type="file" id="tcx-file-input" accept=".tcx">
+            </div>
+
+            <!-- Uploader Resultaat -->
+            <div id="tcx-result-panel" style="display: none; margin-top: 20px; border-top: 1px solid var(--border-glass); padding-top: 16px;">
+              <h4 style="font-size: 14px; margin-bottom: 8px;">Geparseerde Ritgegevens</h4>
+              
+              <div class="score-badge">
+                <div id="calculated-rider-score">450</div>
+                <span>Nieuwe Rider Score!</span>
+              </div>
+              
+              <div class="ride-metrics-grid">
+                <div class="metric-card">
+                  <div class="metric-val" id="metric-distance">45.2</div>
+                  <div class="metric-lbl">KM</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-val" id="metric-duration">1:45</div>
+                  <div class="metric-lbl">Tijd</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-val" id="metric-ascent">230</div>
+                  <div class="metric-lbl">HM (m)</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-val" id="metric-speed">27.8</div>
+                  <div class="metric-lbl">Gem. km/u</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-val" id="metric-hr">142</div>
+                  <div class="metric-lbl">Gem. HF</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-val" id="metric-power">195</div>
+                  <div class="metric-lbl">Gem. Watt</div>
+                </div>
+              </div>
+
+              <!-- Kaart Canvas -->
+              <div class="route-canvas-container">
+                <canvas id="route-map-canvas" width="300" height="200"></canvas>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal: Groepsrit Plannen -->
+  <div class="modal-overlay" id="ride-modal">
+    <div class="modal-content glass-panel">
+      <div class="modal-header">
+        <h2 style="font-size: 20px;">Groepsrit Plannen</h2>
+        <button class="modal-close" id="btn-close-modal">&times;</button>
+      </div>
+      
+      <form id="form-plan-ride">
+        <div class="form-group">
+          <label for="ride-modal-date">Datum</label>
+          <input type="date" id="ride-modal-date" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="ride-modal-title">Rit Naam / Titel</label>
+          <input type="text" id="ride-modal-title" class="form-control" placeholder="Bijv. Zondagse Duurrit" required>
+        </div>
+        <div class="form-group">
+          <label for="ride-modal-desc">Omschrijving / Route Details</label>
+          <textarea id="ride-modal-desc" class="form-control" rows="3" placeholder="Bijv. Vertrek aan de kerk, tempo rond 30km/u. Iedereen welkom!" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="ride-modal-route">GPX / Route Link (Optioneel)</label>
+          <input type="url" id="ride-modal-route" class="form-control" placeholder="https://www.komoot.nl/tour/...">
+        </div>
+        <button type="submit" class="btn btn-primary w-full mt-4">Rit Opslaan & Uitnodigen</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="tcx-parser.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
