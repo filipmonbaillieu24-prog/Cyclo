@@ -1,4 +1,4 @@
-﻿// Cyclo - Group Rides Module
+// Cyclo - Group Rides Module
 import { state, elements, config, showToast } from './state.js';
 
 // ─────────────────────────────────────────────
@@ -191,7 +191,7 @@ export async function renderRidesList() {
     // Deelnemers-avatars (overlappend)
     let avatarsHtml = rideParticipants.map(userId => {
       const p = state.profiles.find(prof => prof.id === userId);
-      return p ? `<img src="${p.avatar_url}" alt="${p.full_name}" class="avatar participant-avatar" title="${p.full_name}">` : '';
+      return p ? `<img src="${p.avatar_url}" alt="${p.full_name}" class="avatar participant-avatar" title="${p.full_name}" data-user-id="${userId}">` : '';
     }).join('');
 
     // Route badge
@@ -294,14 +294,43 @@ export async function renderRidesList() {
             countEl.textContent = newCount + ' deelnemer(s)';
           }
 
+          // Update avatar-lijst instant in de DOM
+          const avatarContainer = rideDiv.querySelector('.participant-avatars');
+          if (avatarContainer && state.user) {
+            const myProfile = state.profiles?.find(p => p.id === state.user.id) || state.user;
+            const myAvatar  = myProfile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${state.user.id}`;
+            const myName    = myProfile?.full_name || 'Jij';
+
+            if (nowParticipating) {
+              const emptySpan = avatarContainer.querySelector('span');
+              if (emptySpan) emptySpan.remove();
+              if (!avatarContainer.querySelector(`[data-user-id="${state.user.id}"]`)) {
+                const img = document.createElement('img');
+                img.src   = myAvatar;
+                img.alt   = myName;
+                img.title = myName;
+                img.className       = 'avatar participant-avatar';
+                img.dataset.userId  = state.user.id;
+                avatarContainer.appendChild(img);
+              }
+            } else {
+              const myImg = avatarContainer.querySelector(`[data-user-id="${state.user.id}"]`);
+              if (myImg) myImg.remove();
+              if (avatarContainer.querySelectorAll('img').length === 0) {
+                avatarContainer.innerHTML = '<span style="font-size:11px;color:var(--text-muted);">Nog geen deelnemers</span>';
+              }
+            }
+          }
+
           // 2. DB-call op achtergrond
           try {
             await toggleRideParticipation(ride.id, isParticipating);
           } catch(e) {
-            // Revert DOM bij fout
+            // Revert bij DB-fout
             if (nowParticipating) {
               joinBtn.className = 'btn btn-primary btn-sm btn-join-ride';
               joinBtn.innerHTML = '<i data-lucide="check"></i> Deelnemen';
+              avatarContainer?.querySelector(`[data-user-id="${state.user.id}"]`)?.remove();
             } else {
               joinBtn.className = 'btn btn-secondary btn-sm btn-join-ride';
               joinBtn.innerHTML = '<i data-lucide="x-circle"></i> Afmelden';
