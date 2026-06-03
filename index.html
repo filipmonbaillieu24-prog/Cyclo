@@ -271,10 +271,36 @@
                 </button>
               </div>
             </div>
+
+            <!-- Multi-dag selectie hint -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px;">
+              <span style="font-size:11px;color:var(--text-muted);">
+                <i data-lucide="info" style="width:11px;height:11px;display:inline;vertical-align:middle;margin-right:3px;"></i>
+                Klik om dag te selecteren &middot; <strong style="color:var(--text-secondary);">Shift+klik</strong> voor meerdere dagen
+              </span>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-secondary btn-sm" id="btn-select-weekends" style="font-size:10px;padding:3px 8px;">ZA+ZO</button>
+                <button class="btn btn-secondary btn-sm" id="btn-clear-selection" style="font-size:10px;padding:3px 8px;">Wissen</button>
+              </div>
+            </div>
+
             <div class="calendar-grid-header">
               <div>ma</div><div>di</div><div>wo</div><div>do</div><div>vr</div><div>za</div><div>zo</div>
             </div>
             <div class="calendar-grid" id="calendar-days-grid"></div>
+          </div>
+
+          <!-- Bulk beschikbaarheid banner (verschijnt bij meerdere geselecteerde dagen) -->
+          <div class="bulk-availability-banner" id="bulk-availability-banner">
+            <i data-lucide="calendar-check" style="width:16px;height:16px;color:var(--primary);flex-shrink:0;"></i>
+            <span id="bulk-days-label" style="flex:1;font-weight:600;">0 dagen geselecteerd</span>
+            <select id="bulk-status-select" class="form-control" style="width:auto;padding:4px 10px;font-size:11px;">
+              <option value="available">✓ Kan Fietsen</option>
+              <option value="tentative">? Misschien</option>
+              <option value="unavailable">✗ Kan Niet</option>
+            </select>
+            <button class="btn btn-primary btn-sm" id="btn-save-bulk" style="font-size:11px;padding:5px 14px;">Opslaan voor alle dagen</button>
+            <button class="btn btn-secondary btn-sm" id="btn-cancel-bulk" style="font-size:11px;padding:5px 10px;">✕</button>
           </div>
 
           <!-- Geplande Ritten Panel -->
@@ -293,33 +319,23 @@
         <!-- Sidebar Planner -->
         <div class="sidebar">
 
-          <!-- Profiel widget -->
-          <div class="glass-panel text-center">
-            <div id="user-profile-widget">
-              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=demo" alt="Avatar" class="avatar mb-4" id="widget-user-avatar" style="width:80px;height:80px;margin:0 auto 12px;border:3px solid var(--primary);">
-              <h3 id="widget-user-name">Demo Wielrenner</h3>
-              <p id="widget-user-username">@demorider</p>
-              <p id="widget-user-biketype" style="font-size:12px;color:var(--primary);font-weight:500;margin-top:-4px;">Racefiets</p>
-
-              <div id="widget-user-physical" style="display:none;margin-top:10px;padding:8px 10px;background:rgba(255,255,255,0.04);border:1px solid var(--border-glass);border-radius:var(--radius-sm);text-align:left;">
-                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
-                  <span id="widget-physical-gender" style="display:none;font-size:11px;background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.2);color:var(--primary);border-radius:20px;padding:2px 8px;"></span>
-                  <span id="widget-physical-age" style="display:none;font-size:11px;background:rgba(255,255,255,0.05);border:1px solid var(--border-glass);color:var(--text-muted);border-radius:20px;padding:2px 8px;"></span>
-                  <span id="widget-physical-height" style="display:none;font-size:11px;background:rgba(255,255,255,0.05);border:1px solid var(--border-glass);color:var(--text-muted);border-radius:20px;padding:2px 8px;"></span>
-                  <span id="widget-physical-weight" style="display:none;font-size:11px;background:rgba(255,255,255,0.05);border:1px solid var(--border-glass);color:var(--text-muted);border-radius:20px;padding:2px 8px;"></span>
-                </div>
-              </div>
-
-              <div class="score-badge" id="widget-user-score-container" style="display:none;">
-                <div id="widget-user-score-val">100</div>
-                <span>Rider Score</span>
-              </div>
-
-              <div class="d-flex gap-8 mt-4">
-                <button class="btn btn-secondary btn-sm w-full" id="btn-edit-profile"><i data-lucide="settings"></i> Profiel</button>
-                <button class="btn btn-secondary btn-sm w-full" id="btn-logout"><i data-lucide="log-out"></i> Uitloggen</button>
-              </div>
+          <!-- VERBORGEN elementen voor JS compatibiliteit (waarden worden hier bewaard) -->
+          <div style="display:none;">
+            <img id="widget-user-avatar">
+            <span id="widget-user-name"></span>
+            <span id="widget-user-username"></span>
+            <span id="widget-user-biketype"></span>
+            <div id="widget-user-physical">
+              <span id="widget-physical-gender"></span>
+              <span id="widget-physical-age"></span>
+              <span id="widget-physical-height"></span>
+              <span id="widget-physical-weight"></span>
             </div>
+            <div id="widget-user-score-container">
+              <div id="widget-user-score-val">0</div>
+            </div>
+            <button id="btn-edit-profile"></button>
+            <button id="btn-logout"></button>
           </div>
 
           <!-- Beschikbaarheid Editor -->
@@ -336,12 +352,6 @@
               <textarea id="availability-notes" class="form-control" rows="2" placeholder="Bijv. Enkel in de voormiddag, of tempo ~28km/u."></textarea>
             </div>
             <button class="btn btn-primary w-full" id="btn-save-availability">Opslaan</button>
-          </div>
-
-          <!-- Leaderboard -->
-          <div class="glass-panel" id="leaderboard-panel">
-            <h3 class="widget-title"><i data-lucide="trophy" style="color:var(--primary)"></i> Klassement</h3>
-            <div id="leaderboard-list"></div>
           </div>
 
           <!-- Clubfeed -->

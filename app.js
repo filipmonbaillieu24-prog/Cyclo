@@ -22,7 +22,10 @@ import {
   changeMonth, 
   renderCalendar, 
   updateAvailabilityEditor, 
-  saveAvailability 
+  saveAvailability,
+  selectWeekends,
+  clearCalendarSelection,
+  saveBulkAvailability
 } from './calendar.js';
 import { 
   renderRidesList, 
@@ -379,6 +382,19 @@ function setupEventListeners() {
   });
   
   elements.btnSaveAvailability.addEventListener('click', () => saveAvailability(loadDashboardData));
+
+  // Multi-dag selectie knoppen
+  const btnWeekends = document.getElementById('btn-select-weekends');
+  if (btnWeekends) btnWeekends.addEventListener('click', () => selectWeekends());
+
+  const btnClearSel = document.getElementById('btn-clear-selection');
+  if (btnClearSel) btnClearSel.addEventListener('click', () => clearCalendarSelection());
+
+  const btnSaveBulk = document.getElementById('btn-save-bulk');
+  if (btnSaveBulk) btnSaveBulk.addEventListener('click', () => saveBulkAvailability(loadDashboardData));
+
+  const btnCancelBulk = document.getElementById('btn-cancel-bulk');
+  if (btnCancelBulk) btnCancelBulk.addEventListener('click', () => clearCalendarSelection());
   
   // Plannen groepsritten
   elements.btnPlanRide.addEventListener('click', openPlanRideModal);
