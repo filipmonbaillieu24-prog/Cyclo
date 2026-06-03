@@ -13,6 +13,7 @@ export const elements = {
   sectionHome: document.getElementById('section-home'),
   sectionAuth: document.getElementById('section-auth'),
   sectionDashboard: document.getElementById('section-dashboard'),
+  sectionRides: document.getElementById('section-rides'),
   
   // Hero Knoppen
   heroBtnStart: document.getElementById('hero-btn-start'),
@@ -97,6 +98,7 @@ export const elements = {
   profileStatsContainer: document.getElementById('profile-stats-container'),
   profileStatDistance: document.getElementById('profile-stat-distance'),
   profileStatAscent: document.getElementById('profile-stat-ascent'),
+  profileStatsEmpty: document.getElementById('profile-stats-empty'),
   routeMap: document.getElementById('route-map')
 };
 
@@ -160,6 +162,7 @@ export function navigateTo(section, onPageLoad = null) {
   elements.sectionHome.classList.remove('active');
   elements.sectionAuth.classList.remove('active');
   elements.sectionDashboard.classList.remove('active');
+  if (elements.sectionRides) elements.sectionRides.classList.remove('active');
   
   if (section === 'home') {
     elements.sectionHome.classList.add('active');
@@ -168,14 +171,21 @@ export function navigateTo(section, onPageLoad = null) {
     elements.sectionAuth.classList.add('active');
   } else if (section === 'dashboard') {
     if (!state.user) {
-      showToast("Log eerst in om het dashboard te bekijken.", "error");
+      showToast("Log eerst in om de planner te bekijken.", "error");
       elements.sectionAuth.classList.add('active');
     } else {
       elements.sectionDashboard.classList.add('active');
       elements.linkDashboard.classList.add('active');
-      if (typeof onPageLoad === 'function') {
-        onPageLoad();
-      }
+      if (typeof onPageLoad === 'function') onPageLoad();
+    }
+  } else if (section === 'rides') {
+    if (!state.user) {
+      showToast("Log eerst in om je ritten te bekijken.", "error");
+      elements.sectionAuth.classList.add('active');
+    } else {
+      elements.sectionRides.classList.add('active');
+      if (elements.linkRides) elements.linkRides.classList.add('active');
+      if (typeof onPageLoad === 'function') onPageLoad();
     }
   }
 }

@@ -37,8 +37,8 @@
       <nav>
         <ul class="nav-menu">
           <li><a href="#" class="nav-link active" id="link-home">Home</a></li>
-          <li><a href="#" class="nav-link" id="link-dashboard">Kalender</a></li>
-          <li class="auth-only"><a href="#" class="nav-link" id="link-rides">Mijn Ritten</a></li>
+          <li><a href="#" class="nav-link" id="link-dashboard"><i data-lucide="calendar" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:3px;"></i> Planner</a></li>
+          <li class="auth-only"><a href="#" class="nav-link" id="link-rides"><i data-lucide="activity" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:3px;"></i> Mijn Ritten</a></li>
           <li id="nav-auth-item">
             <a href="#" class="btn btn-primary btn-sm" id="btn-login-nav">Inloggen</a>
           </li>
@@ -144,13 +144,13 @@
       </div>
     </section>
 
-    <!-- 3. DASHBOARD SECTION -->
+    <!-- 3. PLANNER DASHBOARD -->
     <section id="section-dashboard" class="app-section">
       <div class="dashboard-container">
-        
-        <!-- Kalender & Ritten Planner (Links/Hoofd) -->
+
+        <!-- Hoofd: Kalender & Groepsritten -->
         <div class="main-dashboard-content">
-          
+
           <!-- Kalender Panel -->
           <div class="glass-panel mb-4">
             <div class="calendar-header">
@@ -165,20 +165,10 @@
                 </button>
               </div>
             </div>
-            
             <div class="calendar-grid-header">
-              <div>ma</div>
-              <div>di</div>
-              <div>wo</div>
-              <div>do</div>
-              <div>vr</div>
-              <div>za</div>
-              <div>zo</div>
+              <div>ma</div><div>di</div><div>wo</div><div>do</div><div>vr</div><div>za</div><div>zo</div>
             </div>
-            
-            <div class="calendar-grid" id="calendar-days-grid">
-              <!-- Kalenderdagen worden hier dynamisch gegenereerd -->
-            </div>
+            <div class="calendar-grid" id="calendar-days-grid"></div>
           </div>
 
           <!-- Geplande Ritten Panel -->
@@ -188,90 +178,37 @@
               <button class="btn btn-primary btn-sm" id="btn-plan-ride"><i data-lucide="plus"></i> Plan een Rit</button>
             </div>
             <div id="rides-list-container">
-              <!-- Ritten worden hier dynamisch getoond -->
-              <div class="empty-state">
-                Er zijn nog geen ritten gepland voor deze maand.
-              </div>
-            </div>
-          </div>
-          
-          <!-- Prestaties Panel -->
-          <div class="glass-panel mt-4" id="stats-chart-panel" style="display: none;">
-            <h2 class="widget-title"><i data-lucide="trending-up" style="color:var(--primary)"></i> Mijn Prestaties</h2>
-            <div style="height: 220px; position: relative;">
-              <canvas id="stats-chart"></canvas>
-            </div>
-          </div>
-
-          <!-- Rittenhistorie Panel -->
-          <div class="glass-panel mt-4">
-            <div class="d-flex justify-between align-center mb-4">
-              <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="history" style="color:var(--secondary)"></i> Mijn Rittenhistorie</h2>
-            </div>
-
-            <!-- Filter & Sorteer balk -->
-            <div id="activity-filter-bar" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-glass);">
-              <div style="display:flex; gap:4px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 3px;">
-                <button data-filter-period="all" class="btn btn-secondary btn-sm active" style="padding:3px 8px; font-size:10px;">Alles</button>
-                <button data-filter-period="30d" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">30 dagen</button>
-                <button data-filter-period="90d" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">90 dagen</button>
-                <button data-filter-period="year" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">Dit jaar</button>
-              </div>
-              <div style="display:flex; gap:4px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 3px;">
-                <button data-filter-sort="date" class="btn btn-secondary btn-sm active" style="padding:3px 8px; font-size:10px;">Datum</button>
-                <button data-filter-sort="distance" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">Afstand</button>
-                <button data-filter-sort="score" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">Score</button>
-                <button data-filter-sort="speed" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">Snelheid</button>
-              </div>
-            </div>
-
-            <div id="activities-list-container">
-              <div class="empty-state">
-                Je hebt nog geen ritten geüpload.
-              </div>
+              <div class="empty-state">Er zijn nog geen ritten gepland voor deze maand.</div>
             </div>
           </div>
 
         </div>
 
-        <!-- Sidebar Widgets (Rechts) -->
+        <!-- Sidebar Planner -->
         <div class="sidebar">
-          
-          <!-- Profiel / Account Info Widget -->
+
+          <!-- Profiel widget -->
           <div class="glass-panel text-center">
             <div id="user-profile-widget">
-              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=demo" alt="Avatar" class="avatar mb-4" id="widget-user-avatar" style="width: 80px; height: 80px; margin: 0 auto 12px; border: 3px solid var(--primary);">
+              <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=demo" alt="Avatar" class="avatar mb-4" id="widget-user-avatar" style="width:80px;height:80px;margin:0 auto 12px;border:3px solid var(--primary);">
               <h3 id="widget-user-name">Demo Wielrenner</h3>
               <p id="widget-user-username">@demorider</p>
-              <p id="widget-user-biketype" style="font-size: 12px; color: var(--primary); font-weight: 500; margin-top: -4px;">Racefiets</p>
-              
-              <!-- Fysieke Gegevens mini-balk -->
-              <div id="widget-user-physical" style="display: none; margin-top: 10px; padding: 8px 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); text-align: left;">
-                <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;">
-                  <span id="widget-physical-gender" style="display:none; font-size: 11px; background: rgba(0,240,255,0.08); border: 1px solid rgba(0,240,255,0.2); color: var(--primary); border-radius: 20px; padding: 2px 8px;"></span>
-                  <span id="widget-physical-age" style="display:none; font-size: 11px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); color: var(--text-muted); border-radius: 20px; padding: 2px 8px;"></span>
-                  <span id="widget-physical-height" style="display:none; font-size: 11px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); color: var(--text-muted); border-radius: 20px; padding: 2px 8px;"></span>
-                  <span id="widget-physical-weight" style="display:none; font-size: 11px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); color: var(--text-muted); border-radius: 20px; padding: 2px 8px;"></span>
+              <p id="widget-user-biketype" style="font-size:12px;color:var(--primary);font-weight:500;margin-top:-4px;">Racefiets</p>
+
+              <div id="widget-user-physical" style="display:none;margin-top:10px;padding:8px 10px;background:rgba(255,255,255,0.04);border:1px solid var(--border-glass);border-radius:var(--radius-sm);text-align:left;">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
+                  <span id="widget-physical-gender" style="display:none;font-size:11px;background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.2);color:var(--primary);border-radius:20px;padding:2px 8px;"></span>
+                  <span id="widget-physical-age" style="display:none;font-size:11px;background:rgba(255,255,255,0.05);border:1px solid var(--border-glass);color:var(--text-muted);border-radius:20px;padding:2px 8px;"></span>
+                  <span id="widget-physical-height" style="display:none;font-size:11px;background:rgba(255,255,255,0.05);border:1px solid var(--border-glass);color:var(--text-muted);border-radius:20px;padding:2px 8px;"></span>
+                  <span id="widget-physical-weight" style="display:none;font-size:11px;background:rgba(255,255,255,0.05);border:1px solid var(--border-glass);color:var(--text-muted);border-radius:20px;padding:2px 8px;"></span>
                 </div>
               </div>
 
-              <div class="score-badge" id="widget-user-score-container" style="display: none;">
+              <div class="score-badge" id="widget-user-score-container" style="display:none;">
                 <div id="widget-user-score-val">100</div>
                 <span>Rider Score</span>
               </div>
-              
-              <!-- Statische Totalen in Profiel -->
-              <div id="profile-stats-container" style="display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; border-top: 1px solid var(--border-glass); padding-top: 12px;">
-                <div>
-                  <div style="font-size:16px; font-weight:700; color:var(--primary);" id="profile-stat-distance">0.0</div>
-                  <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Totale KM</div>
-                </div>
-                <div>
-                  <div style="font-size:16px; font-weight:700; color:var(--secondary);" id="profile-stat-ascent">0</div>
-                  <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Hoogtemeters</div>
-                </div>
-              </div>
-              
+
               <div class="d-flex gap-8 mt-4">
                 <button class="btn btn-secondary btn-sm w-full" id="btn-edit-profile"><i data-lucide="settings"></i> Profiel</button>
                 <button class="btn btn-secondary btn-sm w-full" id="btn-logout"><i data-lucide="log-out"></i> Uitloggen</button>
@@ -279,116 +216,173 @@
             </div>
           </div>
 
-          <!-- Persoonlijke Records Widget -->
-          <div class="glass-panel" id="pr-container" style="display:none;">
-            <!-- Wordt dynamisch ingevuld door activities.js -->
-          </div>
-
-          <!-- Leaderboard Widget -->
-          <div class="glass-panel" id="leaderboard-panel">
-            <h3 class="widget-title"><i data-lucide="trophy" style="color:var(--primary)"></i> Klassement</h3>
-            <div id="leaderboard-list">
-              <!-- Wordt dynamisch opgebouwd -->
-            </div>
-          </div>
-
-          <!-- Activiteitenfeed Widget -->
-          <div class="glass-panel" id="activity-feed-panel">
-            <h3 class="widget-title"><i data-lucide="activity" style="color:var(--secondary)"></i> Clubfeed</h3>
-            <div id="activity-feed-list" style="display:flex; flex-direction:column; gap:8px;">
-              <div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 8px;">Nog geen clubactiviteit.</div>
-            </div>
-          </div>
-
-          <!-- Beschikbaarheid Editor Widget -->
+          <!-- Beschikbaarheid Editor -->
           <div class="glass-panel" id="availability-editor-panel">
             <h3 class="widget-title"><i data-lucide="calendar"></i> Beschikbaarheid</h3>
             <div class="editor-date" id="selected-date-str">Geselecteerde Datum</div>
-            
             <div class="status-options">
               <div class="status-btn" data-status="available" id="status-btn-avail">Kan Fietsen</div>
               <div class="status-btn" data-status="tentative" id="status-btn-tent">Misschien</div>
               <div class="status-btn" data-status="unavailable" id="status-btn-unavail">Kan Niet</div>
             </div>
-            
             <div class="form-group">
               <label for="availability-notes">Opmerking / Details</label>
               <textarea id="availability-notes" class="form-control" rows="2" placeholder="Bijv. Enkel in de voormiddag, of tempo ~28km/u."></textarea>
             </div>
-            
             <button class="btn btn-primary w-full" id="btn-save-availability">Opslaan</button>
           </div>
 
-          <!-- TCX Uploader & Rider Score Widget -->
-          <div class="glass-panel">
-            <h3 class="widget-title"><i data-lucide="upload-cloud"></i> TCX Rit Upload</h3>
-            <p style="font-size: 12px; margin-bottom: 12px;">Upload een Garmin/Wahoo TCX-bestand van je rit om je route te visualiseren en je Rider Score te berekenen!</p>
-            
+          <!-- Leaderboard -->
+          <div class="glass-panel" id="leaderboard-panel">
+            <h3 class="widget-title"><i data-lucide="trophy" style="color:var(--primary)"></i> Klassement</h3>
+            <div id="leaderboard-list"></div>
+          </div>
+
+          <!-- Clubfeed -->
+          <div class="glass-panel" id="activity-feed-panel">
+            <h3 class="widget-title"><i data-lucide="activity" style="color:var(--secondary)"></i> Clubfeed</h3>
+            <div id="activity-feed-list" style="display:flex;flex-direction:column;gap:8px;">
+              <div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px;">Nog geen clubactiviteit.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. MIJN RITTEN PAGINA -->
+    <section id="section-rides" class="app-section">
+      <div class="dashboard-container">
+
+        <!-- Hoofd: Upload + Resultaten + Activiteiten -->
+        <div class="main-dashboard-content">
+
+          <!-- Upload Panel -->
+          <div class="glass-panel mb-4">
+            <div class="d-flex justify-between align-center mb-3">
+              <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="upload-cloud" style="color:var(--primary)"></i> Rit Uploaden</h2>
+              <div style="font-size:11px;color:var(--text-muted);">TCX &bull; GPX &bull; FIT &bull; KML</div>
+            </div>
             <div class="uploader-box" id="tcx-dropzone">
               <i data-lucide="file-up" class="upload-icon"></i>
-              <p style="font-size: 13px; font-weight: 500;">Sleep je ritbestand hierheen</p>
-              <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">TCX &bull; GPX &bull; FIT &bull; KML &mdash; of klik om te bladeren</p>
+              <p style="font-size:13px;font-weight:500;">Sleep je ritbestand hierheen</p>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">TCX &bull; GPX &bull; FIT &bull; KML &mdash; of klik om te bladeren</p>
               <input type="file" id="tcx-file-input" accept=".tcx,.gpx,.fit,.kml">
             </div>
 
-            <!-- Uploader Resultaat -->
-            <div id="tcx-result-panel" style="display: none; margin-top: 20px; border-top: 1px solid var(--border-glass); padding-top: 16px;">
-              <h4 style="font-size: 14px; margin-bottom: 8px;">Geparseerde Ritgegevens</h4>
-              
-              <div class="score-badge">
-                <div id="calculated-rider-score">450</div>
-                <span>Nieuwe Rider Score!</span>
-              </div>
-              
-              <div class="ride-metrics-grid">
-                <div class="metric-card">
-                  <div class="metric-val" id="metric-distance">45.2</div>
-                  <div class="metric-lbl">KM</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-val" id="metric-duration">1:45</div>
-                  <div class="metric-lbl">Tijd</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-val" id="metric-ascent">230</div>
-                  <div class="metric-lbl">HM (m)</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-val" id="metric-speed">27.8</div>
-                  <div class="metric-lbl">Gem. km/u</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-val" id="metric-hr">142</div>
-                  <div class="metric-lbl">Gem. HF</div>
-                </div>
-                <div class="metric-card">
-                  <div class="metric-val" id="metric-power">195</div>
-                  <div class="metric-lbl">Gem. Watt</div>
-                </div>
-                <div class="metric-card" id="metric-wkg-card" style="display:none;">
-                  <div class="metric-val" id="metric-wkg">-</div>
-                  <div class="metric-lbl">W/kg</div>
+            <!-- Upload Resultaat -->
+            <div id="tcx-result-panel" style="display:none;margin-top:20px;border-top:1px solid var(--border-glass);padding-top:16px;">
+              <div class="d-flex justify-between align-center mb-3">
+                <h4 style="font-size:14px;font-weight:600;">Ritgegevens</h4>
+                <div class="score-badge" style="margin:0;">
+                  <div id="calculated-rider-score">450</div>
+                  <span>Rider Score</span>
                 </div>
               </div>
 
-              <!-- Route Kaart (Leaflet) -->
-              <div class="route-canvas-container" id="route-map"></div>
+              <div class="ride-metrics-grid">
+                <div class="metric-card"><div class="metric-val" id="metric-distance">-</div><div class="metric-lbl">KM</div></div>
+                <div class="metric-card"><div class="metric-val" id="metric-duration">-</div><div class="metric-lbl">Tijd</div></div>
+                <div class="metric-card"><div class="metric-val" id="metric-ascent">-</div><div class="metric-lbl">HM (m)</div></div>
+                <div class="metric-card"><div class="metric-val" id="metric-speed">-</div><div class="metric-lbl">Gem. km/u</div></div>
+                <div class="metric-card"><div class="metric-val" id="metric-hr">-</div><div class="metric-lbl">Gem. HF</div></div>
+                <div class="metric-card"><div class="metric-val" id="metric-power">-</div><div class="metric-lbl">Gem. Watt</div></div>
+                <div class="metric-card" id="metric-wkg-card" style="display:none;"><div class="metric-val" id="metric-wkg">-</div><div class="metric-lbl">W/kg</div></div>
+              </div>
+
+              <!-- Route Kaart -->
+              <div class="route-canvas-container" id="route-map" style="margin-top:16px;"></div>
 
               <!-- Hoogteprofiel -->
-              <div id="elevation-chart-panel" style="display:none; margin-top: 16px; border-top: 1px solid var(--border-glass); padding-top: 14px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                  <h4 style="font-size: 13px; font-weight: 600; color: var(--primary);">⛰️ Hoogteprofiel</h4>
-                  <div id="elevation-stats" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+              <div id="elevation-chart-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border-glass);padding-top:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <h4 style="font-size:13px;font-weight:600;color:var(--primary);">&#x26F0;&#xFE0F; Hoogteprofiel</h4>
+                  <div id="elevation-stats" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
                 </div>
-                <div style="height: 150px; position: relative;">
+                <div style="height:150px;position:relative;">
                   <canvas id="elevation-chart"></canvas>
                 </div>
               </div>
             </div>
           </div>
 
+          <!-- Prestaties grafiek -->
+          <div class="glass-panel mb-4" id="stats-chart-panel" style="display:none;">
+            <h2 class="widget-title"><i data-lucide="trending-up" style="color:var(--primary)"></i> Prestaties Over Tijd</h2>
+            <div style="height:220px;position:relative;">
+              <canvas id="stats-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Rittenhistorie -->
+          <div class="glass-panel">
+            <div class="d-flex justify-between align-center mb-4">
+              <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="history" style="color:var(--secondary)"></i> Rittenhistorie</h2>
+            </div>
+
+            <!-- Filter & Sorteer balk -->
+            <div id="activity-filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border-glass);">
+              <div style="display:flex;gap:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-sm);padding:3px;">
+                <button data-filter-period="all" class="btn btn-secondary btn-sm active" style="padding:3px 8px;font-size:10px;">Alles</button>
+                <button data-filter-period="30d" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">30 dagen</button>
+                <button data-filter-period="90d" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">90 dagen</button>
+                <button data-filter-period="year" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Dit jaar</button>
+              </div>
+              <div style="display:flex;gap:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-sm);padding:3px;">
+                <button data-filter-sort="date" class="btn btn-secondary btn-sm active" style="padding:3px 8px;font-size:10px;">Datum</button>
+                <button data-filter-sort="distance" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Afstand</button>
+                <button data-filter-sort="score" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Score</button>
+                <button data-filter-sort="speed" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Snelheid</button>
+              </div>
+            </div>
+
+            <div id="activities-list-container">
+              <div class="empty-state">Je hebt nog geen ritten geüpload. Upload een TCX, GPX of FIT bestand hierboven!</div>
+            </div>
+          </div>
+
         </div>
 
+        <!-- Sidebar Mijn Ritten -->
+        <div class="sidebar">
+
+          <!-- Seizoenstotalen -->
+          <div class="glass-panel">
+            <h3 class="widget-title"><i data-lucide="bar-chart-2" style="color:var(--primary)"></i> Seizoen</h3>
+            <div id="profile-stats-container" style="display:none;grid-template-columns:1fr 1fr;gap:12px;">
+              <div style="text-align:center;">
+                <div style="font-size:22px;font-weight:800;color:var(--primary);" id="profile-stat-distance">0.0</div>
+                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Totale KM</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:22px;font-weight:800;color:var(--secondary);" id="profile-stat-ascent">0</div>
+                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Hoogtemeters</div>
+              </div>
+            </div>
+            <div id="profile-stats-empty" style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px 0;">Upload je eerste rit om statistieken te zien.</div>
+          </div>
+
+          <!-- Persoonlijke Records -->
+          <div class="glass-panel" id="pr-container" style="display:none;">
+            <!-- Dynamisch ingevuld -->
+          </div>
+
+          <!-- Rider Score -->
+          <div class="glass-panel text-center" id="rides-score-panel" style="display:none;">
+            <h3 class="widget-title" style="margin-bottom:12px;"><i data-lucide="zap" style="color:var(--primary)"></i> Rider Score</h3>
+            <div class="score-badge" style="margin:0 auto;">
+              <div id="rides-score-val">100</div>
+              <span>Punten</span>
+            </div>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:10px;">Gebaseerd op je beste rit</p>
+          </div>
+
+          <!-- Naar Planner knop -->
+          <button class="btn btn-secondary w-full" id="btn-go-planner" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+            <i data-lucide="calendar"></i> Naar de Planner
+          </button>
+
+        </div>
       </div>
     </section>
 

@@ -334,18 +334,18 @@ function setupEventListeners() {
   // Avatar live preview en presets initialiseren
   setupAvatarEventListeners();
   
-  // Navigatie-link naar activiteiten scroll
+  // Navigatie-link naar Mijn Ritten pagina
   if (elements.linkRides) {
     elements.linkRides.addEventListener('click', (e) => {
       e.preventDefault();
-      navigateTo('dashboard', loadDashboardData);
-      setTimeout(() => {
-        const activitiesPanel = document.getElementById('activities-list-container');
-        if (activitiesPanel) {
-          activitiesPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 300);
+      navigateTo('rides', loadDashboardData);
     });
+  }
+
+  // "Naar Planner" knop op Mijn Ritten pagina
+  const btnGoPlanner = document.getElementById('btn-go-planner');
+  if (btnGoPlanner) {
+    btnGoPlanner.addEventListener('click', () => navigateTo('dashboard', loadDashboardData));
   }
 }
 
