@@ -1,4 +1,4 @@
-// Cyclo - Group Rides Module
+﻿// Cyclo - Group Rides Module
 import { state, elements, config, showToast } from './state.js';
 
 // ─────────────────────────────────────────────
@@ -421,8 +421,19 @@ export async function toggleRideParticipation(rideId, isParticipating, callbackF
       await addFeedEntry('joined_ride', { ride_id: rideId, ride_title: ride?.title });
       showToast('Succesvol aangemeld voor de rit!', 'success');
     }
-    // Re-render na DB bevestiging voor consistentie
-    if (typeof callbackFn === 'function') callbackFn();
+    // Herlaad de deelnemers van DEZE rit direct uit de DB voor garantie
+    // (realtime subscription kan anders de optimistische update overschrijven)
+    try {
+      const { data: freshParticipants } = await config.supabaseClient
+        .from('ride_participants')
+        .select('user_id')
+        .eq('ride_id', rideId);
+      if (freshParticipants !== null && rideInState) {
+        rideInState.ride_participants = freshParticipants;
+      }
+    } catch(e) { console.warn('Deelnemers herladen mislukt:', e); }
+    // Herrender met gegarandeerd correcte data
+    try { await renderRidesList(); } catch(e) {}
   } catch (err) {
     // ─── Revert optimistische update bij fout ────────────────────────
     if (rideInState) {
