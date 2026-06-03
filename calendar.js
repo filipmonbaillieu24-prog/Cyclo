@@ -145,38 +145,28 @@ export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
     cell.appendChild(avatarList);
   }
 
-  // ─── Klik handler: toggle dag in/uit selectie ───────────────────────
-  cell.addEventListener('click', (e) => {
+  // --- Klik: toggle dag in/uit multi-selectie ---
+  cell.addEventListener('click', () => {
     if (isOtherMonth) return;
 
     const idx = selectedDates.indexOf(dateStr);
-
-    if (selectedDates.length === 0) {
-      // Eerste klik: selecteer deze dag
-      selectedDates = [dateStr];
-      state.selectedDate = new Date(dateStr + 'T12:00:00');
-    } else if (idx !== -1) {
-      // Dag was al geselecteerd: verwijder uit selectie
-      selectedDates.splice(idx, 1);
-      if (selectedDates.length > 0) {
-        state.selectedDate = new Date(selectedDates[0] + 'T12:00:00');
-      }
-    } else {
-      // Dag was niet geselecteerd: voeg toe
+    if (idx === -1) {
       selectedDates.push(dateStr);
+    } else {
+      selectedDates.splice(idx, 1);
     }
 
     refreshMultiSelectVisuals();
     updateBulkBanner();
 
-    // Toon editor alleen bij exacte 1 dag geselecteerd
     if (selectedDates.length === 1) {
       state.selectedDate = new Date(selectedDates[0] + 'T12:00:00');
       updateAvailabilityEditor();
+    } else if (selectedDates.length === 0) {
+      state.selectedDate = new Date();
+      updateAvailabilityEditor();
     }
   });
-
-  elements.calendarDaysGrid.appendChild(cell);
 }
 
 // ─── Visuele multi-selectie bijwerken ──────────────────
@@ -239,8 +229,7 @@ export function clearCalendarSelection() {
   updateBulkBanner();
 }
 
-// ─── Bulk beschikbaarheid opslaan ──────────────────────
-// ─── Bulk beschikbaarheid opslaan ──────────────────────────────────────
+// --- Bulk beschikbaarheid opslaan ---
 export async function saveBulkAvailability(loadDashboardDataCallback) {
   const statusEl = document.getElementById('bulk-status-select');
   const status   = statusEl?.value || 'available';
@@ -251,93 +240,78 @@ export async function saveBulkAvailability(loadDashboardDataCallback) {
     return;
   }
 
-  // Maak een kopie zodat clearCalendarSelection() de loop niet beïnvloedt
   const datesToSave = [...selectedDates];
+  console.log('[Bulk save] Opslaan voor', datesToSave.length, 'dagen:', datesToSave);
 
-  // ── Demo mode ────────────────────────────────────────────────────────
+  // Demo mode
   if (config.isDemoMode) {
     let savedAvails = JSON.parse(localStorage.getItem('cyclo_mock_availabilities') || '[]');
     for (const dateStr of datesToSave) {
       const idx = savedAvails.findIndex(a => a.date === dateStr && a.user_id === state.user.id);
       const rec = {
-        id: idx !== -1 ? savedAvails[idx].id : `avail-${dateStr}-${state.user.id}`,
-        user_id: state.user.id,
-        date: dateStr,
-        status,
-        notes
+        id: idx !== -1 ? savedAvails[idx].id : ('avail-' + dateStr + '-' + state.user.id),
+        user_id: state.user.id, date: dateStr, status, notes
       };
-      if (idx !== -1) savedAvails[idx] = rec;
-      else savedAvails.push(rec);
-
-      // Synchroniseer state.availabilities direct
+      if (idx !== -1) savedAvails[idx] = rec; else savedAvails.push(rec);
       const si = state.availabilities.findIndex(a => a.date === dateStr && a.user_id === state.user.id);
-      if (si !== -1) state.availabilities[si] = rec;
-      else state.availabilities.push(rec);
+      if (si !== -1) state.availabilities[si] = rec; else state.availabilities.push(rec);
     }
     localStorage.setItem('cyclo_mock_availabilities', JSON.stringify(savedAvails));
-    showToast(`✓ Beschikbaarheid opgeslagen voor ${datesToSave.length} dag(en)!`, 'success');
+    showToast('Beschikbaarheid opgeslagen voor ' + datesToSave.length + ' dag(en)!', 'success');
     clearCalendarSelection();
     renderCalendar();
     if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
     return;
   }
 
-  // ── Live Supabase: individueel per datum ─────────────────────────────
-  let saved = 0;
-  let failed = 0;
-
+  // Live Supabase
+  let saved = 0, failed = 0;
   for (const dateStr of datesToSave) {
     try {
-      const existing = (state.availabilities || []).find(
-        a => a.date === dateStr && a.user_id === state.user.id
-      );
-
-      let data, error;
-      if (existing?.id) {
-        ({ data, error } = await config.supabaseClient
-          .from('availabilities')
-          .update({ status, notes })
-          .eq('id', existing.id)
-          .select());
+      // Zoek bestaand record direct in DB (betrouwbaarder dan state)
+      const { data: existingRows } = await config.supabaseClient
+        .from('availabilities')
+        .select('id')
+        .eq('user_id', state.user.id)
+        .eq('date', dateStr)
+        .limit(1);
+      const existingId = existingRows && existingRows[0] && existingRows[0].id;
+      let result;
+      if (existingId) {
+        result = await config.supabaseClient.from('availabilities')
+          .update({ status, notes }).eq('id', existingId).select();
       } else {
-        ({ data, error } = await config.supabaseClient
-          .from('availabilities')
-          .insert([{ user_id: state.user.id, date: dateStr, status, notes }])
-          .select());
+        result = await config.supabaseClient.from('availabilities')
+          .insert([{ user_id: state.user.id, date: dateStr, status, notes }]).select();
       }
-
-      if (error) {
+      if (result.error) {
+        console.error('[Bulk] Fout voor ' + dateStr + ':', result.error);
         failed++;
-        console.error(`[Bulk] Fout voor ${dateStr}:`, error.message, error);
       } else {
         saved++;
-        // Update state onmiddellijk zodat kalender klopt
-        const newRec = (data && data[0]) || { user_id: state.user.id, date: dateStr, status, notes };
+        const rec = (result.data && result.data[0]) || { user_id: state.user.id, date: dateStr, status, notes };
         const si = state.availabilities.findIndex(a => a.date === dateStr && a.user_id === state.user.id);
-        if (si !== -1) state.availabilities[si] = newRec;
-        else state.availabilities.push(newRec);
+        if (si !== -1) state.availabilities[si] = rec; else state.availabilities.push(rec);
       }
     } catch (err) {
+      console.error('[Bulk] Exception voor ' + dateStr + ':', err);
       failed++;
-      console.error(`[Bulk] Uitzondering voor ${dateStr}:`, err);
     }
   }
 
+  console.log('[Bulk save] Klaar:', saved, 'ok,', failed, 'mislukt');
+
   if (saved > 0) {
-    showToast(
-      `✓ Opgeslagen voor ${saved} dag(en)!${failed > 0 ? ` (${failed} mislukt)` : ''}`,
-      failed > 0 ? 'warning' : 'success'
-    );
+    const msg = failed > 0 ? (saved + ' dag(en) opgeslagen, ' + failed + ' mislukt') : ('Beschikbaarheid opgeslagen voor ' + saved + ' dag(en)!');
+    showToast(msg, saved === datesToSave.length ? 'success' : 'warning');
   } else {
-    showToast(`Opslaan mislukt (${failed} dag(en)). Zie console voor details.`, 'error');
+    showToast('Opslaan mislukt. Zie browser-console voor details.', 'error');
   }
 
   clearCalendarSelection();
   renderCalendar();
   if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
 }
-
-
 export function updateAvailabilityEditor() {
   if (!state.user) return;
   const dateStr = state.selectedDate.toISOString().split('T')[0];

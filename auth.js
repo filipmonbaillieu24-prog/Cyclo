@@ -1,4 +1,4 @@
-// Cyclo - Authentication & Profile Manager Module
+﻿// Cyclo - Authentication & Profile Manager Module
 import { state, elements, config, showToast, navigateTo, MOCK_PROFILES } from './state.js';
 
 export function translateBikeType(type) {
@@ -251,15 +251,23 @@ export async function handleRegister(e, setUserCallback) {
     // A) Email-verificatie AAN → user.identities = [], sessie = null → toon bevestigingsbericht
     // B) Email-verificatie UIT → direct ingelogd → wacht op onAuthStateChange
 
-    const needsConfirmation = !data.session; // geen sessie = bevestiging vereist
-
+    // Email bevestiging nodig als: geen sessie, OF user.identities leeg (al geregistreerd maar niet bevestigd)
+    const needsConfirmation = !data.session || (data.user && !data.user.email_confirmed_at && data.user.identities && data.user.identities.length === 0);
     if (needsConfirmation) {
       // Toon bevestigingspagina
       showRegistrationConfirmation(email);
       showToast('Registratie succesvol! Bevestig je e-mailadres.', 'success');
     } else {
-      // Direct ingelogd (email confirm uitgeschakeld)
+      // Direct ingelogd (email confirm uitgeschakeld in Supabase)
       // Wacht even zodat Supabase de profile trigger kan uitvoeren
+      // Extra veiligheid: als account niet bevestigd is maar Supabase toch een sessie geeft
+      if (data.session && data.user && !data.user.email_confirmed_at) {
+        await config.supabaseClient.auth.signOut();
+        showRegistrationConfirmation(email);
+        showToast('Bevestig je e-mailadres om in te loggen.', 'info');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Registreren'; }
+        return;
+      }
       showToast('Account aangemaakt! Even geduld...', 'info');
       await new Promise(r => setTimeout(r, 1500));
 

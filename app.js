@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Cyclo - Core Application Orchestrator (ES6 Module)
  * 
  * Beheert de centrale state, de event loops, de live/offline initialisatie,
@@ -860,22 +860,50 @@ export async function loadFeedSection(followingOnly = false) {
   }
 
   feedList.innerHTML = '';
+  feedList.innerHTML = '';
+  // Laad welke gebruikers al gevolgd worden (voor correcte knop-staat)
+  let followedIds = new Set();
+  if (!config.isDemoMode && state.user) {
+    try {
+      const { data: myFollows } = await config.supabaseClient
+        .from('follows').select('following_id').eq('follower_id', state.user.id);
+      (myFollows || []).forEach(f => followedIds.add(f.following_id));
+    } catch (_) {}
+  }
+
   for (const act of activities.slice(0, 30)) {
     const profileData = act.profiles || state.profiles?.find(p => p.id === act.user_id);
     const card = renderFeedCard(act, profileData);
     feedList.appendChild(card);
-    // Volg knop binden
+    // Volg-knop: status instellen op basis van huidig volgstatus
     card.querySelectorAll('.btn-follow').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await followUser(btn.dataset.userId);
+      const uid = btn.dataset.userId;
+      if (followedIds.has(uid)) {
         btn.innerHTML = '<i data-lucide="user-check" style="width:12px;height:12px;"></i> Volgend';
         btn.classList.add('following');
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-      });
+        btn.addEventListener('click', async () => {
+          const ok = await unfollowUser(uid);
+          if (ok) {
+            followedIds.delete(uid);
+            btn.innerHTML = '<i data-lucide="user-plus" style="width:12px;height:12px;"></i> Volgen';
+            btn.classList.remove('following');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          }
+        });
+      } else {
+        btn.addEventListener('click', async () => {
+          const ok = await followUser(uid);
+          if (ok) {
+            followedIds.add(uid);
+            btn.innerHTML = '<i data-lucide="user-check" style="width:12px;height:12px;"></i> Volgend';
+            btn.classList.add('following');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          }
+        });
+      }
     });
   }
   if (typeof lucide !== 'undefined') lucide.createIcons();
-}
 
 // ─── Profiel Pagina Laden ───────────────────────────────────────────
 function loadProfilePage() {
