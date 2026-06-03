@@ -298,10 +298,16 @@ function seedMockRides() {
 // 4. BIND EVENT LISTENERS
 function setupEventListeners() {
   // Navigatie & Home
-  elements.logo.addEventListener('click', (e) => { e.preventDefault(); navigateTo('home'); });
-  elements.linkHome.addEventListener('click', (e) => { e.preventDefault(); navigateTo('home'); });
+  elements.logo.addEventListener('click', (e) => { e.preventDefault(); navigateTo(state.user ? 'feed' : 'home'); });
+  elements.linkHome.addEventListener('click', (e) => { e.preventDefault(); navigateTo(state.user ? 'feed' : 'home', loadFeedSection); });
   elements.linkDashboard.addEventListener('click', (e) => { e.preventDefault(); navigateTo('dashboard', loadDashboardData); });
-  elements.heroBtnStart.addEventListener('click', () => { navigateTo('dashboard', loadDashboardData); });
+  elements.heroBtnStart.addEventListener('click', () => {
+    if (state.user) {
+      navigateTo('feed', loadFeedSection);
+    } else {
+      navigateTo('auth');
+    }
+  });
   
   elements.heroBtnDemo.addEventListener('click', () => {
     config.isDemoMode = true;
@@ -399,14 +405,6 @@ function setupEventListeners() {
     elements.linkRides.addEventListener('click', (e) => {
       e.preventDefault();
       navigateTo('rides', loadDashboardData);
-    });
-  }
-
-  // Feed navigatie
-  if (elements.linkHome) {
-    elements.linkHome.addEventListener('click', (e) => {
-      e.preventDefault();
-      navigateTo(state.user ? 'feed' : 'home', loadFeedSection);
     });
   }
 
