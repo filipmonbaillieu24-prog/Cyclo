@@ -705,3 +705,142 @@
   border-color: var(--primary) !important;
   transform: scale(1.08);
 }
+
+/* ═══ GEPLANDE RITTEN — Horizontale scroll boven kalender ═══ */
+.planned-rides-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.planned-rides-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.planned-rides-scroll::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.03);
+  border-radius: 2px;
+}
+.planned-rides-scroll::-webkit-scrollbar-thumb {
+  background: rgba(212,255,0,0.3);
+  border-radius: 2px;
+}
+
+/* Planned ride card (horizontale stijl) */
+.planned-ride-card {
+  flex: 0 0 240px;
+  scroll-snap-align: start;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.planned-ride-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  opacity: 0;
+  transition: opacity .2s;
+}
+.planned-ride-card:hover {
+  border-color: rgba(212,255,0,0.3);
+  transform: translateY(-2px);
+}
+.planned-ride-card:hover::before { opacity: 1; }
+
+.planned-ride-card .prc-date {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.planned-ride-card .prc-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.planned-ride-card .prc-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.planned-ride-card .prc-meta span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.planned-ride-card .prc-avatars {
+  display: flex;
+  gap: -4px;
+}
+.planned-ride-card .prc-avatars img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-surface);
+  margin-right: -6px;
+}
+.planned-ride-card .prc-join-btn {
+  margin-top: auto;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all .15s;
+  text-align: center;
+}
+.planned-ride-card .prc-join-btn.join {
+  background: var(--primary);
+  color: #000;
+}
+.planned-ride-card .prc-join-btn.join:hover {
+  background: #c8f000;
+  transform: scale(1.03);
+}
+.planned-ride-card .prc-join-btn.joined {
+  background: rgba(212,255,0,0.1);
+  color: var(--primary);
+  border: 1px solid rgba(212,255,0,0.3);
+}
+
+/* Lege staat van planned rides */
+.planned-ride-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  width: 100%;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ═══ Count badge op planned rides card ═══ */
+.prc-count-badge {
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(0,240,255,0.1);
+  border: 1px solid rgba(0,240,255,0.2);
+  color: var(--secondary);
+  font-weight: 700;
+}
+

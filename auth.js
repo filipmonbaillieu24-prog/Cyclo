@@ -200,9 +200,15 @@ export async function handleRegister(e, setUserCallback) {
   e.preventDefault();
   const username = document.getElementById('register-username').value.trim();
   const fullname = document.getElementById('register-fullname').value.trim();
-  const email = document.getElementById('register-email').value.trim();
+  const email    = document.getElementById('register-email').value.trim();
   const password = document.getElementById('register-password').value;
-  
+
+  if (!username || !fullname || !email || !password) {
+    showToast('Vul alle velden in.', 'error');
+    return;
+  }
+
+  // ── Demo mode ──────────────────────────────────────────────────────────
   if (config.isDemoMode) {
     const newId = `user-${Date.now()}`;
     const newProfile = {
@@ -213,45 +219,119 @@ export async function handleRegister(e, setUserCallback) {
       rider_score: 100,
       bike_type: 'Road'
     };
-    
     let savedMockProfiles = JSON.parse(localStorage.getItem('cyclo_mock_profiles') || '[]');
     savedMockProfiles.push(newProfile);
     localStorage.setItem('cyclo_mock_profiles', JSON.stringify(savedMockProfiles));
-    
-    // Voeg toe aan lopende profiles
     state.profiles.push(newProfile);
-    
     loginMockUser(newId, setUserCallback);
-    showToast("Account aangemaakt in Demo modus!", "success");
+    showToast('Account aangemaakt in Demo modus!', 'success');
     return;
   }
-  
+
+  // ── Live Supabase ──────────────────────────────────────────────────────
+  const submitBtn = e.target?.querySelector('button[type="submit"]');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Bezig...'; }
+
   try {
     const { data, error } = await config.supabaseClient.auth.signUp({
       email,
       password,
       options: {
         data: {
-          username: username.toLowerCase(),
+          username: username.toLowerCase().replace(/\s+/g, ''),
           full_name: fullname,
           avatar_url: `https://api.dicebear.com/7.x/adventurer/svg?seed=${username}`
         }
       }
     });
-    
+
     if (error) throw error;
-    
-    showToast("Registratie succesvol! Controleer je e-mail voor de activatie.", "success");
-    
-    if (data.user) {
-      setTimeout(async () => {
-        const { data: profile } = await config.supabaseClient.from('profiles').select('*').eq('id', data.user.id).single();
-        if (profile) setUser(profile, setUserCallback);
-      }, 1000);
+
+    // Supabase kan twee scenario's hebben:
+    // A) Email-verificatie AAN → user.identities = [], sessie = null → toon bevestigingsbericht
+    // B) Email-verificatie UIT → direct ingelogd → wacht op onAuthStateChange
+
+    const needsConfirmation = !data.session; // geen sessie = bevestiging vereist
+
+    if (needsConfirmation) {
+      // Toon bevestigingspagina
+      showRegistrationConfirmation(email);
+      showToast('Registratie succesvol! Bevestig je e-mailadres.', 'success');
+    } else {
+      // Direct ingelogd (email confirm uitgeschakeld)
+      // Wacht even zodat Supabase de profile trigger kan uitvoeren
+      showToast('Account aangemaakt! Even geduld...', 'info');
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Haal profiel op met de verse sessie
+      const userId = data.session.user.id;
+      let profile = null;
+
+      // Probeer het profiel op te halen (kan even duren als trigger async is)
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: p } = await config.supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        if (p) { profile = p; break; }
+        await new Promise(r => setTimeout(r, 800));
+      }
+
+      if (profile) {
+        setUser(profile, setUserCallback);
+        showToast(`Welkom, ${profile.full_name}!`, 'success');
+      } else {
+        // Profiel nog niet aangemaakt door trigger — maak het handmatig aan
+        const newProfile = {
+          id: userId,
+          username: username.toLowerCase().replace(/\s+/g, ''),
+          full_name: fullname,
+          avatar_url: `https://api.dicebear.com/7.x/adventurer/svg?seed=${username}`,
+          rider_score: 0,
+          bike_type: 'Road'
+        };
+        await config.supabaseClient.from('profiles').upsert([newProfile]);
+        setUser(newProfile, setUserCallback);
+        showToast(`Welkom, ${fullname}!`, 'success');
+      }
     }
   } catch (err) {
-    showToast(err.message, "error");
+    showToast(err.message, 'error');
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Registreren'; }
   }
+}
+
+// ── Bevestigingsscherm na registratie ──────────────────────────────────
+function showRegistrationConfirmation(email) {
+  // Verberg inlog/registreer formulieren, toon bevestigingspanel
+  const loginSection = document.getElementById('section-login');
+  if (!loginSection) return;
+
+  // Verwijder bestaand bevestigingspanel
+  document.getElementById('register-confirm-panel')?.remove();
+
+  const panel = document.createElement('div');
+  panel.id = 'register-confirm-panel';
+  panel.style.cssText = 'max-width:440px;margin:80px auto;text-align:center;padding:0 20px;';
+  panel.innerHTML = `
+    <div class="glass-panel" style="padding:40px 32px;">
+      <div style="font-size:48px;margin-bottom:16px;">📧</div>
+      <h2 style="font-size:20px;font-weight:800;margin-bottom:8px;">Controleer je e-mail</h2>
+      <p style="color:var(--text-muted);font-size:13px;line-height:1.6;margin-bottom:20px;">
+        We hebben een bevestigingslink gestuurd naar<br>
+        <strong style="color:var(--primary);">${email}</strong><br><br>
+        Klik op de link in je e-mail om je account te activeren en in te loggen.
+      </p>
+      <p style="font-size:11px;color:var(--text-muted);">Geen e-mail ontvangen? Controleer je spam-map.</p>
+      <button class="btn btn-secondary btn-sm" style="margin-top:16px;" onclick="document.getElementById('register-confirm-panel').remove();">
+        Terug naar inloggen
+      </button>
+    </div>
+  `;
+
+  loginSection.appendChild(panel);
 }
 
 export async function handleLogout(setUserCallback) {

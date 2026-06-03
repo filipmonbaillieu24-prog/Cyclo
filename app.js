@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cyclo - Core Application Orchestrator (ES6 Module)
  * 
  * Beheert de centrale state, de event loops, de live/offline initialisatie,
@@ -1010,4 +1010,59 @@ document.addEventListener('DOMContentLoaded', () => {
   checkUserSession(loadDashboardData);
   // Expose voor ride delete callbacks
   window._loadDashboardData = loadDashboardData;
+
+  // ── Supabase auth state watcher ──────────────────────────────────────
+  // Luistert naar sessie-wijzigingen (inloggen, uitloggen, email-bevestiging,
+  // token-refresh). Zo worden data en RLS altijd correct geladen met de
+  // actuele sessie, ook bij nieuwe gebruikers die na registratie inloggen.
+  if (!config.isDemoMode && config.supabaseClient) {
+    let lastUserId = null; // Voorkom dubbele herlaad bij zelfde gebruiker
+
+    config.supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth]', event, session?.user?.id);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Voorkom dubbele herlaad als de sessie al actief was
+        if (lastUserId === session.user.id) return;
+        lastUserId = session.user.id;
+
+        try {
+          // Wacht even zodat Supabase triggers (profile aanmaken) klaar zijn
+          await new Promise(r => setTimeout(r, 800));
+
+          // Haal profiel op met verse sessie-token
+          const { data: profile, error } = await config.supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profile && !error) {
+            // Stel de gebruiker in en herlaad alle data
+            const { setUser } = await import('./auth.js');
+            setUser(profile, loadDashboardData);
+          } else {
+            // Profiel ontbreekt nog (trigger niet klaar) — doe checkUserSession
+            await checkUserSession(loadDashboardData);
+          }
+        } catch (err) {
+          console.warn('[Auth] Fout bij herinitialisatie na SIGNED_IN:', err);
+        }
+
+      } else if (event === 'SIGNED_OUT') {
+        lastUserId = null;
+        // Reset state en toon inlogscherm
+        const { setUser } = await import('./auth.js');
+        setUser(null, loadDashboardData);
+
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        // Token vernieuwd — herlaad data stil op de achtergrond
+        if (lastUserId === session.user.id) {
+          // Herlaad alleen data, niet het volledige setUser
+          loadDashboardData();
+        }
+      }
+    });
+  }
 });
+
