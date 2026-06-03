@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Cyclo - Core Application Orchestrator (ES6 Module)
  * 
  * Beheert de centrale state, de event loops, de live/offline initialisatie,
@@ -48,7 +48,7 @@ import { loadSocialFeed, renderFeedCard, searchUsers, followUser, unfollowUser, 
 import { initProfileAvatarEditor } from './profile-avatar.js';
 import { updateFitnessBaseline, calculateFitnessMetrics, calculatePRs, buildHeatmapData, comparePeriods, calculateMMP, estimateVO2max, compareSeasons, calculateBadges, analyzeTrainingStructure } from './zones.js';
 import { renderEquipmentSection, openEquipmentModal } from './equipment.js';
-import { checkOnboarding, initHelpButton, renderEmptyState } from './onboarding.js';
+import { checkOnboarding, initHelpButton, renderEmptyState, triggerPageTourIfNew, setCurrentPage } from './onboarding.js';
 
 let activeRealtimeChannel = null;
 

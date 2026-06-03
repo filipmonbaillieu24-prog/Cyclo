@@ -181,7 +181,6 @@ export function navigateTo(section, onPageLoad = null) {
   }
 
   if (section === 'home') {
-    // Als ingelogd: stuur naar feed
     if (state.user) { navigateTo('feed', onPageLoad); return; }
     if (elements.sectionHome) elements.sectionHome.classList.add('active');
     if (elements.linkHome) elements.linkHome.classList.add('active');
@@ -193,6 +192,7 @@ export function navigateTo(section, onPageLoad = null) {
     const mob = document.getElementById('mob-link-home');
     if (mob) mob.classList.add('active');
     if (typeof onPageLoad === 'function') onPageLoad();
+    _hookPageTour('feed');
   } else if (section === 'auth') {
     if (elements.sectionAuth) elements.sectionAuth.classList.add('active');
   } else if (section === 'dashboard') {
@@ -201,19 +201,29 @@ export function navigateTo(section, onPageLoad = null) {
     const mob = document.getElementById('mob-link-planner');
     if (mob) mob.classList.add('active');
     if (typeof onPageLoad === 'function') onPageLoad();
+    _hookPageTour('dashboard');
   } else if (section === 'rides') {
     if (elements.sectionRides) elements.sectionRides.classList.add('active');
     if (elements.linkRides) elements.linkRides.classList.add('active');
     const mob = document.getElementById('mob-link-rides');
     if (mob) mob.classList.add('active');
     if (typeof onPageLoad === 'function') onPageLoad();
+    _hookPageTour('rides');
   } else if (section === 'profile') {
     if (elements.sectionProfile) elements.sectionProfile.classList.add('active');
     const mob = document.getElementById('mob-link-profile');
     if (mob) mob.classList.add('active');
     if (typeof onPageLoad === 'function') onPageLoad();
+    _hookPageTour('profile');
   }
 
   // Scroll naar boven
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+// Bridge naar onboarding.js (wordt vanuit app.js als window hook gezet)
+function _hookPageTour(page) {
+  if (window._setCurrentPage)  window._setCurrentPage(page);
+  if (window._triggerPageTour) window._triggerPageTour(page);
+}
+
