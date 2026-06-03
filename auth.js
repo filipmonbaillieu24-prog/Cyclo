@@ -260,12 +260,30 @@ export function openEditProfileModal() {
       if (avatarInput) avatarInput.value = 'custom';
       try {
         const url = new URL(state.user.avatar_url);
-        customizerState.skin = url.searchParams.get('skinColor') || 'f5c096';
+        customizerState.skin = url.searchParams.get('skinColor') || 'f2d3b1';
         customizerState.hair = url.searchParams.get('hair') || 'short01';
-        customizerState.haircolor = url.searchParams.get('hairColor') || '090807';
-        customizerState.eyes = url.searchParams.get('eyes') || 'normal';
-        customizerState.mouth = url.searchParams.get('mouth') || 'smile';
-        customizerState.features = url.searchParams.get('features') || 'none';
+        customizerState.haircolor = url.searchParams.get('hairColor') || '0e0e0e';
+        customizerState.eyes = url.searchParams.get('eyes') || 'variant01';
+        customizerState.mouth = url.searchParams.get('mouth') || 'variant01';
+        
+        // Parse hairProbability
+        const hairProb = url.searchParams.get('hairProbability');
+        if (hairProb === '0') {
+          customizerState.hair = 'none';
+        }
+        
+        // Parse features
+        const glassesProb = url.searchParams.get('glassesProbability');
+        const featuresParam = url.searchParams.get('features') || '';
+        const featuresProb = url.searchParams.get('featuresProbability');
+        
+        if (glassesProb === '100') {
+          customizerState.features = 'glasses';
+        } else if (featuresProb === '100' && featuresParam.includes('mustache')) {
+          customizerState.features = 'mustache';
+        } else {
+          customizerState.features = 'none';
+        }
       } catch (err) {
         console.error("Fout bij parsen avatar URL:", err);
       }
@@ -283,11 +301,11 @@ export function openEditProfileModal() {
     highlightVisualCustomizer(customizerState);
   } else {
     // Standaard customizer initialiseren met default waardes
-    customizerState.skin = 'f5c096';
+    customizerState.skin = 'f2d3b1';
     customizerState.hair = 'short01';
-    customizerState.haircolor = '090807';
-    customizerState.eyes = 'normal';
-    customizerState.mouth = 'smile';
+    customizerState.haircolor = '0e0e0e';
+    customizerState.eyes = 'variant01';
+    customizerState.mouth = 'variant01';
     customizerState.features = 'none';
     highlightVisualCustomizer(customizerState);
   }
@@ -323,7 +341,7 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
   if (avatarSeed === 'base64') {
     avatarUrl = previewImg.dataset.uploadedPhoto || state.user.avatar_url;
   } else if (avatarSeed === 'custom') {
-    avatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=custom&skinColor=${customizerState.skin}&hair=${customizerState.hair}&hairColor=${customizerState.haircolor}&eyes=${customizerState.eyes}&mouth=${customizerState.mouth}&features=${customizerState.features}`;
+    avatarUrl = buildCustomAvatarUrl(customizerState);
   } else {
     avatarUrl = avatarSeed ? 
       `https://api.dicebear.com/7.x/adventurer/svg?seed=${avatarSeed}` : 
@@ -398,16 +416,36 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
 
 // --- Visual Avatar Editor & Custom Photo Uploader States ---
 const customizerState = {
-  skin: 'f5c096',
+  skin: 'f2d3b1',
   hair: 'short01',
-  haircolor: '090807',
-  eyes: 'normal',
-  mouth: 'smile',
+  haircolor: '0e0e0e',
+  eyes: 'variant01',
+  mouth: 'variant01',
   features: 'none'
 };
 
+function buildCustomAvatarUrl(stateObj) {
+  let url = `https://api.dicebear.com/7.x/adventurer/svg?seed=custom&skinColor=${stateObj.skin}&hairColor=${stateObj.haircolor}&eyes=${stateObj.eyes}&mouth=${stateObj.mouth}`;
+  
+  if (stateObj.hair === 'none') {
+    url += `&hairProbability=0`;
+  } else {
+    url += `&hairProbability=100&hair=${stateObj.hair}`;
+  }
+  
+  if (stateObj.features === 'glasses') {
+    url += `&glassesProbability=100&glasses=variant01&featuresProbability=0`;
+  } else if (stateObj.features === 'mustache') {
+    url += `&glassesProbability=0&features=mustache&featuresProbability=100`;
+  } else {
+    url += `&glassesProbability=0&featuresProbability=0`;
+  }
+  
+  return url;
+}
+
 function updateCustomAvatarFromVisualOptions() {
-  const customUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=custom&skinColor=${customizerState.skin}&hair=${customizerState.hair}&hairColor=${customizerState.haircolor}&eyes=${customizerState.eyes}&mouth=${customizerState.mouth}&features=${customizerState.features}`;
+  const customUrl = buildCustomAvatarUrl(customizerState);
   
   const previewImg = document.getElementById('profile-modal-preview-avatar');
   if (previewImg) {
@@ -572,11 +610,11 @@ export function setupAvatarEventListeners() {
   // --- 5. RANDOMIZER (🎲 VERRAS ME) ---
   if (btnRandom && previewImg && avatarInput) {
     btnRandom.addEventListener('click', () => {
-      const skinOptions = ['f5c096', 'e5a073', 'b16a5b', '8d554a'];
+      const skinOptions = ['f2d3b1', 'ecad80', '9e5622', '763900'];
       const hairOptions = ['short01', 'long01', 'short05', 'long03', 'none'];
-      const hairColorOptions = ['090807', '6b3f23', 'b58143', 'd66e2c', 'a0a0a0'];
-      const eyesOptions = ['normal', 'happy', 'wink', 'squint'];
-      const mouthOptions = ['smile', 'serious', 'open'];
+      const hairColorOptions = ['0e0e0e', '6a4e35', 'e5d7a3', 'ab2a18', 'afafaf'];
+      const eyesOptions = ['variant01', 'variant03', 'variant11', 'variant15'];
+      const mouthOptions = ['variant01', 'variant05', 'variant10'];
       const featureOptions = ['none', 'glasses', 'mustache'];
 
       const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
