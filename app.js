@@ -230,12 +230,22 @@ function _displayRiderScoreFromActivities() {
   const score = Math.max(10, Math.min(1000, Math.round(avg + consistencyBonus + volumeBonus)));
 
   state.user.rider_score = score;
+
+  // Ook state.profiles bijwerken zodat het klassement de juiste score toont
+  const myProfileIdx = state.profiles.findIndex(p => p.id === state.user.id);
+  if (myProfileIdx !== -1) {
+    state.profiles[myProfileIdx] = { ...state.profiles[myProfileIdx], rider_score: score };
+  }
+
   if (elements.widgetUserScoreVal) elements.widgetUserScoreVal.textContent = score;
   if (elements.widgetUserScoreContainer) elements.widgetUserScoreContainer.style.display = 'flex';
   const rsv = document.getElementById('rides-score-val');
   const rsp = document.getElementById('rides-score-panel');
   if (rsv) rsv.textContent = score;
   if (rsp) rsp.style.display = 'block';
+
+  // Klassement opnieuw renderen met correcte score
+  try { renderLeaderboard(); } catch(e) {}
 }
 
 function seedMockAvailabilities() {

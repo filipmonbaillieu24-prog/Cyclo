@@ -496,7 +496,7 @@ export function renderLeaderboard() {
         <div class="leaderboard-name">${profile.full_name}</div>
         <div class="leaderboard-username">@${profile.username}</div>
       </div>
-      <div class="leaderboard-score">${profile.rider_score || 100}</div>
+      <div class="leaderboard-score">${profile.rider_score || 0}</div>
     `;
 
     elements.leaderboardList.appendChild(row);
@@ -835,34 +835,36 @@ export function renderActivitiesList(loadDashboardDataCallback) {
 
     actDiv.innerHTML = `
       <div class="activity-header">
-        <div>
-          <span class="activity-title" style="cursor:pointer; text-decoration:underline; color:var(--primary);">${act.name}</span>
-          <span class="activity-badge">${act.rider_score} pts</span>
-          ${wkgHtml}
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+            <span class="activity-title" style="cursor:pointer;" title="Klik voor details">${act.name}</span>
+            <span class="activity-badge">${act.rider_score} pts</span>
+            ${wkgHtml}
+          </div>
+          <div class="activity-date" style="margin-top:4px;">${formattedDate}</div>
         </div>
-        <div class="d-flex align-center gap-8">
-          <span class="activity-date">${formattedDate}</span>
-          <button class="btn-delete-activity" style="background:none; border:none; color:var(--status-unavailable); cursor:pointer;" title="Rit verwijderen">
-            <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
-          </button>
-        </div>
+        <button class="btn-delete-activity" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;border-radius:6px;transition:color .15s,background .15s;flex-shrink:0;" title="Rit verwijderen"
+          onmouseover="this.style.color='var(--status-unavailable)';this.style.background='rgba(255,80,80,0.08)'"
+          onmouseout="this.style.color='var(--text-muted)';this.style.background='none'">
+          <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+        </button>
       </div>
-      
+
       <div class="activity-stats-grid">
         <div class="activity-stat-card">
-          <div class="activity-stat-val">${parseFloat(act.distance_km).toFixed(1)}</div>
+          <div class="activity-stat-val color-dist">${parseFloat(act.distance_km).toFixed(1)}</div>
           <div class="activity-stat-lbl">KM</div>
         </div>
         <div class="activity-stat-card">
-          <div class="activity-stat-val">${formattedDur}</div>
+          <div class="activity-stat-val color-time">${formattedDur}</div>
           <div class="activity-stat-lbl">Tijd</div>
         </div>
         <div class="activity-stat-card">
-          <div class="activity-stat-val">${act.ascent_m}m</div>
+          <div class="activity-stat-val color-ascent">${act.ascent_m}m</div>
           <div class="activity-stat-lbl">Hoogte</div>
         </div>
         <div class="activity-stat-card">
-          <div class="activity-stat-val">${parseFloat(act.avg_speed_kmh).toFixed(1)}</div>
+          <div class="activity-stat-val color-speed">${parseFloat(act.avg_speed_kmh).toFixed(1)}</div>
           <div class="activity-stat-lbl">km/u</div>
         </div>
       </div>

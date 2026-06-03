@@ -261,80 +261,20 @@
           <div class="glass-panel mb-4">
             <div class="d-flex justify-between align-center mb-3">
               <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="upload-cloud" style="color:var(--primary)"></i> Rit Uploaden</h2>
-              <div style="font-size:11px;color:var(--text-muted);">TCX &bull; GPX &bull; FIT &bull; KML</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,240,255,0.1);border:1px solid rgba(0,240,255,0.25);color:var(--secondary);">TCX</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(212,255,0,0.1);border:1px solid rgba(212,255,0,0.25);color:var(--primary);">GPX</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(180,100,255,0.1);border:1px solid rgba(180,100,255,0.3);color:#b464ff;">FIT</span>
+                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.25);color:#ff6464;">KML</span>
+              </div>
             </div>
             <div class="uploader-box" id="tcx-dropzone">
               <i data-lucide="file-up" class="upload-icon"></i>
-              <p style="font-size:13px;font-weight:500;">Sleep je ritbestand hierheen</p>
-              <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">TCX &bull; GPX &bull; FIT &bull; KML &mdash; of klik om te bladeren</p>
+              <p style="font-size:13px;font-weight:600;">Sleep je ritbestand hierheen</p>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">of <span style="color:var(--primary);font-weight:600;">klik om te bladeren</span></p>
               <input type="file" id="tcx-file-input" accept=".tcx,.gpx,.fit,.kml">
             </div>
           </div>
-
-          <!-- Zwift Auto-Import Panel -->
-          <div class="glass-panel mb-4 zwift-panel">
-            <div class="d-flex justify-between align-center mb-3">
-              <div class="d-flex align-center gap-10">
-                <div class="zwift-logo-badge">Z</div>
-                <div>
-                  <h2 class="widget-title" style="margin-bottom:0;">Zwift Import</h2>
-                  <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">Automatisch FIT-bestanden importeren</div>
-                </div>
-              </div>
-              <span id="zwift-browser-warning" style="display:none;font-size:10px;color:#ff9800;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:6px;padding:3px 8px;">
-                ⚠️ Alleen Chrome/Edge
-              </span>
-            </div>
-
-            <!-- Stap 1: Map selecteren -->
-            <div id="zwift-step-select">
-              <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;">
-                Selecteer je <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:4px;">Documenten/Zwift/Activities</code> map.
-                De app scant lokaal &mdash; er wordt niks naar servers gestuurd.
-              </p>
-              <button class="btn btn-primary" id="btn-zwift-scan" style="width:100%;gap:8px;">
-                <i data-lucide="folder-open" style="width:15px;height:15px;"></i>
-                Selecteer Zwift Activities map
-              </button>
-            </div>
-
-            <!-- Stap 2: Scannen indicator -->
-            <div id="zwift-step-scanning" style="display:none;text-align:center;padding:16px 0;">
-              <div class="zwift-spinner"></div>
-              <div style="font-size:12px;color:var(--text-muted);margin-top:8px;" id="zwift-scan-status">Bestanden scannen...</div>
-            </div>
-
-            <!-- Stap 3: Resultaten -->
-            <div id="zwift-step-results" style="display:none;">
-              <div class="d-flex justify-between align-center mb-3">
-                <div style="font-size:12px;color:var(--text-secondary);" id="zwift-results-summary"></div>
-                <div class="d-flex gap-8">
-                  <button class="btn btn-secondary btn-sm" id="btn-zwift-rescan" style="font-size:10px;padding:3px 8px;">
-                    <i data-lucide="refresh-cw" style="width:10px;height:10px;"></i> Opnieuw
-                  </button>
-                  <button class="btn btn-primary btn-sm" id="btn-zwift-import-all" style="font-size:11px;">
-                    <i data-lucide="download" style="width:11px;height:11px;"></i>
-                    Alles importeren
-                  </button>
-                </div>
-              </div>
-
-              <!-- Voortgangsbalk (tijdens import) -->
-              <div id="zwift-progress-wrap" style="display:none;margin-bottom:12px;">
-                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:4px;">
-                  <span id="zwift-progress-label">Importeren...</span>
-                  <span id="zwift-progress-pct">0%</span>
-                </div>
-                <div style="height:5px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden;">
-                  <div id="zwift-progress-bar" style="height:100%;background:var(--primary);border-radius:4px;width:0%;transition:width 0.3s ease;"></div>
-                </div>
-              </div>
-
-              <!-- Bestandenlijst -->
-              <div id="zwift-files-list" style="max-height:280px;overflow-y:auto;"></div>
-            </div>
-          </div>
-
 
             <!-- Upload Resultaat -->
             <div id="tcx-result-panel" style="display:none;margin-top:20px;border-top:1px solid var(--border-glass);padding-top:16px;">
@@ -470,6 +410,51 @@
             </div>
             <div id="rides-score-delta" style="font-size:12px;margin-top:8px;font-weight:700;"></div>
             <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">Op basis van al je ritten</p>
+          </div>
+
+          <!-- Zwift Import (sidebar, compact) -->
+          <div class="glass-panel zwift-panel">
+            <div class="d-flex align-center gap-10 mb-3">
+              <div class="zwift-logo-badge" style="width:28px;height:28px;font-size:14px;border-radius:7px;">Z</div>
+              <div>
+                <div style="font-size:12px;font-weight:700;">Zwift Import</div>
+                <div style="font-size:10px;color:var(--text-muted);">FIT-bestanden scannen</div>
+              </div>
+              <span id="zwift-browser-warning" style="display:none;font-size:9px;color:#ff9800;margin-left:auto;">Chrome/Edge</span>
+            </div>
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">
+              Zwift slaat ritten op als FIT-bestanden op je PC.
+              Heb je Zwift niet lokaal? Download ze via
+              <a href="https://zwift.com/feed" target="_blank" style="color:var(--primary);text-decoration:none;">zwift.com/feed</a>.
+            </p>
+            <button class="btn btn-primary" id="btn-zwift-scan" style="width:100%;font-size:11px;padding:7px;gap:6px;">
+              <i data-lucide="folder-open" style="width:12px;height:12px;"></i>
+              Selecteer Zwift map
+            </button>
+            <!-- Scan status & resultaten (hergebruik dezelfde elements) -->
+            <div id="zwift-step-scanning" style="display:none;text-align:center;padding:12px 0;">
+              <div class="zwift-spinner" style="width:24px;height:24px;border-width:2px;"></div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" id="zwift-scan-status">Scannen...</div>
+            </div>
+            <div id="zwift-step-results" style="display:none;margin-top:10px;">
+              <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;" id="zwift-results-summary"></div>
+              <div id="zwift-progress-wrap" style="display:none;margin-bottom:8px;">
+                <div style="height:4px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden;">
+                  <div id="zwift-progress-bar" style="height:100%;background:var(--primary);border-radius:4px;width:0%;transition:width 0.3s;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:3px;">
+                  <span id="zwift-progress-label">Importeren...</span>
+                  <span id="zwift-progress-pct">0%</span>
+                </div>
+              </div>
+              <div id="zwift-files-list" style="max-height:180px;overflow-y:auto;"></div>
+              <div class="d-flex gap-8" style="margin-top:8px;">
+                <button class="btn btn-secondary btn-sm" id="btn-zwift-rescan" style="font-size:10px;flex:1;">Opnieuw</button>
+                <button class="btn btn-primary btn-sm" id="btn-zwift-import-all" style="font-size:10px;flex:2;">
+                  <i data-lucide="download" style="width:10px;height:10px;"></i> Importeren
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Naar Planner knop -->
