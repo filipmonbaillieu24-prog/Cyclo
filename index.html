@@ -406,7 +406,7 @@
             <label for="profile-modal-username">Gebruikersnaam</label>
             <input type="text" id="profile-modal-username" class="form-control" required placeholder="gebruikersnaam">
           </div>
-          <div class="form-group" style="margin-bottom: 8px;">
+          <div class="form-group">
             <label for="profile-modal-biketype">Type Fiets</label>
             <select id="profile-modal-biketype" class="form-control">
               <option value="Road">Racefiets</option>
@@ -414,6 +414,34 @@
               <option value="MTB">Mountainbike</option>
               <option value="E-Bike">Elektrische Fiets</option>
             </select>
+          </div>
+
+          <h4 style="font-size: 12px; margin: 20px 0 12px; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-glass); padding-bottom: 6px;">Fysieke Gegevens</h4>
+          
+          <div class="form-group">
+            <label for="profile-modal-gender">Geslacht</label>
+            <select id="profile-modal-gender" class="form-control">
+              <option value="">Geen selectie</option>
+              <option value="Male">Man</option>
+              <option value="Female">Vrouw</option>
+              <option value="Other">Anders</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="profile-modal-birthdate">Geboortedatum</label>
+            <input type="date" id="profile-modal-birthdate" class="form-control">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+            <div class="form-group">
+              <label for="profile-modal-height">Lengte (cm)</label>
+              <input type="number" id="profile-modal-height" class="form-control" min="50" max="250" placeholder="bijv. 180">
+            </div>
+            <div class="form-group">
+              <label for="profile-modal-weight">Gewicht (kg)</label>
+              <input type="number" id="profile-modal-weight" class="form-control" step="0.1" min="10" max="300" placeholder="bijv. 75.5">
+            </div>
           </div>
         </div>
 

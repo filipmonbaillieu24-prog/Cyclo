@@ -229,6 +229,12 @@ export function openEditProfileModal() {
   elements.profileModalUsername.value = state.user.username || '';
   elements.profileModalBiketype.value = state.user.bike_type || 'Road';
   
+  // Fysieke gegevens inladen
+  document.getElementById('profile-modal-gender').value = state.user.gender || '';
+  document.getElementById('profile-modal-birthdate').value = state.user.birthdate || '';
+  document.getElementById('profile-modal-height').value = state.user.height || '';
+  document.getElementById('profile-modal-weight').value = state.user.weight || '';
+  
   // Reset tabs to Algemeen
   document.querySelectorAll('.modal-tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === 'tab-profile-general');
@@ -334,6 +340,15 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
   const avatarInput = document.getElementById('profile-modal-avatar');
   const avatarSeed = avatarInput ? avatarInput.value.trim() : '';
 
+  // Fysieke gegevens uitlezen
+  const gender = document.getElementById('profile-modal-gender').value || null;
+  const birthdate = document.getElementById('profile-modal-birthdate').value || null;
+  const heightVal = document.getElementById('profile-modal-height').value;
+  const weightVal = document.getElementById('profile-modal-weight').value;
+  
+  const height = heightVal ? parseInt(heightVal) : null;
+  const weight = weightVal ? parseFloat(weightVal) : null;
+
   if (username.length < 3) {
     showToast("Gebruikersnaam moet minimaal 3 tekens zijn.", "error");
     return;
@@ -360,7 +375,11 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
       full_name: fullName,
       username: username,
       bike_type: bikeType,
-      avatar_url: avatarUrl
+      avatar_url: avatarUrl,
+      gender: gender,
+      birthdate: birthdate,
+      height: height,
+      weight: weight
     };
 
     if (idx !== -1) {
@@ -391,7 +410,11 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
         full_name: fullName,
         username: username,
         bike_type: bikeType,
-        avatar_url: avatarUrl
+        avatar_url: avatarUrl,
+        gender: gender,
+        birthdate: birthdate,
+        height: height,
+        weight: weight
       })
       .eq('id', state.user.id);
 
@@ -401,6 +424,10 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
     state.user.username = username;
     state.user.bike_type = bikeType;
     state.user.avatar_url = avatarUrl;
+    state.user.gender = gender;
+    state.user.birthdate = birthdate;
+    state.user.height = height;
+    state.user.weight = weight;
     
     const pIdx = state.profiles.findIndex(p => p.id === state.user.id);
     if (pIdx !== -1) {
@@ -408,6 +435,10 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
       state.profiles[pIdx].username = username;
       state.profiles[pIdx].bike_type = bikeType;
       state.profiles[pIdx].avatar_url = avatarUrl;
+      state.profiles[pIdx].gender = gender;
+      state.profiles[pIdx].birthdate = birthdate;
+      state.profiles[pIdx].height = height;
+      state.profiles[pIdx].weight = weight;
     }
 
     showToast("Profiel succesvol bijgewerkt!", "success");
