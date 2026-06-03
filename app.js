@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Cyclo - Core Application Orchestrator (ES6 Module)
  * 
  * Beheert de centrale state, de event loops, de live/offline initialisatie,
@@ -131,6 +131,9 @@ export async function loadDashboardData() {
 
     // Rider Score herberekenen op basis van alle activiteiten
     _displayRiderScoreFromActivities();
+
+    // Seizoenstatistieken bijwerken
+    updateSeasonHeader();
 
     // Sociale Feed bijwerken
     loadFeedSection();
@@ -415,7 +418,133 @@ function setupEventListeners() {
 
   // Avatar live preview en presets initialiseren
   setupAvatarEventListeners();
-  
+
+  // ─── Route Builder ────────────────────────────────────────────
+  const rbToggle  = document.getElementById('route-builder-toggle');
+  const rbContent = document.getElementById('route-builder-content');
+  const rbChevron = document.getElementById('route-builder-chevron');
+  let routeBuilderInited = false;
+
+  if (rbToggle && rbContent) {
+    // Begin ingeklapt
+    rbContent.style.display = 'none';
+
+    rbToggle.addEventListener('click', async () => {
+      const isOpen = rbContent.style.display !== 'none';
+      if (isOpen) {
+        rbContent.style.display = 'none';
+        if (rbChevron) rbChevron.style.transform = '';
+      } else {
+        rbContent.style.display = 'block';
+        if (rbChevron) rbChevron.style.transform = 'rotate(180deg)';
+        // Initialiseer Leaflet kaart de eerste keer
+        if (!routeBuilderInited) {
+          routeBuilderInited = true;
+          try {
+            const rb = await import('./route-builder.js');
+            rb.initRouteBuilder('route-builder-map', {
+              onWaypointChange: (count, distKm, durMin) => {
+                const distEl = document.getElementById('route-distance');
+                const durEl  = document.getElementById('route-duration');
+                const cntEl  = document.getElementById('route-waypoint-count');
+                const gpxBtn = document.getElementById('btn-download-gpx');
+                const undoBtn = document.getElementById('btn-undo-waypoint');
+                const clrBtn  = document.getElementById('btn-clear-route');
+                if (distEl) distEl.textContent = distKm > 0 ? distKm.toFixed(1) + ' km' : '—';
+                if (durEl)  durEl.textContent  = durMin  > 0 ? Math.floor(durMin) + ' min' : '—';
+                if (cntEl)  cntEl.textContent  = count;
+                if (gpxBtn)  gpxBtn.style.display  = count >= 2 ? '' : 'none';
+                if (undoBtn) undoBtn.disabled = count === 0;
+                if (clrBtn)  clrBtn.disabled  = count === 0;
+              }
+            });
+          } catch(e) { console.warn('Route builder init fout:', e); }
+        }
+      }
+    });
+
+    // Undo / clear / download knoppen
+    document.getElementById('btn-undo-waypoint')?.addEventListener('click', async () => {
+      const rb = await import('./route-builder.js').catch(() => null);
+      if (rb?.undoLastWaypoint) rb.undoLastWaypoint();
+    });
+    document.getElementById('btn-clear-route')?.addEventListener('click', async () => {
+      const rb = await import('./route-builder.js').catch(() => null);
+      if (rb?.clearRoute) rb.clearRoute();
+    });
+    document.getElementById('btn-download-gpx')?.addEventListener('click', async () => {
+      const nameEl = document.getElementById('route-name-input');
+      const name = nameEl?.value || 'Cyclo Route';
+      const rb = await import('./route-builder.js').catch(() => null);
+      if (rb?.downloadRouteAsGpx) rb.downloadRouteAsGpx(name);
+    });
+  }
+
+  // ─── Profiel pagina avatar customizer ────────────────────────
+  // State voor de avatar op de profielpagina
+  const profileAvatarState = { bg: 'transparent', skin: 'f2d3b1', haircolor: '6a4e35', hair: 'short01', eyes: 'variant01', mouth: 'variant01' };
+
+  function buildProfileAvatarUrl() {
+    const s = profileAvatarState;
+    let url = `https://api.dicebear.com/7.x/adventurer/svg?seed=profile_${s.skin}_${s.hair}_${s.eyes}`;
+    if (s.bg !== 'transparent') url += `&backgroundColor=${s.bg}`;
+    url += `&skinColor=${s.skin}&hairColor=${s.haircolor}&hair=${s.hair}&eyes=${s.eyes}&mouth=${s.mouth}`;
+    return url;
+  }
+
+  function updateProfileAvatarPreview() {
+    const preview = document.getElementById('profile-page-preview-avatar');
+    if (preview) preview.src = buildProfileAvatarUrl();
+  }
+
+  // Swatches op profielpagina
+  document.querySelectorAll('#profile-swatches-bg .swatch-circle, #profile-swatches-skin .swatch-circle, #profile-swatches-haircolor .swatch-circle').forEach(sw => {
+    sw.addEventListener('click', () => {
+      const prop = sw.dataset.prop;
+      const val  = sw.dataset.val;
+      if (prop === 'bg')        profileAvatarState.bg        = val;
+      if (prop === 'skin')      profileAvatarState.skin      = val;
+      if (prop === 'haircolor') profileAvatarState.haircolor = val;
+      const group = sw.closest('.avatar-swatches');
+      group?.querySelectorAll('.swatch-circle').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+      updateProfileAvatarPreview();
+    });
+  });
+
+  // Chips op profielpagina
+  document.querySelectorAll('.profile-page-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const prop = chip.dataset.prop;
+      const val  = chip.dataset.val;
+      if (prop in profileAvatarState) profileAvatarState[prop] = val;
+      const grid = chip.closest('.choice-chips-grid');
+      grid?.querySelectorAll('.choice-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      updateProfileAvatarPreview();
+    });
+  });
+
+  // Preset chips op profielpagina
+  document.querySelectorAll('.profile-page-preset').forEach(preset => {
+    preset.addEventListener('click', () => {
+      const seed = preset.dataset.seed;
+      const url  = `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`;
+      const preview = document.getElementById('profile-page-preview-avatar');
+      if (preview) preview.src = url;
+      preset._customUrl = url;
+    });
+  });
+
+  // Willekeurig avatar op profielpagina
+  document.getElementById('btn-profile-randomize')?.addEventListener('click', () => {
+    const seed = Math.random().toString(36).substring(2, 8);
+    const url  = `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`;
+    const preview = document.getElementById('profile-page-preview-avatar');
+    if (preview) preview.src = url;
+  });
+
+
   // Navigatie-link naar Mijn Ritten pagina
   if (elements.linkRides) {
     elements.linkRides.addEventListener('click', (e) => {
@@ -598,11 +727,24 @@ export async function loadFeedSection(followingOnly = false) {
 
   let activities;
   if (config.isDemoMode) {
+    // Demo: gebruik alle activiteiten in state
     activities = [...(state.activities || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
-  } else {
+  } else if (followingOnly) {
+    // "Volgend" tab: alleen activiteiten van gevolgden + eigen
     activities = await loadSocialFeed();
-    if (followingOnly) {
-      // Filter op gevolgden (al gedaan in loadSocialFeed maar ook eigen activiteiten zichtbaar)
+  } else {
+    // "Iedereen" tab: ALLE activiteiten van alle gebruikers
+    try {
+      const { data, error } = await config.supabaseClient
+        .from('activities')
+        .select('*, profiles(full_name, avatar_url, username, rider_score)')
+        .order('date', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      activities = data || [];
+    } catch (err) {
+      console.error('Feed laden fout:', err);
+      activities = [];
     }
   }
 
@@ -730,6 +872,28 @@ function updateNavProfile() {
   });
 }
 
+
+// ─── Seizoen Header Statistieken ────────────────────────────────────
+function updateSeasonHeader() {
+  const myActs = (state.activities || []).filter(a => a.user_id === state.user?.id);
+  if (!myActs.length) return;
+
+  const totalKm   = myActs.reduce((s, a) => s + parseFloat(a.distance_km || 0), 0);
+  const totalHm   = myActs.reduce((s, a) => s + parseInt(a.ascent_m || 0), 0);
+  const totalSecs = myActs.reduce((s, a) => s + parseFloat(a.duration_secs || 0), 0);
+  const score     = state.user?.rider_score || 0;
+
+  const hours = Math.floor(totalSecs / 3600);
+  const mins  = Math.floor((totalSecs % 3600) / 60);
+  const timeStr = hours > 0 ? `${hours}u ${mins}m` : `${mins}m`;
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('season-km',    totalKm.toFixed(0) + ' km');
+  set('season-rides', myActs.length);
+  set('season-hm',    totalHm.toLocaleString('nl-NL') + ' m');
+  set('season-time',  timeStr);
+  set('season-score', score);
+}
 // 5. APPLICATIE INITIALISATIE RUN
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();

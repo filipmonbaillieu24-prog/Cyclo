@@ -10,10 +10,12 @@ let builderMap = null;
 let waypoints  = [];
 let routeLayer = null;
 let waypointMarkers = [];
-let currentRoute = null; // { coordinates, distanceKm, ascentM, name }
+let currentRoute = null;
+let onWaypointChangeCb = null;
 
 // ─── Initialiseer de route-bouwer kaart ───────────
-export function initRouteBuilder(containerId) {
+export function initRouteBuilder(containerId, options = {}) {
+  onWaypointChangeCb = options.onWaypointChange || null;
   if (builderMap) {
     builderMap.remove();
     builderMap = null;
@@ -150,24 +152,27 @@ async function calculateRoute() {
     
     builderMap.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
     
-    // Sla route op
-    const distKm = (route.distance / 1000).toFixed(1);
+    const distKm = (route.distance / 1000);
+    const durMin  = route.duration / 60;
     currentRoute = {
       coordinates: geoCoords.map(c => ({ lat: c[1], lng: c[0] })),
-      distanceKm: distKm,
-      durationMin: Math.round(route.duration / 60),
+      distanceKm: distKm.toFixed(1),
+      durationMin: Math.round(durMin),
       name: document.getElementById('route-name-input')?.value || 'Mijn Route'
     };
     
     // Update UI
     const distEl = document.getElementById('route-distance');
     const timeEl = document.getElementById('route-duration');
-    if (distEl) distEl.textContent = `${distKm} km`;
-    if (timeEl) timeEl.textContent = `~${Math.round(route.duration / 60)} min`;
-    if (statusEl) statusEl.textContent = `Route: ${distKm} km`;
+    if (distEl) distEl.textContent = `${distKm.toFixed(1)} km`;
+    if (timeEl) timeEl.textContent = `~${Math.round(durMin)} min`;
+    if (statusEl) statusEl.textContent = `✓ Route: ${distKm.toFixed(1)} km`;
     
     const dlBtn = document.getElementById('btn-download-gpx');
     if (dlBtn) dlBtn.style.display = 'block';
+    
+    // Callback naar app.js
+    if (onWaypointChangeCb) onWaypointChangeCb(waypoints.length, distKm, durMin);
     
   } catch (err) {
     console.error('OSRM error:', err);
@@ -176,13 +181,13 @@ async function calculateRoute() {
 }
 
 // ─── GPX Export ───────────────────────────────────
-export function downloadRouteAsGpx() {
+export function downloadRouteAsGpx(routeName) {
   if (!currentRoute || !currentRoute.coordinates.length) {
     showToast('Teken eerst een route op de kaart.', 'error');
     return;
   }
   
-  const name = document.getElementById('route-name-input')?.value || currentRoute.name || 'Cyclo Route';
+  const name = routeName || document.getElementById('route-name-input')?.value || currentRoute.name || 'Cyclo Route';
   const now  = new Date().toISOString();
   
   const trkpts = currentRoute.coordinates
@@ -244,4 +249,9 @@ function updateBuilderUI() {
   if (wayptCount) wayptCount.textContent = waypoints.length;
   if (undoBtn)    undoBtn.disabled = waypoints.length === 0;
   if (clearBtn)   clearBtn.disabled = waypoints.length === 0;
+
+  // Callback zonder route data (bij wissen / undo)
+  if (onWaypointChangeCb && (!currentRoute || waypoints.length < 2)) {
+    onWaypointChangeCb(waypoints.length, 0, 0);
+  }
 }

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
@@ -303,6 +303,47 @@
             <button class="btn btn-secondary btn-sm" id="btn-cancel-bulk" style="font-size:11px;padding:5px 10px;">✕</button>
           </div>
 
+
+          <!-- Route Bouwer Panel -->
+          <div class="glass-panel mb-4" id="route-builder-panel">
+            <div id="route-builder-toggle" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+              <h2 class="widget-title" style="margin-bottom:0;">
+                <i data-lucide="map" style="color:var(--primary)"></i> Route Bouwer
+              </h2>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:10px;color:var(--text-muted);background:rgba(212,255,0,0.08);border:1px solid rgba(212,255,0,0.2);padding:2px 8px;border-radius:10px;">Klik op kaart = waypoint</span>
+                <i data-lucide="chevron-down" id="route-builder-chevron" style="width:16px;height:16px;color:var(--text-muted);transition:transform .3s;"></i>
+              </div>
+            </div>
+            <div id="route-builder-content" style="margin-top:14px;">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+                <input type="text" id="route-name-input" class="form-control" placeholder="Naam van de route..." style="flex:1;min-width:140px;">
+                <button class="btn btn-secondary btn-sm" id="btn-undo-waypoint" disabled>
+                  <i data-lucide="undo-2" style="width:13px;height:13px;"></i> Undo
+                </button>
+                <button class="btn btn-secondary btn-sm" id="btn-clear-route" disabled>
+                  <i data-lucide="trash-2" style="width:13px;height:13px;"></i> Wis
+                </button>
+              </div>
+              <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+                <div class="route-stat-badge">
+                  <span class="val" id="route-distance">—</span>
+                  <span class="lbl">km</span>
+                </div>
+                <div class="route-stat-badge">
+                  <span class="val" id="route-duration">—</span>
+                  <span class="lbl">Fiets~tijd</span>
+                </div>
+                <span id="route-builder-status" style="font-size:11px;color:var(--text-muted);">Klik op de kaart om waypoints te plaatsen</span>
+                <span style="font-size:10px;color:var(--text-muted);margin-left:auto;"><strong id="route-waypoint-count">0</strong> wp</span>
+              </div>
+              <div id="route-builder-map" class="route-builder-map"></div>
+              <button class="btn btn-primary w-full" id="btn-download-gpx" style="display:none;margin-top:12px;">
+                <i data-lucide="download" style="width:14px;height:14px;"></i>
+                Download GPX voor fietscomputer
+              </button>
+            </div>
+          </div>
           <!-- Geplande Ritten Panel -->
           <div class="glass-panel">
             <div class="d-flex justify-between align-center mb-4">
