@@ -218,7 +218,7 @@ export async function renderRidesList() {
           <div class="capacity-bar" style="width:${pct}%;background:${barColor};"></div>
         </div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${rideParticipants.length}/${maxPart} deelnemers${isFull ? ' · <span style="color:#f44336;">VOL</span>' : ''}</div>`;
-    })() : `<div style="font-size:11px;color:var(--text-muted);">${rideParticipants.length} deelnemer(s)</div>`;
+    })() : `<div style="font-size:11px;color:var(--text-muted);" data-participant-count="${rideParticipants.length}">${rideParticipants.length} deelnemer(s)</div>`;
 
     // Weer badge
     const weather = weatherMap[ride.date];
@@ -270,9 +270,50 @@ export async function renderRidesList() {
       const joinBtn = rideDiv.querySelector('.btn-join-ride');
       if (joinBtn && !joinBtn.disabled) {
         joinBtn.addEventListener('click', async () => {
+          // 1. INSTANT DOM-update — geen re-render nodig
+          const nowParticipating = !isParticipating;
           joinBtn.disabled = true;
-          await toggleRideParticipation(ride.id, isParticipating, renderRidesList);
+          joinBtn.style.opacity = '0.6';
+
+          // Update knop tekst/stijl direct
+          if (nowParticipating) {
+            joinBtn.className = 'btn btn-secondary btn-sm btn-join-ride';
+            joinBtn.innerHTML = '<i data-lucide="x-circle" style="width:13px;height:13px;"></i> Afmelden';
+          } else {
+            joinBtn.className = 'btn btn-primary btn-sm btn-join-ride';
+            joinBtn.innerHTML = '<i data-lucide="check" style="width:13px;height:13px;"></i> Deelnemen';
+          }
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+
+          // Update deelnemers-teller direct in de DOM
+          const countEl = rideDiv.querySelector('[data-participant-count]');
+          if (countEl) {
+            const current = parseInt(countEl.dataset.participantCount) || 0;
+            const newCount = nowParticipating ? current + 1 : Math.max(0, current - 1);
+            countEl.dataset.participantCount = newCount;
+            countEl.textContent = newCount + ' deelnemer(s)';
+          }
+
+          // 2. DB-call op achtergrond
+          try {
+            await toggleRideParticipation(ride.id, isParticipating);
+          } catch(e) {
+            // Revert DOM bij fout
+            if (nowParticipating) {
+              joinBtn.className = 'btn btn-primary btn-sm btn-join-ride';
+              joinBtn.innerHTML = '<i data-lucide="check"></i> Deelnemen';
+            } else {
+              joinBtn.className = 'btn btn-secondary btn-sm btn-join-ride';
+              joinBtn.innerHTML = '<i data-lucide="x-circle"></i> Afmelden';
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+          }
+
           joinBtn.disabled = false;
+          joinBtn.style.opacity = '';
+
+          // Update isParticipating voor volgende klik
+          isParticipating = nowParticipating;
         });
       }
     if (isCreator) {
@@ -362,23 +403,6 @@ async function showCoupledRoute(activityId, rideTitle) {
 }
 
 export async function toggleRideParticipation(rideId, isParticipating, callbackFn) {
-  // ─── Optimistische lokale state update ──────────────────────────────
-  // Pas state.rides meteen aan zodat de UI instant reageert
-  const rideInState = state.rides.find(r => r.id === rideId);
-  if (rideInState) {
-    if (!rideInState.ride_participants) rideInState.ride_participants = [];
-    if (isParticipating) {
-      // Verwijder uit lijst
-      rideInState.ride_participants = rideInState.ride_participants.filter(p => p.user_id !== state.user.id);
-    } else {
-      // Voeg toe
-      rideInState.ride_participants.push({ user_id: state.user.id });
-    }
-  }
-
-  // ─── Herrender direct (optimistisch) ────────────────────────────────
-  try { renderRidesList(); } catch(e) {}
-
   // ─── Demo mode ──────────────────────────────────────────────────────
   if (config.isDemoMode) {
     let savedRides = JSON.parse(localStorage.getItem('cyclo_mock_rides') || '[]');
