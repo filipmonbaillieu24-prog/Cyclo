@@ -373,120 +373,158 @@
 
   <!-- Modal: Profiel Bewerken -->
   <div class="modal-overlay" id="profile-modal">
-    <div class="modal-content glass-panel">
-      <div class="modal-header">
+    <div class="modal-content glass-panel" style="max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; padding: 20px;">
+      <div class="modal-header" style="flex-shrink: 0; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-glass);">
         <h2 style="font-size: 20px;">Profiel Bewerken</h2>
         <button class="modal-close" id="btn-close-profile-modal">&times;</button>
       </div>
+
+      <!-- Tabs Header -->
+      <div class="modal-tabs" style="flex-shrink: 0;">
+        <button type="button" class="modal-tab-btn active" data-tab="tab-profile-general">Algemeen</button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-profile-avatar">Avatar & Foto</button>
+      </div>
       
-      <form id="form-edit-profile">
-        <!-- Live Avatar Preview & Randomizer -->
-        <div class="text-center mb-4" style="display: flex; flex-direction: column; align-items: center;">
-          <img src="" id="profile-modal-preview-avatar" class="avatar" style="width: 90px; height: 90px; border: 3px solid var(--primary); margin-bottom: 8px; border-radius: 50%; background: var(--bg-surface); padding: 4px;">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-randomize-avatar" style="padding: 4px 12px; font-size: 11px;"><i data-lucide="shuffle" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Verras me</button>
-        </div>
-
-        <div class="form-group">
-          <label for="profile-modal-fullname">Volledige Naam</label>
-          <input type="text" id="profile-modal-fullname" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label for="profile-modal-username">Gebruikersnaam</label>
-          <input type="text" id="profile-modal-username" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label for="profile-modal-biketype">Type Fiets</label>
-          <select id="profile-modal-biketype" class="form-control">
-            <option value="Road">Racefiets</option>
-            <option value="Gravel">Gravelbike</option>
-            <option value="MTB">Mountainbike</option>
-            <option value="E-Bike">Elektrische Fiets</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="profile-modal-avatar">Avatar Stijl (Seed)</label>
-          <input type="text" id="profile-modal-avatar" class="form-control" placeholder="bijv. wout of remco">
-          <small style="color: var(--text-muted); font-size: 11px;">Typ een willekeurig woord of kies een preset:</small>
-          
-          <div class="d-flex gap-8 mt-2 justify-center flex-wrap" id="avatar-presets-container" style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
-            <div class="avatar-preset-chip" data-seed="wout" title="Wout van Aert" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" class="avatar" style="width: 28px; height: 28px;"></div>
-            <div class="avatar-preset-chip" data-seed="remco" title="Remco Evenepoel" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=remco" class="avatar" style="width: 28px; height: 28px;"></div>
-            <div class="avatar-preset-chip" data-seed="mathieu" title="Mathieu van der Poel" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=mathieu" class="avatar" style="width: 28px; height: 28px;"></div>
-            <div class="avatar-preset-chip" data-seed="marianne" title="Marianne Vos" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=marianne" class="avatar" style="width: 28px; height: 28px;"></div>
-            <div class="avatar-preset-chip" data-seed="puck" title="Puck Pieterse" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=puck" class="avatar" style="width: 28px; height: 28px;"></div>
-            <div class="avatar-preset-chip" data-seed="sagan" title="Peter Sagan" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=sagan" class="avatar" style="width: 28px; height: 28px;"></div>
+      <form id="form-edit-profile" style="flex-grow: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Live Avatar Preview (groot, bovenaan, altijd zichtbaar) -->
+        <div class="text-center" style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0; margin-bottom: 4px;">
+          <div style="position: relative; width: 90px; height: 90px; margin-bottom: 8px;">
+            <img src="" id="profile-modal-preview-avatar" class="avatar" style="width: 90px; height: 90px; border: 3px solid var(--primary); border-radius: 50%; background: var(--bg-surface); padding: 4px; object-fit: cover;">
+          </div>
+          <div class="d-flex gap-8 justify-center">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-randomize-avatar" style="padding: 4px 12px; font-size: 11px;"><i data-lucide="shuffle" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Verras me</button>
           </div>
         </div>
 
-        <!-- Customizer Details Toggle & Form -->
-        <div class="form-group mt-3 text-center">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-customizer" style="width: 100%;"><i data-lucide="sliders" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Details Handmatig Aanpassen</button>
+        <!-- Tab 1: Algemene Informatie -->
+        <div id="tab-profile-general" class="modal-tab-content active">
+          <div class="form-group">
+            <label for="profile-modal-fullname">Volledige Naam</label>
+            <input type="text" id="profile-modal-fullname" class="form-control" required placeholder="Jouw naam">
+          </div>
+          <div class="form-group">
+            <label for="profile-modal-username">Gebruikersnaam</label>
+            <input type="text" id="profile-modal-username" class="form-control" required placeholder="gebruikersnaam">
+          </div>
+          <div class="form-group" style="margin-bottom: 8px;">
+            <label for="profile-modal-biketype">Type Fiets</label>
+            <select id="profile-modal-biketype" class="form-control">
+              <option value="Road">Racefiets</option>
+              <option value="Gravel">Gravelbike</option>
+              <option value="MTB">Mountainbike</option>
+              <option value="E-Bike">Elektrische Fiets</option>
+            </select>
+          </div>
         </div>
 
-        <div id="avatar-customizer-options" style="display: none; background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass); padding: 12px; border-radius: var(--radius-sm); margin-top: 12px; text-align: left;">
-          <h4 style="font-size: 13px; margin-bottom: 8px; color: var(--primary);">Avatar Customizer</h4>
-          
-          <div class="form-group mb-2">
-            <label for="custom-avatar-skin" style="font-size: 11px;">Huidskleur</label>
-            <select id="custom-avatar-skin" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
-              <option value="f5c096">Licht</option>
-              <option value="e5a073">Medium</option>
-              <option value="b16a5b">Donker</option>
-            </select>
+        <!-- Tab 2: Avatar & Foto -->
+        <div id="tab-profile-avatar" class="modal-tab-content" style="display: none;">
+          <!-- Hidden inputs for avatar seeds and styles -->
+          <input type="hidden" id="profile-modal-avatar" value="">
+
+          <!-- File Upload Zone for Real Photo -->
+          <div class="avatar-upload-zone" id="avatar-photo-dropzone">
+            <input type="file" id="avatar-photo-file-input" accept="image/png, image/jpeg, image/jpg" style="display: none;">
+            <div class="upload-prompt">
+              <i data-lucide="camera" style="width: 24px; height: 24px; display: inline-block;"></i>
+              <span>Eigen foto uploaden</span>
+              <small>Sleep afbeelding hierheen of klik om te bladeren</small>
+            </div>
           </div>
           
-          <div class="form-group mb-2">
-            <label for="custom-avatar-hair" style="font-size: 11px;">Haarstijl</label>
-            <select id="custom-avatar-hair" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
-              <option value="short01">Kort</option>
-              <option value="long01">Lang</option>
-              <option value="short05">Krullend</option>
-              <option value="long03">Bob</option>
-              <option value="none">Kaal</option>
-            </select>
+          <div style="text-align: center; margin: 16px 0; display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--text-muted); font-size: 11px; text-transform: uppercase; font-weight: 600;">
+            <span style="flex-grow: 1; height: 1px; background: var(--border-glass);"></span>
+            <span>of maak een avatar</span>
+            <span style="flex-grow: 1; height: 1px; background: var(--border-glass);"></span>
           </div>
 
-          <div class="form-group mb-2">
-            <label for="custom-avatar-haircolor" style="font-size: 11px;">Haarkleur</label>
-            <select id="custom-avatar-haircolor" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
-              <option value="090807">Zwart</option>
-              <option value="6b3f23">Bruin</option>
-              <option value="b58143">Blond</option>
-              <option value="d66e2c">Rood</option>
-              <option value="a0a0a0">Grijs</option>
-            </select>
+          <!-- Presets (Wielerhelden) -->
+          <div class="form-group mb-3">
+            <label style="font-size: 11px; margin-bottom: 6px;">Kies een wielerheld-preset</label>
+            <div class="d-flex gap-8 justify-center flex-wrap" id="avatar-presets-container" style="background: rgba(255,255,255,0.01); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+              <div class="avatar-preset-chip" data-seed="wout" title="Wout van Aert" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" class="avatar" style="width: 26px; height: 26px;"></div>
+              <div class="avatar-preset-chip" data-seed="remco" title="Remco Evenepoel" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=remco" class="avatar" style="width: 26px; height: 26px;"></div>
+              <div class="avatar-preset-chip" data-seed="mathieu" title="Mathieu van der Poel" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=mathieu" class="avatar" style="width: 26px; height: 26px;"></div>
+              <div class="avatar-preset-chip" data-seed="marianne" title="Marianne Vos" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=marianne" class="avatar" style="width: 26px; height: 26px;"></div>
+              <div class="avatar-preset-chip" data-seed="puck" title="Puck Pieterse" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=puck" class="avatar" style="width: 26px; height: 26px;"></div>
+              <div class="avatar-preset-chip" data-seed="sagan" title="Peter Sagan" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=sagan" class="avatar" style="width: 26px; height: 26px;"></div>
+            </div>
           </div>
 
-          <div class="form-group mb-2">
-            <label for="custom-avatar-eyes" style="font-size: 11px;">Ogen</label>
-            <select id="custom-avatar-eyes" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
-              <option value="normal">Normaal</option>
-              <option value="happy">Blij</option>
-              <option value="wink">Knipoog</option>
-              <option value="squint">Spleetogen</option>
-            </select>
-          </div>
+          <!-- DiceBear Character Customizer Details -->
+          <div id="avatar-customizer-options" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass); padding: 12px; border-radius: var(--radius-sm); text-align: left;">
+            <h4 style="font-size: 12px; margin-bottom: 12px; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em;">Pas je avatar aan</h4>
+            
+            <!-- Swatches for Skin Color -->
+            <div class="swatch-group">
+              <div class="swatch-title">Huidskleur</div>
+              <div class="avatar-swatches" id="swatches-skin">
+                <div class="swatch-circle" data-prop="skin" data-val="f5c096" style="background-color: #f5c096;"></div>
+                <div class="swatch-circle" data-prop="skin" data-val="e5a073" style="background-color: #e5a073;"></div>
+                <div class="swatch-circle" data-prop="skin" data-val="b16a5b" style="background-color: #b16a5b;"></div>
+                <div class="swatch-circle" data-prop="skin" data-val="8d554a" style="background-color: #8d554a;"></div>
+              </div>
+            </div>
 
-          <div class="form-group mb-2">
-            <label for="custom-avatar-mouth" style="font-size: 11px;">Mond</label>
-            <select id="custom-avatar-mouth" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
-              <option value="smile">Glimlach</option>
-              <option value="serious">Serieus</option>
-              <option value="open">Open Mond</option>
-            </select>
-          </div>
+            <!-- Swatches for Hair Color -->
+            <div class="swatch-group">
+              <div class="swatch-title">Haarkleur</div>
+              <div class="avatar-swatches" id="swatches-haircolor">
+                <div class="swatch-circle dark-swatch" data-prop="haircolor" data-val="090807" style="background-color: #090807;"></div>
+                <div class="swatch-circle" data-prop="haircolor" data-val="6b3f23" style="background-color: #6b3f23;"></div>
+                <div class="swatch-circle" data-prop="haircolor" data-val="b58143" style="background-color: #b58143;"></div>
+                <div class="swatch-circle" data-prop="haircolor" data-val="d66e2c" style="background-color: #d66e2c;"></div>
+                <div class="swatch-circle" data-prop="haircolor" data-val="a0a0a0" style="background-color: #a0a0a0;"></div>
+              </div>
+            </div>
 
-          <div class="form-group mb-0">
-            <label for="custom-avatar-features" style="font-size: 11px;">Extra Kenmerken</label>
-            <select id="custom-avatar-features" class="form-control" style="font-size: 12px; padding: 6px 12px; height: auto;">
-              <option value="none">Geen</option>
-              <option value="glasses">Bril</option>
-              <option value="mustache">Snor</option>
-            </select>
+            <!-- Chips for Hair Style -->
+            <div class="choice-group">
+              <div class="choice-title swatch-title">Haarstijl</div>
+              <div class="choice-chips-grid" id="chips-hair">
+                <div class="choice-chip" data-prop="hair" data-val="short01">Kort</div>
+                <div class="choice-chip" data-prop="hair" data-val="long01">Lang</div>
+                <div class="choice-chip" data-prop="hair" data-val="short05">Krullend</div>
+                <div class="choice-chip" data-prop="hair" data-val="long03">Bob</div>
+                <div class="choice-chip" data-prop="hair" data-val="none">Kaal</div>
+              </div>
+            </div>
+
+            <!-- Chips for Eyes -->
+            <div class="choice-group">
+              <div class="choice-title swatch-title">Ogen</div>
+              <div class="choice-chips-grid" id="chips-eyes">
+                <div class="choice-chip" data-prop="eyes" data-val="normal">Normaal</div>
+                <div class="choice-chip" data-prop="eyes" data-val="happy">Blij</div>
+                <div class="choice-chip" data-prop="eyes" data-val="wink">Knipoog</div>
+                <div class="choice-chip" data-prop="eyes" data-val="squint">Spleet</div>
+              </div>
+            </div>
+
+            <!-- Chips for Mouth -->
+            <div class="choice-group">
+              <div class="choice-title swatch-title">Mond</div>
+              <div class="choice-chips-grid" id="chips-mouth">
+                <div class="choice-chip" data-prop="mouth" data-val="smile">Lach</div>
+                <div class="choice-chip" data-prop="mouth" data-val="serious">Serieus</div>
+                <div class="choice-chip" data-prop="mouth" data-val="open">Open</div>
+              </div>
+            </div>
+
+            <!-- Chips for Extra Features -->
+            <div class="choice-group">
+              <div class="choice-title swatch-title">Extra Kenmerken</div>
+              <div class="choice-chips-grid" id="chips-features">
+                <div class="choice-chip" data-prop="features" data-val="none">Geen</div>
+                <div class="choice-chip" data-prop="features" data-val="glasses">Bril</div>
+                <div class="choice-chip" data-prop="features" data-val="mustache">Snor</div>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary w-full mt-4">Profiel Opslaan</button>
+        <button type="submit" class="btn btn-primary w-full mt-auto" style="flex-shrink: 0; margin-top: 12px;">Profiel Opslaan</button>
       </form>
     </div>
   </div>

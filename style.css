@@ -1129,5 +1129,197 @@ select.form-control option {
   border: none !important;
 }
 
+/* --- Visual Avatar Editor & Custom Photo Uploader --- */
+
+/* Modal Tabs System */
+.modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-glass);
+  margin-bottom: 20px;
+  gap: 16px;
+}
+
+.modal-tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  padding: 10px 0;
+  cursor: pointer;
+  position: relative;
+  transition: color var(--transition-fast);
+}
+
+.modal-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.modal-tab-btn.active {
+  color: var(--primary);
+}
+
+.modal-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--primary);
+  box-shadow: 0 0 8px var(--primary);
+}
+
+.modal-tab-content {
+  display: none;
+  animation: fadeIn var(--transition-fast) forwards;
+}
+
+.modal-tab-content.active {
+  display: block;
+}
+
+/* Color Swatches Grid */
+.swatch-group {
+  margin-bottom: 16px;
+}
+
+.swatch-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.avatar-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.swatch-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  position: relative;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.swatch-circle:hover {
+  transform: scale(1.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.swatch-circle.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.swatch-circle.active::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #000;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Light text for dark swatches checkmark */
+.swatch-circle.active.dark-swatch::after {
+  color: #fff;
+}
+
+/* Choice Chips Grid */
+.choice-group {
+  margin-bottom: 16px;
+}
+
+.choice-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+  gap: 8px;
+}
+
+.choice-chip {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.choice-chip:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
+.choice-chip.active {
+  background: rgba(212, 255, 0, 0.08);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 0 8px rgba(212, 255, 0, 0.05);
+}
+
+/* Avatar File Upload Zone */
+.avatar-upload-zone {
+  border: 2px dashed var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.01);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-top: 16px;
+  position: relative;
+}
+
+.avatar-upload-zone:hover, .avatar-upload-zone.dragover {
+  border-color: var(--secondary);
+  background: rgba(0, 240, 255, 0.02);
+}
+
+.upload-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-prompt i {
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+
+.avatar-upload-zone:hover .upload-prompt i {
+  color: var(--secondary);
+}
+
+.upload-prompt span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.upload-prompt small {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
 
 
