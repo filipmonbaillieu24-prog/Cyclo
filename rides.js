@@ -474,32 +474,24 @@ export async function toggleRideParticipation(rideId, isParticipating, callbackF
       await addFeedEntry('joined_ride', { ride_id: rideId, ride_title: ride?.title });
       showToast('Succesvol aangemeld voor de rit!', 'success');
     }
-    // Herlaad de deelnemers van DEZE rit direct uit de DB voor garantie
-    // (realtime subscription kan anders de optimistische update overschrijven)
+    // Herlaad de deelnemers van DEZE rit direct uit de DB en update state
+    // (GEEN renderRidesList aanroepen — de DOM is al correct bijgewerkt door de click handler)
     try {
       const { data: freshParticipants } = await config.supabaseClient
         .from('ride_participants')
         .select('user_id')
         .eq('ride_id', rideId);
-      if (freshParticipants !== null && rideInState) {
-        rideInState.ride_participants = freshParticipants;
+      if (freshParticipants !== null && ride) {
+        ride.ride_participants = freshParticipants; // state.rides up-to-date houden
       }
     } catch(e) { console.warn('Deelnemers herladen mislukt:', e); }
-    // Herrender met gegarandeerd correcte data
-    try { await renderRidesList(); } catch(e) {}
+    // Geen renderRidesList() hier — zou de instant DOM-update overschrijven
+
   } catch (err) {
-    // ─── Revert optimistische update bij fout ────────────────────────
-    if (rideInState) {
-      if (isParticipating) {
-        // Was deelnemer, zet terug
-        rideInState.ride_participants.push({ user_id: state.user.id });
-      } else {
-        // Was geen deelnemer, verwijder terug
-        rideInState.ride_participants = rideInState.ride_participants.filter(p => p.user_id !== state.user.id);
-      }
-      try { renderRidesList(); } catch(e) {}
-    }
+    // DOM-revert wordt gedaan door de click handler in renderRidesList
+    // Gooi de error door zodat de click handler hem kan vangen
     showToast(err.message, 'error');
+    throw err;
   }
 }
 
