@@ -267,10 +267,14 @@ export async function renderRidesList() {
       </div>
     `;
 
-    if (state.user && !isFull || isParticipating) {
       const joinBtn = rideDiv.querySelector('.btn-join-ride');
-      if (joinBtn && !joinBtn.disabled) joinBtn.addEventListener('click', () => toggleRideParticipation(ride.id, isParticipating));
-    }
+      if (joinBtn && !joinBtn.disabled) {
+        joinBtn.addEventListener('click', async () => {
+          joinBtn.disabled = true;
+          await toggleRideParticipation(ride.id, isParticipating, renderRidesList);
+          joinBtn.disabled = false;
+        });
+      }
     if (isCreator) {
       rideDiv.querySelector('.btn-edit-ride')?.addEventListener('click', () => openPlanRideModal(ride));
       rideDiv.querySelector('.btn-delete-ride')?.addEventListener('click', () => deleteRide(ride.id));
@@ -357,35 +361,47 @@ async function showCoupledRoute(activityId, rideTitle) {
   }
 }
 
-export async function toggleRideParticipation(rideId, isParticipating, loadDashboardDataCallback) {
+export async function toggleRideParticipation(rideId, isParticipating, callbackFn) {
+  // ─── Optimistische lokale state update ──────────────────────────────
+  // Pas state.rides meteen aan zodat de UI instant reageert
+  const rideInState = state.rides.find(r => r.id === rideId);
+  if (rideInState) {
+    if (!rideInState.ride_participants) rideInState.ride_participants = [];
+    if (isParticipating) {
+      // Verwijder uit lijst
+      rideInState.ride_participants = rideInState.ride_participants.filter(p => p.user_id !== state.user.id);
+    } else {
+      // Voeg toe
+      rideInState.ride_participants.push({ user_id: state.user.id });
+    }
+  }
+
+  // ─── Herrender direct (optimistisch) ────────────────────────────────
+  try { renderRidesList(); } catch(e) {}
+
+  // ─── Demo mode ──────────────────────────────────────────────────────
   if (config.isDemoMode) {
     let savedRides = JSON.parse(localStorage.getItem('cyclo_mock_rides') || '[]');
     const idx = savedRides.findIndex(r => r.id === rideId);
-    
     if (idx !== -1) {
       let participants = savedRides[idx].participants || [];
       if (isParticipating) {
         participants = participants.filter(id => id !== state.user.id);
       } else {
-        if (!participants.includes(state.user.id)) {
-          participants.push(state.user.id);
-        }
+        if (!participants.includes(state.user.id)) participants.push(state.user.id);
       }
       savedRides[idx].participants = participants;
       localStorage.setItem('cyclo_mock_rides', JSON.stringify(savedRides));
-      
-      // Feed entry aanmaken
       addFeedEntry(isParticipating ? 'left_ride' : 'joined_ride', {
-        ride_id: rideId,
-        ride_title: savedRides[idx].title
+        ride_id: rideId, ride_title: savedRides[idx].title
       });
-
-      showToast(isParticipating ? "Afgemeld voor de rit." : "Aangemeld voor de rit!", "success");
-      if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
+      showToast(isParticipating ? 'Afgemeld voor de rit.' : 'Aangemeld voor de rit!', 'success');
+      if (typeof callbackFn === 'function') callbackFn();
     }
     return;
   }
-  
+
+  // ─── Live Supabase ───────────────────────────────────────────────────
   try {
     const ride = state.rides.find(r => r.id === rideId);
     if (isParticipating) {
@@ -395,22 +411,31 @@ export async function toggleRideParticipation(rideId, isParticipating, loadDashb
         .eq('ride_id', rideId)
         .eq('user_id', state.user.id);
       if (error) throw error;
-
       await addFeedEntry('left_ride', { ride_id: rideId, ride_title: ride?.title });
-      showToast("Afgemeld voor de rit.", "info");
+      showToast('Afgemeld voor de rit.', 'info');
     } else {
       const { error } = await config.supabaseClient
         .from('ride_participants')
         .insert([{ ride_id: rideId, user_id: state.user.id }]);
       if (error) throw error;
-
       await addFeedEntry('joined_ride', { ride_id: rideId, ride_title: ride?.title });
-      showToast("Succesvol aangemeld voor de rit!", "success");
+      showToast('Succesvol aangemeld voor de rit!', 'success');
     }
-    
-    if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
+    // Re-render na DB bevestiging voor consistentie
+    if (typeof callbackFn === 'function') callbackFn();
   } catch (err) {
-    showToast(err.message, "error");
+    // ─── Revert optimistische update bij fout ────────────────────────
+    if (rideInState) {
+      if (isParticipating) {
+        // Was deelnemer, zet terug
+        rideInState.ride_participants.push({ user_id: state.user.id });
+      } else {
+        // Was geen deelnemer, verwijder terug
+        rideInState.ride_participants = rideInState.ride_participants.filter(p => p.user_id !== state.user.id);
+      }
+      try { renderRidesList(); } catch(e) {}
+    }
+    showToast(err.message, 'error');
   }
 }
 
