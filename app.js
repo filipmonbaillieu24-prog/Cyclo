@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cyclo - Core Application Orchestrator (ES6 Module)
  * 
  * Beheert de centrale state, de event loops, de live/offline initialisatie,
@@ -97,31 +97,33 @@ export async function loadDashboardData() {
       }
     }
     
-    // C. Beschikbaarheden van deze maand ophalen
+    // C. Beschikbaarheden van deze maand ophalen (niet-fataal)
     const startOfMonth = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1).toISOString().split('T')[0];
     const endOfMonth = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
     
-    const { data: availabilities, error: aError } = await config.supabaseClient
-      .from('availabilities')
-      .select('*')
-      .gte('date', startOfMonth)
-      .lte('date', endOfMonth);
-      
-    if (aError) throw aError;
-    state.availabilities = availabilities;
+    try {
+      const { data: availabilities, error: aError } = await config.supabaseClient
+        .from('availabilities')
+        .select('*')
+        .gte('date', startOfMonth)
+        .lte('date', endOfMonth);
+      if (!aError) state.availabilities = availabilities || [];
+      else console.warn('Beschikbaarheden fout (niet-fataal):', aError.message);
+    } catch (e) { console.warn('Beschikbaarheden exception:', e); }
     
-    // D. Geplande ritten van deze maand ophalen
-    const { data: rides, error: rError } = await config.supabaseClient
-      .from('rides')
-      .select('*, ride_participants(user_id)')
-      .gte('date', startOfMonth)
-      .lte('date', endOfMonth);
-      
-    if (rError) throw rError;
-    state.rides = rides;
-    
+    // D. Geplande ritten van deze maand ophalen (niet-fataal)
+    try {
+      const { data: rides, error: rError } = await config.supabaseClient
+        .from('rides')
+        .select('*, ride_participants(user_id)')
+        .gte('date', startOfMonth)
+        .lte('date', endOfMonth);
+      if (!rError) state.rides = rides || [];
+      else console.warn('Ritten fout (niet-fataal):', rError.message);
+    } catch (e) { console.warn('Ritten exception:', e); }
+
     // E. Activiteiten ophalen en UI renderen
-    await loadActivities();
+    try { await loadActivities(); } catch(e) { console.warn('loadActivities:', e); }
     try { renderCalendar(); } catch(e) { console.warn('renderCalendar:', e); }
     try { renderRidesList(); } catch(e) { console.warn('renderRidesList:', e); }
     renderActivitiesList(loadDashboardData);

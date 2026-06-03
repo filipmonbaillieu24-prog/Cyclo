@@ -86,7 +86,7 @@ export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
   numberEl.textContent = dayNumber;
   cell.appendChild(numberEl);
   
-  const dayAvails = state.availabilities.filter(a => a.date === dateStr);
+  const dayAvails = (state.availabilities || []).filter(a => a.date === dateStr);
 
   // Bouw een gecombineerde lijst: eigen beschikbaarheid + vrienden
   const allAvailsToShow = [];
