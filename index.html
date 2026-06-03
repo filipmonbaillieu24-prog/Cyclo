@@ -409,32 +409,85 @@
 
     <!-- 4. MIJN RITTEN PAGINA -->
     <section id="section-rides" class="app-section">
-      <div class="dashboard-container">
 
-        <!-- Hoofd: Upload + Resultaten + Activiteiten -->
+      <!-- Seizoen Totalen Banner -->
+      <div id="rides-season-header" style="background:linear-gradient(135deg,rgba(212,255,0,0.07),rgba(0,240,255,0.04));border-bottom:1px solid rgba(212,255,0,0.15);padding:14px 24px;">
+        <div style="display:flex;align-items:center;max-width:1100px;margin:0 auto;gap:0;overflow-x:auto;">
+          <div style="display:flex;flex-direction:column;align-items:center;padding:4px 28px;flex:1;min-width:70px;border-right:1px solid rgba(255,255,255,0.07);">
+            <div style="font-size:22px;font-weight:800;color:#fff;" id="season-km">—</div>
+            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-top:2px;">km totaal</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;padding:4px 28px;flex:1;min-width:70px;border-right:1px solid rgba(255,255,255,0.07);">
+            <div style="font-size:22px;font-weight:800;color:#fff;" id="season-rides">—</div>
+            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-top:2px;">ritten</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;padding:4px 28px;flex:1;min-width:70px;border-right:1px solid rgba(255,255,255,0.07);">
+            <div style="font-size:22px;font-weight:800;color:#fff;" id="season-hm">—</div>
+            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-top:2px;">hoogtemeters</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;padding:4px 28px;flex:1;min-width:70px;border-right:1px solid rgba(255,255,255,0.07);">
+            <div style="font-size:22px;font-weight:800;color:#fff;" id="season-time">—</div>
+            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-top:2px;">fietstijd</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;padding:4px 28px;flex:1;min-width:70px;">
+            <div style="font-size:22px;font-weight:800;color:var(--primary);" id="season-score">—</div>
+            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-top:2px;">rider score</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab navigatie (sticky onder navbar) -->
+      <div style="background:var(--bg-surface);border-bottom:1px solid var(--border-glass);padding:0 24px;position:sticky;top:64px;z-index:90;">
+        <div style="display:flex;max-width:1100px;margin:0 auto;">
+          <button class="rides-page-tab active" id="tab-my-rides" data-tab="my" style="display:flex;align-items:center;gap:6px;padding:14px 22px;font-size:13px;font-weight:600;color:var(--text-muted);border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer;transition:all .2s;font-family:var(--font-body);white-space:nowrap;">
+            <i data-lucide="user" style="width:14px;height:14px;"></i> Mijn Ritten
+          </button>
+          <button class="rides-page-tab" id="tab-club-rides" data-tab="club" style="display:flex;align-items:center;gap:6px;padding:14px 22px;font-size:13px;font-weight:600;color:var(--text-muted);border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer;transition:all .2s;font-family:var(--font-body);white-space:nowrap;">
+            <i data-lucide="users" style="width:14px;height:14px;"></i> Club Ritten
+          </button>
+          <button class="rides-page-tab" id="tab-stats-rides" data-tab="stats" style="display:flex;align-items:center;gap:6px;padding:14px 22px;font-size:13px;font-weight:600;color:var(--text-muted);border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer;transition:all .2s;font-family:var(--font-body);white-space:nowrap;">
+            <i data-lucide="bar-chart-2" style="width:14px;height:14px;"></i> Statistieken
+          </button>
+        </div>
+      </div>
+
+      <div class="dashboard-container" style="padding-top:20px;">
         <div class="main-dashboard-content">
 
-          <!-- Upload Panel -->
-          <div class="glass-panel mb-4">
-            <div class="d-flex justify-between align-center mb-3">
-              <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="upload-cloud" style="color:var(--primary)"></i> Rit Uploaden</h2>
-              <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,240,255,0.1);border:1px solid rgba(0,240,255,0.25);color:var(--secondary);">TCX</span>
-                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(212,255,0,0.1);border:1px solid rgba(212,255,0,0.25);color:var(--primary);">GPX</span>
-                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(180,100,255,0.1);border:1px solid rgba(180,100,255,0.3);color:#b464ff;">FIT</span>
-                <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.25);color:#ff6464;">KML</span>
+          <!-- ─── TAB: MIJN RITTEN ─── -->
+          <div id="my-rides-content">
+
+            <!-- Upload Panel -->
+            <div class="glass-panel mb-4">
+              <div class="d-flex justify-between align-center mb-3">
+                <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="upload-cloud" style="color:var(--primary)"></i> Rit Uploaden</h2>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                  <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(0,240,255,0.1);border:1px solid rgba(0,240,255,0.25);color:var(--secondary);">TCX</span>
+                  <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(212,255,0,0.1);border:1px solid rgba(212,255,0,0.25);color:var(--primary);">GPX</span>
+                  <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(180,100,255,0.1);border:1px solid rgba(180,100,255,0.3);color:#b464ff;">FIT</span>
+                  <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.25);color:#ff6464;">KML</span>
+                </div>
+              </div>
+              <div class="uploader-box" id="tcx-dropzone">
+                <i data-lucide="file-up" class="upload-icon"></i>
+                <p style="font-size:13px;font-weight:600;">Sleep je ritbestand hierheen</p>
+                <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">of <span style="color:var(--primary);font-weight:600;">klik om te bladeren</span></p>
+                <input type="file" id="tcx-file-input" accept=".tcx,.gpx,.fit,.kml">
+              </div>
+              <!-- Rit type toggle (eigen rit of clubrit) -->
+              <div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;background:rgba(255,255,255,0.02);border-radius:var(--radius-sm);border:1px solid var(--border-glass);">
+                <i data-lucide="tag" style="width:14px;height:14px;color:var(--text-muted);flex-shrink:0;"></i>
+                <span style="font-size:12px;color:var(--text-muted);">Soort rit:</span>
+                <div style="display:flex;gap:4px;">
+                  <button class="ride-type-btn active" id="ride-type-solo" data-type="solo" style="font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid var(--border-glass);background:rgba(212,255,0,0.12);color:var(--primary);font-weight:600;cursor:pointer;transition:all .2s;">🚴 Solo</button>
+                  <button class="ride-type-btn" id="ride-type-club" data-type="club" style="font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid var(--border-glass);background:transparent;color:var(--text-muted);font-weight:600;cursor:pointer;transition:all .2s;">👥 Clubrit</button>
+                </div>
+                <span style="font-size:10px;color:var(--text-muted);margin-left:auto;">Clubritten zijn zichtbaar voor alle leden</span>
               </div>
             </div>
-            <div class="uploader-box" id="tcx-dropzone">
-              <i data-lucide="file-up" class="upload-icon"></i>
-              <p style="font-size:13px;font-weight:600;">Sleep je ritbestand hierheen</p>
-              <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">of <span style="color:var(--primary);font-weight:600;">klik om te bladeren</span></p>
-              <input type="file" id="tcx-file-input" accept=".tcx,.gpx,.fit,.kml">
-            </div>
-          </div>
 
             <!-- Upload Resultaat -->
-            <div id="tcx-result-panel" style="display:none;margin-top:20px;border-top:1px solid var(--border-glass);padding-top:16px;">
+            <div id="tcx-result-panel" style="display:none;" class="glass-panel mb-4">
               <div class="d-flex justify-between align-center mb-3">
                 <h4 style="font-size:14px;font-weight:600;">Ritgegevens</h4>
                 <div class="score-badge" style="margin:0;">
@@ -442,7 +495,6 @@
                   <span>Rider Score</span>
                 </div>
               </div>
-
               <div class="ride-metrics-grid">
                 <div class="metric-card"><div class="metric-val" id="metric-distance">-</div><div class="metric-lbl">KM</div></div>
                 <div class="metric-card"><div class="metric-val" id="metric-duration">-</div><div class="metric-lbl">Tijd</div></div>
@@ -452,11 +504,7 @@
                 <div class="metric-card"><div class="metric-val" id="metric-power">-</div><div class="metric-lbl">Gem. Watt</div></div>
                 <div class="metric-card" id="metric-wkg-card" style="display:none;"><div class="metric-val" id="metric-wkg">-</div><div class="metric-lbl">W/kg</div></div>
               </div>
-
-              <!-- Route Kaart -->
               <div class="route-canvas-container" id="route-map" style="margin-top:16px;"></div>
-
-              <!-- Hoogteprofiel -->
               <div id="elevation-chart-panel" style="display:none;margin-top:16px;border-top:1px solid var(--border-glass);padding-top:14px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                   <h4 style="font-size:13px;font-weight:600;color:var(--primary);">&#x26F0;&#xFE0F; Hoogteprofiel</h4>
@@ -467,67 +515,43 @@
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Prestaties grafiek -->
-          <div class="glass-panel mb-4" id="stats-chart-panel" style="display:none;">
-            <h2 class="widget-title"><i data-lucide="trending-up" style="color:var(--primary)"></i> Prestaties Over Tijd</h2>
-            <div style="height:220px;position:relative;">
-              <canvas id="stats-chart"></canvas>
-            </div>
-          </div>
-
-          <!-- Rittenhistorie -->
-          <!-- Tab switcher: Mijn Ritten / Club Ritten -->
-          <div class="rides-tabs" id="rides-tabs">
-            <button class="rides-tab active" id="tab-my-rides" data-tab="my">
-              <i data-lucide="user" style="width:13px;height:13px;"></i>
-              Mijn Ritten
-            </button>
-            <button class="rides-tab" id="tab-club-rides" data-tab="club">
-              <i data-lucide="users" style="width:13px;height:13px;"></i>
-              Club Ritten
-            </button>
-          </div>
-
-          <!-- Mijn Ritten inhoud -->
-          <div id="my-rides-content">
+            <!-- Mijn rittenhistorie -->
             <div class="glass-panel">
-              <div class="d-flex justify-between align-center mb-4">
+              <div class="d-flex justify-between align-center mb-3">
                 <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="history" style="color:var(--secondary)"></i> Rittenhistorie</h2>
-              </div>
-
-              <!-- Filter & Sorteer balk -->
-              <div id="activity-filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border-glass);">
                 <div style="display:flex;gap:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-sm);padding:3px;">
                   <button data-filter-period="all" class="btn btn-secondary btn-sm active" style="padding:3px 8px;font-size:10px;">Alles</button>
-                  <button data-filter-period="30d" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">30 dagen</button>
-                  <button data-filter-period="90d" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">90 dagen</button>
+                  <button data-filter-period="30d" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">30d</button>
+                  <button data-filter-period="90d" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">90d</button>
                   <button data-filter-period="year" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Dit jaar</button>
                 </div>
-                <div style="display:flex;gap:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-sm);padding:3px;">
-                  <button data-filter-sort="date" class="btn btn-secondary btn-sm active" style="padding:3px 8px;font-size:10px;">Datum</button>
-                  <button data-filter-sort="distance" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Afstand</button>
-                  <button data-filter-sort="score" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Score</button>
-                  <button data-filter-sort="speed" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Snelheid</button>
-                </div>
               </div>
-
               <div id="activities-list-container">
-                <div class="empty-state">Je hebt nog geen ritten geüpload. Upload een TCX, GPX of FIT bestand hierboven!</div>
+                <div class="empty-state">Je hebt nog geen ritten geüpload. Sleep een TCX, GPX of FIT bestand hierboven!</div>
               </div>
             </div>
           </div>
 
-          <!-- Club Ritten inhoud -->
+          <!-- ─── TAB: CLUB RITTEN ─── -->
           <div id="club-rides-content" style="display:none;">
             <div class="glass-panel">
               <div class="d-flex justify-between align-center mb-4">
                 <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="users" style="color:var(--secondary)"></i> Club Ritten</h2>
-                <span style="font-size:11px;color:var(--text-muted);">Activiteiten van alle leden</span>
+                <span style="font-size:11px;color:var(--text-muted);">Gedeelde ritten van alle leden</span>
               </div>
               <div id="club-activities-list">
-                <div class="empty-state">Geen ritten gevonden van andere leden.</div>
+                <div class="empty-state">Geen club ritten gevonden.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── TAB: STATISTIEKEN ─── -->
+          <div id="stats-content" style="display:none;">
+            <div class="glass-panel mb-4" id="stats-chart-panel">
+              <h2 class="widget-title"><i data-lucide="trending-up" style="color:var(--primary)"></i> Prestaties Over Tijd</h2>
+              <div style="height:220px;position:relative;">
+                <canvas id="stats-chart"></canvas>
               </div>
             </div>
           </div>
@@ -537,7 +561,7 @@
         <!-- Sidebar Mijn Ritten -->
         <div class="sidebar">
 
-          <!-- Seizoenstotalen -->
+          <!-- Seizoen Overzicht -->
           <div class="glass-panel">
             <h3 class="widget-title"><i data-lucide="bar-chart-2" style="color:var(--primary)"></i> Seizoen</h3>
             <div id="profile-stats-container" style="display:none;grid-template-columns:1fr 1fr;gap:12px;">
@@ -569,55 +593,13 @@
             <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">Op basis van al je ritten</p>
           </div>
 
-          <!-- Zwift Import (sidebar, compact) -->
-          <div class="glass-panel zwift-panel">
-            <div class="d-flex align-center gap-10 mb-3">
-              <div class="zwift-logo-badge" style="width:28px;height:28px;font-size:14px;border-radius:7px;">Z</div>
-              <div>
-                <div style="font-size:12px;font-weight:700;">Zwift Import</div>
-                <div style="font-size:10px;color:var(--text-muted);">FIT-bestanden scannen</div>
-              </div>
-              <span id="zwift-browser-warning" style="display:none;font-size:9px;color:#ff9800;margin-left:auto;">Chrome/Edge</span>
-            </div>
-            <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">
-              Zwift slaat ritten op als FIT-bestanden op je PC.
-              Heb je Zwift niet lokaal? Download ze via
-              <a href="https://zwift.com/feed" target="_blank" style="color:var(--primary);text-decoration:none;">zwift.com/feed</a>.
-            </p>
-            <button class="btn btn-primary" id="btn-zwift-scan" style="width:100%;font-size:11px;padding:7px;gap:6px;">
-              <i data-lucide="folder-open" style="width:12px;height:12px;"></i>
-              Selecteer Zwift map
+          <!-- Naar Planner -->
+          <div class="glass-panel text-center" style="padding:16px;">
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Wil je een rit plannen met de club?</p>
+            <button class="btn btn-primary w-full" id="btn-go-planner">
+              <i data-lucide="calendar" style="width:14px;height:14px;"></i> Naar Planner
             </button>
-            <!-- Scan status & resultaten (hergebruik dezelfde elements) -->
-            <div id="zwift-step-scanning" style="display:none;text-align:center;padding:12px 0;">
-              <div class="zwift-spinner" style="width:24px;height:24px;border-width:2px;"></div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" id="zwift-scan-status">Scannen...</div>
-            </div>
-            <div id="zwift-step-results" style="display:none;margin-top:10px;">
-              <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;" id="zwift-results-summary"></div>
-              <div id="zwift-progress-wrap" style="display:none;margin-bottom:8px;">
-                <div style="height:4px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden;">
-                  <div id="zwift-progress-bar" style="height:100%;background:var(--primary);border-radius:4px;width:0%;transition:width 0.3s;"></div>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:3px;">
-                  <span id="zwift-progress-label">Importeren...</span>
-                  <span id="zwift-progress-pct">0%</span>
-                </div>
-              </div>
-              <div id="zwift-files-list" style="max-height:180px;overflow-y:auto;"></div>
-              <div class="d-flex gap-8" style="margin-top:8px;">
-                <button class="btn btn-secondary btn-sm" id="btn-zwift-rescan" style="font-size:10px;flex:1;">Opnieuw</button>
-                <button class="btn btn-primary btn-sm" id="btn-zwift-import-all" style="font-size:10px;flex:2;">
-                  <i data-lucide="download" style="width:10px;height:10px;"></i> Importeren
-                </button>
-              </div>
-            </div>
           </div>
-
-          <!-- Naar Planner knop -->
-          <button class="btn btn-secondary w-full" id="btn-go-planner" style="display:flex;align-items:center;justify-content:center;gap:8px;">
-            <i data-lucide="calendar"></i> Naar de Planner
-          </button>
 
         </div>
       </div>
