@@ -173,6 +173,7 @@ export async function renderRidesList() {
   sortedRides.forEach(ride => {
     const rideDiv = document.createElement('div');
     rideDiv.classList.add('ride-item');
+    rideDiv.dataset.rideId = ride.id;
 
     const opt = { day: 'numeric', month: 'long', weekday: 'long' };
     const dateFormatted = new Intl.DateTimeFormat('nl-NL', opt).format(new Date(ride.date));

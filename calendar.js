@@ -152,6 +152,43 @@ export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
     cell.appendChild(avatarList);
   }
 
+  // ─── Geplande ritten voor deze dag ─────────────────────────────
+  const dayRides = (state.rides || []).filter(r => {
+    const rideDate = (r.date || '').substring(0, 10);
+    return rideDate === dateStr;
+  });
+
+  if (dayRides.length > 0) {
+    cell.classList.add('has-ride');
+
+    // Toon max 2 ritpills, daarna "+N meer"
+    const maxPills = 2;
+    dayRides.slice(0, maxPills).forEach(ride => {
+      const pill = document.createElement('div');
+      pill.className = 'cal-ride-pill';
+      pill.title = ride.title || 'Rit';
+      pill.innerHTML = `<span class="cal-ride-dot"></span><span style="overflow:hidden;text-overflow:ellipsis;">${ride.title || 'Rit'}</span>`;
+      // Klik op pill: scroll naar de rit in de lijst
+      pill.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rideCard = document.querySelector(`[data-ride-id="${ride.id}"]`);
+        if (rideCard) {
+          rideCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          rideCard.style.boxShadow = '0 0 0 2px var(--primary)';
+          setTimeout(() => { rideCard.style.boxShadow = ''; }, 2000);
+        }
+      });
+      cell.appendChild(pill);
+    });
+
+    if (dayRides.length > maxPills) {
+      const more = document.createElement('div');
+      more.className = 'cal-ride-more';
+      more.textContent = `+${dayRides.length - maxPills} meer`;
+      cell.appendChild(more);
+    }
+  }
+
   // ─── Weersverwachting voor toekomstige dagen ───────────────────
   const todayDateStr = new Date().toISOString().split('T')[0];
   if (dateStr >= todayDateStr && !isOtherMonth) {
