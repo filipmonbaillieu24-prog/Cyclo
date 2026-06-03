@@ -179,8 +179,14 @@ export async function handleRegister(e, setUserCallback) {
 }
 
 export async function handleLogout(setUserCallback) {
-  if (config.isDemoMode) {
-    localStorage.removeItem('cyclo_demo_user');
+  localStorage.removeItem('cyclo_demo_user');
+  
+  const wasDemo = config.isDemoMode;
+  if (config.supabaseClient) {
+    config.isDemoMode = false;
+  }
+  
+  if (wasDemo) {
     setUser(null, setUserCallback);
     showToast("Uitgelogd uit demo modus.", "info");
     return;
@@ -190,7 +196,6 @@ export async function handleLogout(setUserCallback) {
     const { error } = await config.supabaseClient.auth.signOut();
     if (error) throw error;
     
-    localStorage.removeItem('cyclo_demo_user');
     setUser(null, setUserCallback);
     showToast("Succesvol uitgelogd.", "success");
   } catch (err) {
