@@ -222,8 +222,13 @@ export function openEditProfileModal() {
   elements.profileModalBiketype.value = state.user.bike_type || 'Road';
   
   let seed = '';
-  if (state.user.avatar_url && state.user.avatar_url.includes('seed=')) {
-    seed = state.user.avatar_url.split('seed=')[1];
+  if (state.user.avatar_url) {
+    if (state.user.avatar_url.includes('seed=')) {
+      const parts = state.user.avatar_url.split('seed=');
+      if (parts.length > 1) {
+        seed = parts[1].split('&')[0];
+      }
+    }
   }
   elements.profileModalAvatar.value = seed;
 
@@ -231,6 +236,32 @@ export function openEditProfileModal() {
   const previewImg = document.getElementById('profile-modal-preview-avatar');
   if (previewImg) {
     previewImg.src = state.user.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${state.user.username}`;
+  }
+
+  // Checken of we custom URL parameters hebben
+  if (state.user.avatar_url && state.user.avatar_url.includes('seed=custom')) {
+    try {
+      const url = new URL(state.user.avatar_url);
+      const skinColor = url.searchParams.get('skinColor') || 'f5c096';
+      const hair = url.searchParams.get('hair') || 'short01';
+      const hairColor = url.searchParams.get('hairColor') || '090807';
+      const eyes = url.searchParams.get('eyes') || 'normal';
+      const mouth = url.searchParams.get('mouth') || 'smile';
+      const features = url.searchParams.get('features') || 'none';
+      
+      document.getElementById('custom-avatar-skin').value = skinColor;
+      document.getElementById('custom-avatar-hair').value = hair;
+      document.getElementById('custom-avatar-haircolor').value = hairColor;
+      document.getElementById('custom-avatar-eyes').value = eyes;
+      document.getElementById('custom-avatar-mouth').value = mouth;
+      document.getElementById('custom-avatar-features').value = features;
+      
+      document.getElementById('avatar-customizer-options').style.display = 'block';
+    } catch (err) {
+      console.error("Fout bij laden van custom avatar params:", err);
+    }
+  } else {
+    document.getElementById('avatar-customizer-options').style.display = 'none';
   }
 
   // Actieve preset chip highlighten
@@ -261,9 +292,21 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
     return;
   }
 
-  const avatarUrl = avatarSeed ? 
-    `https://api.dicebear.com/7.x/adventurer/svg?seed=${avatarSeed}` : 
-    (state.user.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${username}`);
+  let avatarUrl = '';
+  if (avatarSeed === 'custom') {
+    const skinColor = document.getElementById('custom-avatar-skin').value;
+    const hair = document.getElementById('custom-avatar-hair').value;
+    const hairColor = document.getElementById('custom-avatar-haircolor').value;
+    const eyes = document.getElementById('custom-avatar-eyes').value;
+    const mouth = document.getElementById('custom-avatar-mouth').value;
+    const features = document.getElementById('custom-avatar-features').value;
+    
+    avatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=custom&skinColor=${skinColor}&hair=${hair}&hairColor=${hairColor}&eyes=${eyes}&mouth=${mouth}&features=${features}`;
+  } else {
+    avatarUrl = avatarSeed ? 
+      `https://api.dicebear.com/7.x/adventurer/svg?seed=${avatarSeed}` : 
+      (state.user.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${username}`);
+  }
 
   if (config.isDemoMode) {
     let savedMockProfiles = JSON.parse(localStorage.getItem('cyclo_mock_profiles') || '[]');
@@ -336,11 +379,60 @@ export function setupAvatarEventListeners() {
   const previewImg = document.getElementById('profile-modal-preview-avatar');
   const btnRandom = document.getElementById('btn-randomize-avatar');
   const presetsContainer = document.getElementById('avatar-presets-container');
+  const btnToggle = document.getElementById('btn-toggle-customizer');
+  const customizerOptions = document.getElementById('avatar-customizer-options');
+  
+  function updateCustomAvatarFromDropdowns() {
+    const skinColor = document.getElementById('custom-avatar-skin').value;
+    const hair = document.getElementById('custom-avatar-hair').value;
+    const hairColor = document.getElementById('custom-avatar-haircolor').value;
+    const eyes = document.getElementById('custom-avatar-eyes').value;
+    const mouth = document.getElementById('custom-avatar-mouth').value;
+    const features = document.getElementById('custom-avatar-features').value;
+    
+    const customUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=custom&skinColor=${skinColor}&hair=${hair}&hairColor=${hairColor}&eyes=${eyes}&mouth=${mouth}&features=${features}`;
+    
+    if (previewImg) previewImg.src = customUrl;
+    elements.profileModalAvatar.value = 'custom';
+    
+    document.querySelectorAll('.avatar-preset-chip').forEach(c => c.classList.remove('active'));
+  }
+
+  if (btnToggle && customizerOptions) {
+    btnToggle.addEventListener('click', () => {
+      const isHidden = customizerOptions.style.display === 'none';
+      customizerOptions.style.display = isHidden ? 'block' : 'none';
+      if (isHidden) {
+        updateCustomAvatarFromDropdowns();
+      }
+    });
+  }
+
+  const customSelects = [
+    'custom-avatar-skin',
+    'custom-avatar-hair',
+    'custom-avatar-haircolor',
+    'custom-avatar-eyes',
+    'custom-avatar-mouth',
+    'custom-avatar-features'
+  ];
+  customSelects.forEach(id => {
+    const select = document.getElementById(id);
+    if (select) {
+      select.addEventListener('change', updateCustomAvatarFromDropdowns);
+    }
+  });
   
   if (elements.profileModalAvatar && previewImg) {
     // Live preview bijwerken als gebruiker typt
     elements.profileModalAvatar.addEventListener('input', (e) => {
       const seed = e.target.value.trim();
+      
+      // Indien handmatig getypt en niet 'custom', sluit customizer details panel
+      if (seed !== 'custom' && customizerOptions) {
+        customizerOptions.style.display = 'none';
+      }
+
       const url = seed ? 
         `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}` : 
         (state.user ? state.user.avatar_url : `https://api.dicebear.com/7.x/adventurer/svg?seed=demo`);
@@ -360,6 +452,8 @@ export function setupAvatarEventListeners() {
   if (btnRandom && previewImg && elements.profileModalAvatar) {
     // Willekeurige avatar genereren
     btnRandom.addEventListener('click', () => {
+      if (customizerOptions) customizerOptions.style.display = 'none';
+      
       const randomSeed = Math.random().toString(36).substring(2, 10);
       elements.profileModalAvatar.value = randomSeed;
       
@@ -375,6 +469,8 @@ export function setupAvatarEventListeners() {
     presetsContainer.addEventListener('click', (e) => {
       const chip = e.target.closest('.avatar-preset-chip');
       if (!chip) return;
+      
+      if (customizerOptions) customizerOptions.style.display = 'none';
       
       const seed = chip.dataset.seed;
       elements.profileModalAvatar.value = seed;
