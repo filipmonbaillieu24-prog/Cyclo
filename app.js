@@ -15,7 +15,8 @@ import {
   openEditProfileModal, 
   closeEditProfileModal, 
   saveProfileUpdate,
-  translateBikeType
+  translateBikeType,
+  setupAvatarEventListeners
 } from './auth.js';
 import { 
   changeMonth, 
@@ -313,6 +314,9 @@ function setupEventListeners() {
   
   // Uploader config
   setupTcxUploader(loadDashboardData);
+
+  // Avatar live preview en presets initialiseren
+  setupAvatarEventListeners();
   
   // Navigatie-link naar activiteiten scroll
   if (elements.linkRides) {

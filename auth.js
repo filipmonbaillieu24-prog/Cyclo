@@ -227,6 +227,21 @@ export function openEditProfileModal() {
   }
   elements.profileModalAvatar.value = seed;
 
+  // Live preview afbeelding updaten
+  const previewImg = document.getElementById('profile-modal-preview-avatar');
+  if (previewImg) {
+    previewImg.src = state.user.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${state.user.username}`;
+  }
+
+  // Actieve preset chip highlighten
+  document.querySelectorAll('.avatar-preset-chip').forEach(chip => {
+    if (chip.dataset.seed === seed) {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+
   elements.profileModal.classList.add('active');
 }
 
@@ -316,3 +331,61 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
     showToast("Fout bij bijwerken profiel: " + err.message, "error");
   }
 }
+
+export function setupAvatarEventListeners() {
+  const previewImg = document.getElementById('profile-modal-preview-avatar');
+  const btnRandom = document.getElementById('btn-randomize-avatar');
+  const presetsContainer = document.getElementById('avatar-presets-container');
+  
+  if (elements.profileModalAvatar && previewImg) {
+    // Live preview bijwerken als gebruiker typt
+    elements.profileModalAvatar.addEventListener('input', (e) => {
+      const seed = e.target.value.trim();
+      const url = seed ? 
+        `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}` : 
+        (state.user ? state.user.avatar_url : `https://api.dicebear.com/7.x/adventurer/svg?seed=demo`);
+      previewImg.src = url;
+      
+      // Update actieve presets highlight
+      document.querySelectorAll('.avatar-preset-chip').forEach(chip => {
+        if (chip.dataset.seed === seed) {
+          chip.classList.add('active');
+        } else {
+          chip.classList.remove('active');
+        }
+      });
+    });
+  }
+
+  if (btnRandom && previewImg && elements.profileModalAvatar) {
+    // Willekeurige avatar genereren
+    btnRandom.addEventListener('click', () => {
+      const randomSeed = Math.random().toString(36).substring(2, 10);
+      elements.profileModalAvatar.value = randomSeed;
+      
+      previewImg.src = `https://api.dicebear.com/7.x/adventurer/svg?seed=${randomSeed}`;
+      document.querySelectorAll('.avatar-preset-chip').forEach(c => c.classList.remove('active'));
+      
+      showToast("Nieuwe avatar gegenereerd!", "info");
+    });
+  }
+
+  if (presetsContainer && previewImg && elements.profileModalAvatar) {
+    // Preset wielerheld selecteren
+    presetsContainer.addEventListener('click', (e) => {
+      const chip = e.target.closest('.avatar-preset-chip');
+      if (!chip) return;
+      
+      const seed = chip.dataset.seed;
+      elements.profileModalAvatar.value = seed;
+      
+      previewImg.src = `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`;
+      
+      document.querySelectorAll('.avatar-preset-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      
+      showToast(`Held ${chip.title || seed} geselecteerd!`, "success");
+    });
+  }
+}
+

@@ -380,6 +380,12 @@
       </div>
       
       <form id="form-edit-profile">
+        <!-- Live Avatar Preview & Randomizer -->
+        <div class="text-center mb-4" style="display: flex; flex-direction: column; align-items: center;">
+          <img src="" id="profile-modal-preview-avatar" class="avatar" style="width: 90px; height: 90px; border: 3px solid var(--primary); margin-bottom: 8px; border-radius: 50%; background: var(--bg-surface); padding: 4px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-randomize-avatar" style="padding: 4px 12px; font-size: 11px;"><i data-lucide="shuffle" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Verras me</button>
+        </div>
+
         <div class="form-group">
           <label for="profile-modal-fullname">Volledige Naam</label>
           <input type="text" id="profile-modal-fullname" class="form-control" required>
@@ -400,7 +406,16 @@
         <div class="form-group">
           <label for="profile-modal-avatar">Avatar Stijl (Seed)</label>
           <input type="text" id="profile-modal-avatar" class="form-control" placeholder="bijv. wout of remco">
-          <small style="color: var(--text-muted); font-size: 11px;">Dit past je unieke geïllustreerde avatar aan.</small>
+          <small style="color: var(--text-muted); font-size: 11px;">Typ een willekeurig woord of kies een preset:</small>
+          
+          <div class="d-flex gap-8 mt-2 justify-center flex-wrap" id="avatar-presets-container" style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+            <div class="avatar-preset-chip" data-seed="wout" title="Wout van Aert" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" class="avatar" style="width: 28px; height: 28px;"></div>
+            <div class="avatar-preset-chip" data-seed="remco" title="Remco Evenepoel" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=remco" class="avatar" style="width: 28px; height: 28px;"></div>
+            <div class="avatar-preset-chip" data-seed="mathieu" title="Mathieu van der Poel" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=mathieu" class="avatar" style="width: 28px; height: 28px;"></div>
+            <div class="avatar-preset-chip" data-seed="marianne" title="Marianne Vos" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=marianne" class="avatar" style="width: 28px; height: 28px;"></div>
+            <div class="avatar-preset-chip" data-seed="puck" title="Puck Pieterse" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=puck" class="avatar" style="width: 28px; height: 28px;"></div>
+            <div class="avatar-preset-chip" data-seed="sagan" title="Peter Sagan" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=sagan" class="avatar" style="width: 28px; height: 28px;"></div>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary w-full mt-4">Profiel Opslaan</button>
       </form>
