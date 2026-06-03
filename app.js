@@ -76,13 +76,18 @@ export async function loadDashboardData() {
     const currentProfile = profiles.find(p => p.id === state.user.id);
     if (currentProfile) {
       state.user = currentProfile;
-      elements.widgetUserName.textContent = currentProfile.full_name;
-      elements.widgetUserUsername.textContent = `@${currentProfile.username}`;
-      elements.widgetUserAvatar.src = currentProfile.avatar_url;
-      elements.widgetUserBiketype.textContent = translateBikeType(currentProfile.bike_type);
+      if (elements.widgetUserName) elements.widgetUserName.textContent = currentProfile.full_name;
+      if (elements.widgetUserUsername) elements.widgetUserUsername.textContent = `@${currentProfile.username}`;
+      if (elements.widgetUserAvatar) elements.widgetUserAvatar.src = currentProfile.avatar_url;
+      if (elements.widgetUserBiketype) elements.widgetUserBiketype.textContent = translateBikeType(currentProfile.bike_type);
       if (currentProfile.rider_score) {
-        elements.widgetUserScoreVal.textContent = currentProfile.rider_score;
-        elements.widgetUserScoreContainer.style.display = 'flex';
+        if (elements.widgetUserScoreVal) elements.widgetUserScoreVal.textContent = currentProfile.rider_score;
+        if (elements.widgetUserScoreContainer) elements.widgetUserScoreContainer.style.display = 'flex';
+        // Mijn Ritten sidebar
+        const rsp = document.getElementById('rides-score-panel');
+        const rsv = document.getElementById('rides-score-val');
+        if (rsp) rsp.style.display = 'block';
+        if (rsv) rsv.textContent = currentProfile.rider_score;
       }
     }
     
@@ -111,12 +116,12 @@ export async function loadDashboardData() {
     
     // E. Activiteiten ophalen en UI renderen
     await loadActivities();
-    renderCalendar();
-    renderRidesList();
+    try { renderCalendar(); } catch(e) { console.warn('renderCalendar:', e); }
+    try { renderRidesList(); } catch(e) { console.warn('renderRidesList:', e); }
     renderActivitiesList(loadDashboardData);
-    renderLeaderboard();
+    try { renderLeaderboard(); } catch(e) { console.warn('renderLeaderboard:', e); }
     renderPersonalRecords();
-    updateRouteDropdown();
+    try { updateRouteDropdown(); } catch(e) { console.warn('updateRouteDropdown:', e); }
     await loadAndRenderFeed();
 
     // Rider Score ook updaten in Mijn Ritten sidebar
@@ -169,8 +174,8 @@ export function loadMockDashboardData() {
   const currentMockProfile = state.profiles.find(p => p.id === savedDemoUser) || state.profiles[0];
   state.user = currentMockProfile;
   
-  elements.widgetUserScoreVal.textContent = currentMockProfile.rider_score;
-  elements.widgetUserBiketype.textContent = translateBikeType(currentMockProfile.bike_type);
+  if (elements.widgetUserScoreVal) elements.widgetUserScoreVal.textContent = currentMockProfile.rider_score;
+  if (elements.widgetUserBiketype) elements.widgetUserBiketype.textContent = translateBikeType(currentMockProfile.bike_type);
   
   if (!localStorage.getItem('cyclo_mock_availabilities')) {
     seedMockAvailabilities();
@@ -196,12 +201,12 @@ export function loadMockDashboardData() {
   });
   
   loadActivities().then(() => {
-    renderCalendar();
-    renderRidesList();
+    try { renderCalendar(); } catch(e) { console.warn('renderCalendar:', e); }
+    try { renderRidesList(); } catch(e) { console.warn('renderRidesList:', e); }
     renderActivitiesList(loadDashboardData);
-    renderLeaderboard();
+    try { renderLeaderboard(); } catch(e) { console.warn('renderLeaderboard:', e); }
     renderPersonalRecords();
-    updateRouteDropdown();
+    try { updateRouteDropdown(); } catch(e) { console.warn('updateRouteDropdown:', e); }
     loadAndRenderFeed();
   });
 }
