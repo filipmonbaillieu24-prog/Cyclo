@@ -336,8 +336,29 @@
               </div>
             </div>
 
+          <!-- Tab switcher: Mijn Ritten / Club Ritten -->
+          <div class="rides-tabs" id="rides-tabs">
+            <button class="rides-tab active" id="tab-my-rides" data-tab="my">
+              <i data-lucide="user" style="width:13px;height:13px;"></i>
+              Mijn Ritten
+            </button>
+            <button class="rides-tab" id="tab-club-rides" data-tab="club">
+              <i data-lucide="users" style="width:13px;height:13px;"></i>
+              Club Ritten
+            </button>
+          </div>
+
+          <!-- Mijn Ritten inhoud -->
+          <div id="my-rides-content">
             <div id="activities-list-container">
               <div class="empty-state">Je hebt nog geen ritten geüpload. Upload een TCX, GPX of FIT bestand hierboven!</div>
+            </div>
+          </div>
+
+          <!-- Club Ritten inhoud -->
+          <div id="club-rides-content" style="display:none;">
+            <div id="club-activities-list">
+              <div class="empty-state">Geen ritten gevonden van andere leden.</div>
             </div>
           </div>
 

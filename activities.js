@@ -66,6 +66,29 @@ export function setupTcxUploader(loadDashboardDataCallback) {
       renderActivitiesList(loadDashboardDataCallback);
     });
   }
+
+  // Tab switching: Mijn Ritten / Club Ritten
+  const tabMyRides   = document.getElementById('tab-my-rides');
+  const tabClubRides = document.getElementById('tab-club-rides');
+  const myContent    = document.getElementById('my-rides-content');
+  const clubContent  = document.getElementById('club-rides-content');
+
+  if (tabMyRides && tabClubRides) {
+    tabMyRides.addEventListener('click', () => {
+      tabMyRides.classList.add('active');
+      tabClubRides.classList.remove('active');
+      if (myContent)   myContent.style.display   = 'block';
+      if (clubContent) clubContent.style.display  = 'none';
+    });
+
+    tabClubRides.addEventListener('click', () => {
+      tabClubRides.classList.add('active');
+      tabMyRides.classList.remove('active');
+      if (clubContent) clubContent.style.display  = 'block';
+      if (myContent)   myContent.style.display    = 'none';
+      renderClubActivities();
+    });
+  }
 }
 
 export function processTcxFile(file, loadDashboardDataCallback) {
@@ -164,49 +187,49 @@ function updateWkgDisplay(avgPowerWatts) {
 
 export async function updateUserRiderScore(newScore) {
   const currentScore = state.user.rider_score || 100;
-  const updatedScore = Math.max(currentScore, newScore); // Neem de hoogste score als Rider Score
-  
+  const updatedScore = Math.max(currentScore, newScore);
+
+  // Helper: update alle score-widgets in de UI
+  function _updateScoreWidgets(score) {
+    state.user.rider_score = score;
+    if (elements.widgetUserScoreVal) elements.widgetUserScoreVal.textContent = score;
+    if (elements.widgetUserScoreContainer) elements.widgetUserScoreContainer.style.display = 'flex';
+    // Mijn Ritten sidebar
+    const rsv = document.getElementById('rides-score-val');
+    const rsp = document.getElementById('rides-score-panel');
+    if (rsv) rsv.textContent = score;
+    if (rsp) rsp.style.display = 'block';
+  }
+
   if (config.isDemoMode) {
     let savedMockProfiles = JSON.parse(localStorage.getItem('cyclo_mock_profiles') || '[]');
     const idx = savedMockProfiles.findIndex(p => p.id === state.user.id);
-    
+
     if (idx !== -1) {
       savedMockProfiles[idx].rider_score = updatedScore;
-      localStorage.setItem('cyclo_mock_profiles', JSON.stringify(savedMockProfiles));
     } else {
-      // Demo-user-id fallback
-      const demoProfile = state.profiles.find(p => p.id === state.user.id);
-      if (demoProfile) {
-        demoProfile.rider_score = updatedScore;
-        savedMockProfiles.push(demoProfile);
-        localStorage.setItem('cyclo_mock_profiles', JSON.stringify(savedMockProfiles));
-      }
+      // Demo-user-id: voeg toe aan opgeslagen profielen
+      const demoProfile = { ...(state.profiles.find(p => p.id === state.user.id) || state.user) };
+      demoProfile.rider_score = updatedScore;
+      savedMockProfiles.push(demoProfile);
     }
-    
-    state.user.rider_score = updatedScore;
-    elements.widgetUserScoreVal.textContent = updatedScore;
-    elements.widgetUserScoreContainer.style.display = 'flex';
-    
-    showToast(`Rider Score lokaal bijgewerkt naar: ${updatedScore}`, "success");
+    localStorage.setItem('cyclo_mock_profiles', JSON.stringify(savedMockProfiles));
+    _updateScoreWidgets(updatedScore);
+    showToast(`Rider Score bijgewerkt naar: ${updatedScore} pts`, 'success');
     return;
   }
-  
+
   try {
     const { error } = await config.supabaseClient
       .from('profiles')
       .update({ rider_score: updatedScore })
       .eq('id', state.user.id);
-      
     if (error) throw error;
-    
-    state.user.rider_score = updatedScore;
-    elements.widgetUserScoreVal.textContent = updatedScore;
-    elements.widgetUserScoreContainer.style.display = 'flex';
-    
-    showToast(`Rider Score bijgewerkt naar ${updatedScore}!`, "success");
+    _updateScoreWidgets(updatedScore);
+    showToast(`Rider Score bijgewerkt naar ${updatedScore} pts!`, 'success');
   } catch (err) {
-    console.error("Fout bij opslaan Rider Score:", err);
-    showToast("Kon Rider Score niet opslaan in database.", "error");
+    console.error('Fout bij opslaan Rider Score:', err);
+    showToast('Kon Rider Score niet opslaan.', 'error');
   }
 }
 
@@ -990,5 +1013,88 @@ export function renderStatsChart() {
         }
       }
     }
+  });
+}
+
+// ─────────────────────────────────────────────
+//  Club Ritten: activiteiten van alle leden
+// ─────────────────────────────────────────────
+export function renderClubActivities() {
+  const container = document.getElementById('club-activities-list');
+  if (!container) return;
+
+  // Alle activiteiten behalve die van de ingelogde gebruiker, nieuwste eerst
+  const allOthers = (state.activities || [])
+    .filter(act => act.user_id !== state.user?.id)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (allOthers.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div style="font-size:28px;margin-bottom:12px;">🚴</div>
+        Nog geen ritten van andere leden.
+        <div style="font-size:11px;margin-top:8px;color:var(--text-muted);">
+          Nodig vrienden uit om zich aan te sluiten!
+        </div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = '';
+
+  allOthers.forEach(act => {
+    const profile = state.profiles.find(p => p.id === act.user_id);
+    const name    = profile?.full_name || 'Onbekend lid';
+    const avatar  = profile?.avatar_url || `https://api.dicebear.com/7.x/adventurer/svg?seed=${act.user_id}`;
+    const score   = profile?.rider_score || act.rider_score || '-';
+
+    const formattedDate = new Intl.DateTimeFormat('nl-NL', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    }).format(new Date(act.date));
+
+    const durSec = parseFloat(act.duration_secs || 0);
+    const hours  = Math.floor(durSec / 3600);
+    const mins   = Math.floor((durSec % 3600) / 60);
+    const dur    = hours > 0 ? `${hours}u ${mins}m` : `${mins}m`;
+
+    const card = document.createElement('div');
+    card.className = 'club-activity-card';
+    card.innerHTML = `
+      <div class="club-act-header">
+        <div class="d-flex align-center gap-10">
+          <img src="${avatar}" alt="${name}" class="club-act-avatar" title="${name}">
+          <div>
+            <div class="club-act-name">${name}</div>
+            <div class="club-act-date">${formattedDate}</div>
+          </div>
+        </div>
+        <div class="score-badge" style="margin:0;padding:5px 10px;">
+          <div style="font-size:16px;">${act.rider_score}</div>
+          <span>pts</span>
+        </div>
+      </div>
+
+      <div class="club-act-title">${act.name}</div>
+
+      <div class="activity-stats-grid" style="margin-top:10px;">
+        <div class="activity-stat-card">
+          <div class="activity-stat-val">${parseFloat(act.distance_km).toFixed(1)}</div>
+          <div class="activity-stat-lbl">KM</div>
+        </div>
+        <div class="activity-stat-card">
+          <div class="activity-stat-val">${dur}</div>
+          <div class="activity-stat-lbl">Tijd</div>
+        </div>
+        <div class="activity-stat-card">
+          <div class="activity-stat-val">${act.ascent_m}m</div>
+          <div class="activity-stat-lbl">Hoogte</div>
+        </div>
+        <div class="activity-stat-card">
+          <div class="activity-stat-val">${parseFloat(act.avg_speed_kmh).toFixed(1)}</div>
+          <div class="activity-stat-lbl">km/u</div>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
   });
 }
