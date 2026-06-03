@@ -206,16 +206,31 @@ function finishOnboarding() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  GENERIEKE TOUR ENGINE
+//  GENERIEKE TOUR ENGINE (MET REACTIEVE POSITIONERING & HYDRATATIE VAN HUIDIGE STATE)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 let _activeTourSteps  = [];
 let _activeTourIdx    = 0;
 let _activeTourFinish = null;
+let _tourAnimationFrame = null;
+let _forcedStyles     = [];
+
+function forceStyle(el, prop, val) {
+  if (!el) return;
+  _forcedStyles.push({ el, prop, original: el.style[prop] });
+  el.style[prop] = val;
+}
+
+function restoreForcedStyles() {
+  _forcedStyles.forEach(x => {
+    if (x.el) x.el.style[x.prop] = x.original;
+  });
+  _forcedStyles = [];
+}
 
 /**
  * Start een tour met een willekeurige array van stappen.
- * @param {Array}    steps    Array van { targetId, mobileTargetId, title, desc }
+ * @param {Array}    steps    Array van { targetId, mobileTargetId, title, desc, beforeShow }
  * @param {Function} onFinish Callback als tour klaar/overgeslagen is
  */
 function runTour(steps, onFinish) {
@@ -232,7 +247,24 @@ function showStep(i) {
   const step     = _activeTourSteps[i];
   const isMobile = window.innerWidth <= 768;
   const targetId = isMobile ? (step.mobileTargetId || step.targetId) : step.targetId;
-  const target   = document.getElementById(targetId);
+
+  // Voer eventuele beforeShow hook uit (bijv. openen tab, tijdelijk tonen van element)
+  if (step.beforeShow) {
+    try {
+      step.beforeShow();
+    } catch (e) {
+      console.warn("Fout in beforeShow hook:", e);
+    }
+  }
+
+  const target = document.getElementById(targetId);
+
+  // Fallback als element niet bestaat
+  if (!target) {
+    console.warn(`Tour element #${targetId} niet gevonden. Sla stap over.`);
+    showStep(i + 1);
+    return;
+  }
 
   // Donkere overlay (klik buiten = volgende)
   const overlay = document.createElement('div');
@@ -241,54 +273,34 @@ function showStep(i) {
   overlay.addEventListener('click', e => { if (e.target === overlay) showStep(i + 1); });
   document.body.appendChild(overlay);
 
-  // Fallback als element niet bestaat
-  if (!target) { showStep(i + 1); return; }
-
-  // Scroll element in beeld
+  // Scroll element rustig in beeld
   target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  // Spotlight
-  const rect      = target.getBoundingClientRect();
+  // Spotlight aanmaken (zonder initiële positie, tracking loop vult dit in)
   const spotlight = document.createElement('div');
   spotlight.className = 'tour-spotlight';
   spotlight.style.cssText = `
     position:fixed;
-    top:${rect.top    - 8}px;
-    left:${rect.left  - 8}px;
-    width:${rect.width  + 16}px;
-    height:${rect.height + 16}px;
     border-radius:12px;
     box-shadow:0 0 0 9999px rgba(0,0,0,0.72);
     z-index:9998;
     pointer-events:none;
     border:2px solid rgba(212,255,0,0.7);
     animation:tourPulse 1.8s ease-in-out infinite;
+    display:none; /* Eerst onzichtbaar tot eerste frame berekend is */
   `;
   document.body.appendChild(spotlight);
 
-  // Tooltip positie bepalen
-  const margin    = 14;
-  const tipW      = 270;
-  const vpW       = window.innerWidth;
-  const vpH       = window.innerHeight;
-
-  // Voorkeur: onder → boven → rechts → links
-  let tipTop, tipLeft;
-  if (rect.bottom + margin + 120 < vpH) {
-    tipTop  = rect.bottom + margin;
-    tipLeft = Math.min(Math.max(rect.left, margin), vpW - tipW - margin);
-  } else if (rect.top - margin - 120 > 0) {
-    tipTop  = rect.top - 140;
-    tipLeft = Math.min(Math.max(rect.left, margin), vpW - tipW - margin);
-  } else {
-    tipTop  = Math.max(margin, rect.top);
-    tipLeft = rect.right + margin < vpW - tipW ? rect.right + margin : rect.left - tipW - margin;
-  }
-
+  // Tooltip aanmaken
   const isLast = i === _activeTourSteps.length - 1;
   const tip = document.createElement('div');
   tip.className = 'tour-tooltip';
-  tip.style.cssText = `position:fixed;top:${tipTop}px;left:${tipLeft}px;z-index:9999;width:${tipW}px;`;
+  tip.style.cssText = `
+    position:fixed;
+    z-index:9999;
+    width:270px;
+    display:none; /* Eerst onzichtbaar tot eerste frame berekend is */
+  `;
   tip.innerHTML = `
     <div class="tour-tip-content">
       <div class="tour-tip-title">${step.title}</div>
@@ -306,9 +318,87 @@ function showStep(i) {
 
   document.getElementById('tour-next').addEventListener('click', () => showStep(i + 1));
   document.getElementById('tour-skip').addEventListener('click', () => { cleanupTourUI(); _activeTourFinish(); });
+
+  // Start tracking loop die spotlight & tooltip verplaatst op basis van scroll/resize/animaties
+  startTracking(target, spotlight, tip);
+}
+
+function startTracking(target, spotlight, tip) {
+  if (_tourAnimationFrame) {
+    cancelAnimationFrame(_tourAnimationFrame);
+  }
+
+  function update() {
+    if (!document.body.contains(spotlight) || !document.body.contains(tip)) {
+      _tourAnimationFrame = null;
+      return;
+    }
+
+    // Check of target in de DOM zit en een breedte/hoogte heeft (indien verborgen, verberg tour UI tijdelijk)
+    if (!target || !target.isConnected || target.offsetWidth === 0 || target.offsetHeight === 0) {
+      spotlight.style.display = 'none';
+      tip.style.display = 'none';
+      _tourAnimationFrame = requestAnimationFrame(update);
+      return;
+    }
+
+    const rect = target.getBoundingClientRect();
+
+    // Update Spotlight positie en afmetingen
+    spotlight.style.display = 'block';
+    spotlight.style.top = `${rect.top - 8}px`;
+    spotlight.style.left = `${rect.left - 8}px`;
+    spotlight.style.width = `${rect.width + 16}px`;
+    spotlight.style.height = `${rect.height + 16}px`;
+
+    // Update Tooltip positie
+    tip.style.display = 'block';
+    const margin = 14;
+    const tipW = tip.offsetWidth || 270;
+    const tipH = tip.offsetHeight || 150;
+    const vpW = window.innerWidth;
+    const vpH = window.innerHeight;
+
+    let tipTop, tipLeft;
+    
+    // Positioneringsalgoritme dat rekening houdt met randen van het scherm
+    if (rect.bottom + margin + tipH < vpH) {
+      // Onder het element
+      tipTop = rect.bottom + margin;
+      tipLeft = Math.min(Math.max(rect.left, margin), vpW - tipW - margin);
+    } else if (rect.top - margin - tipH > 0) {
+      // Boven het element
+      tipTop = rect.top - margin - tipH;
+      tipLeft = Math.min(Math.max(rect.left, margin), vpW - tipW - margin);
+    } else {
+      // Past noch boven, noch onder: probeer rechts of links, anders centreer op scherm
+      tipTop = Math.max(margin, Math.min(rect.top, vpH - tipH - margin));
+      if (rect.right + margin + tipW < vpW) {
+        tipLeft = rect.right + margin;
+      } else if (rect.left - margin - tipW > 0) {
+        tipLeft = rect.left - margin - tipW;
+      } else {
+        // Fallback: Centreer
+        tipLeft = Math.max(margin, (vpW - tipW) / 2);
+        tipTop = Math.max(margin, (vpH - tipH) / 2);
+      }
+    }
+
+    tip.style.top = `${tipTop}px`;
+    tip.style.left = `${tipLeft}px`;
+
+    _tourAnimationFrame = requestAnimationFrame(update);
+  }
+
+  _tourAnimationFrame = requestAnimationFrame(update);
 }
 
 function cleanupTourUI() {
+  if (_tourAnimationFrame) {
+    cancelAnimationFrame(_tourAnimationFrame);
+    _tourAnimationFrame = null;
+  }
+  restoreForcedStyles();
   document.getElementById('tour-overlay')?.remove();
   document.querySelector('.tour-spotlight')?.remove();
   document.querySelector('.tour-tooltip')?.remove();
@@ -406,18 +496,31 @@ const PAGE_TOURS = {
         title: '⬆️ Rit uploaden',
         desc: 'Sleep een .fit, .tcx of .gpx bestand in dit vak — of klik om te bladeren.',
         tip: 'Zwift bestanden vind je in "Documents > Zwift > Activities" als .fit bestand.',
+        beforeShow: () => {
+          document.getElementById('tab-my-rides')?.click();
+        }
       },
       {
         targetId: 'tcx-result-panel',
         title: '📊 Resultaten',
         desc: 'Na het uploaden zie je hier je afstand, duur, hoogte, snelheid, hartslag en vermogen.',
         tip: 'De Rider Score (10–1000) wordt automatisch berekend op basis van je prestaties.',
+        beforeShow: () => {
+          document.getElementById('tab-my-rides')?.click();
+          const panel = document.getElementById('tcx-result-panel');
+          if (panel && window.getComputedStyle(panel).display === 'none') {
+            forceStyle(panel, 'display', 'block');
+          }
+        }
       },
       {
-        targetId: 'activities-list',
+        targetId: 'activities-list-container',
         title: '📋 Activiteitenlijst',
         desc: 'Al je geüploade ritten staan hier. Elke kaart toont een gekleurde trainingsstructuur.',
         tip: 'De balk toont warmup → hoofdblok → cooldown op basis van je vermogenszones.',
+        beforeShow: () => {
+          document.getElementById('tab-my-rides')?.click();
+        }
       },
     ],
   },
@@ -456,6 +559,12 @@ const PAGE_TOURS = {
         title: '⚡ Vermogenscurve (MMP)',
         desc: 'Je maximale vermogen per tijdsduur: van 5 seconden sprint tot 60 minuten drempel.',
         tip: 'Stippellijnen zijn schattingen op basis van FTP. Upload meer ritten voor echte meetwaarden.',
+        beforeShow: () => {
+          const mmp = document.getElementById('mmp-section');
+          if (mmp && window.getComputedStyle(mmp).display === 'none') {
+            forceStyle(mmp, 'display', 'block');
+          }
+        }
       },
       {
         targetId: 'season-chart',
