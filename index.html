@@ -18,6 +18,9 @@
   <!-- Leaflet CSS & JS for Interactive Route Maps -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Chart.js CDN for Performance Graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -189,6 +192,14 @@
             </div>
           </div>
           
+          <!-- Prestaties Panel -->
+          <div class="glass-panel mt-4" id="stats-chart-panel" style="display: none;">
+            <h2 class="widget-title"><i data-lucide="trending-up" style="color:var(--primary)"></i> Mijn Prestaties</h2>
+            <div style="height: 220px; position: relative;">
+              <canvas id="stats-chart"></canvas>
+            </div>
+          </div>
+
           <!-- Rittenhistorie Panel -->
           <div class="glass-panel mt-4">
             <h2 class="widget-title"><i data-lucide="history" style="color:var(--secondary)"></i> Mijn Rittenhistorie</h2>
@@ -211,6 +222,7 @@
               <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=demo" alt="Avatar" class="avatar mb-4" id="widget-user-avatar" style="width: 80px; height: 80px; margin: 0 auto 12px; border: 3px solid var(--primary);">
               <h3 id="widget-user-name">Demo Wielrenner</h3>
               <p id="widget-user-username">@demorider</p>
+              <p id="widget-user-biketype" style="font-size: 12px; color: var(--primary); font-weight: 500; margin-top: -4px;">Racefiets</p>
               
               <div class="score-badge" id="widget-user-score-container" style="display: none;">
                 <div id="widget-user-score-val">100</div>
@@ -229,7 +241,10 @@
                 </div>
               </div>
               
-              <button class="btn btn-secondary btn-sm w-full mt-4" id="btn-logout"><i data-lucide="log-out"></i> Uitloggen</button>
+              <div class="d-flex gap-8 mt-4">
+                <button class="btn btn-secondary btn-sm w-full" id="btn-edit-profile"><i data-lucide="settings"></i> Profiel</button>
+                <button class="btn btn-secondary btn-sm w-full" id="btn-logout"><i data-lucide="log-out"></i> Uitloggen</button>
+              </div>
             </div>
           </div>
 
@@ -345,13 +360,55 @@
           <label for="ride-modal-route">GPX / Route Link (Optioneel)</label>
           <input type="url" id="ride-modal-route" class="form-control" placeholder="https://www.komoot.nl/tour/...">
         </div>
+        <div class="form-group">
+          <label for="ride-modal-activity">Koppel een van je geüploade routes (Optioneel)</label>
+          <select id="ride-modal-activity" class="form-control">
+            <option value="">-- Geen route gekoppeld --</option>
+          </select>
+        </div>
         <button type="submit" class="btn btn-primary w-full mt-4">Rit Opslaan & Uitnodigen</button>
       </form>
     </div>
   </div>
 
+  <!-- Modal: Profiel Bewerken -->
+  <div class="modal-overlay" id="profile-modal">
+    <div class="modal-content glass-panel">
+      <div class="modal-header">
+        <h2 style="font-size: 20px;">Profiel Bewerken</h2>
+        <button class="modal-close" id="btn-close-profile-modal">&times;</button>
+      </div>
+      
+      <form id="form-edit-profile">
+        <div class="form-group">
+          <label for="profile-modal-fullname">Volledige Naam</label>
+          <input type="text" id="profile-modal-fullname" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="profile-modal-username">Gebruikersnaam</label>
+          <input type="text" id="profile-modal-username" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="profile-modal-biketype">Type Fiets</label>
+          <select id="profile-modal-biketype" class="form-control">
+            <option value="Road">Racefiets</option>
+            <option value="Gravel">Gravelbike</option>
+            <option value="MTB">Mountainbike</option>
+            <option value="E-Bike">Elektrische Fiets</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="profile-modal-avatar">Avatar Stijl (Seed)</label>
+          <input type="text" id="profile-modal-avatar" class="form-control" placeholder="bijv. wout of remco">
+          <small style="color: var(--text-muted); font-size: 11px;">Dit past je unieke geïllustreerde avatar aan.</small>
+        </div>
+        <button type="submit" class="btn btn-primary w-full mt-4">Profiel Opslaan</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="tcx-parser.js"></script>
-  <script src="app.js"></script>
+  <script src="activity-parser.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

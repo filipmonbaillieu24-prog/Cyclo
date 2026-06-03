@@ -1022,3 +1022,72 @@ header {
   background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
+/* Custom Dropdown styling */
+select.form-control {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+/* Responsive styles voor mobiel */
+@media (max-width: 768px) {
+  header .nav-container {
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+  header nav {
+    width: 100%;
+  }
+  .nav-menu {
+    justify-content: center;
+    width: 100%;
+    padding: 0;
+  }
+  .dashboard-container {
+    padding: 0 16px 80px;
+    margin: 20px auto;
+    gap: 20px;
+  }
+  .calendar-grid-header {
+    font-size: 10px;
+  }
+  .calendar-day {
+    min-height: 60px;
+    padding: 4px;
+    aspect-ratio: 1;
+  }
+  .day-number {
+    font-size: 12px;
+  }
+  .avatar-list {
+    margin-top: 2px;
+    gap: 1px;
+  }
+  .avatar-list .avatar {
+    width: 14px;
+    height: 14px;
+  }
+  .availability-indicator {
+    top: 4px;
+    right: 4px;
+    width: 4px;
+    height: 4px;
+  }
+  .status-options {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .ride-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .activity-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+
