@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cyclo - Core Application Orchestrator (ES6 Module)
  * 
  * Beheert de centrale state, de event loops, de live/offline initialisatie,
@@ -46,8 +46,9 @@ import { setupRealtimeSubscriptions } from './realtime.js';
 import { setupZwiftImporter } from './zwift-importer.js';
 import { loadSocialFeed, renderFeedCard, searchUsers, followUser, unfollowUser, getFollowStatus, getFollowCounts } from './social.js';
 import { initProfileAvatarEditor } from './profile-avatar.js';
-import { updateFitnessBaseline, calculateFitnessMetrics, calculatePRs, buildHeatmapData, comparePeriods, calculateMMP, estimateVO2max, compareSeasons, calculateBadges } from './zones.js';
+import { updateFitnessBaseline, calculateFitnessMetrics, calculatePRs, buildHeatmapData, comparePeriods, calculateMMP, estimateVO2max, compareSeasons, calculateBadges, analyzeTrainingStructure } from './zones.js';
 import { renderEquipmentSection, openEquipmentModal } from './equipment.js';
+import { checkOnboarding, initHelpButton, renderEmptyState } from './onboarding.js';
 
 let activeRealtimeChannel = null;
 
@@ -754,9 +755,25 @@ async function loadClubRidesTab() {
         <div class="activity-stat-card"><div class="activity-stat-val color-ascent">${act.ascent_m||0}</div><div class="activity-stat-lbl">hm</div></div>
         <div class="activity-stat-card"><div class="activity-stat-val color-speed">${parseFloat(act.avg_speed_kmh||0).toFixed(1)}</div><div class="activity-stat-lbl">km/u</div></div>
       </div>`;
+
+    // Interval tijdlijn toevoegen
+    try { renderIntervalTimeline(card, act); } catch(e) {}
+
     list.appendChild(card);
   });
+
+  // Lege staat als geen activiteiten
+  if ((acts||[]).length === 0) {
+    renderEmptyState(list, {
+      emoji: '📂',
+      title: 'Nog geen ritten geüpload',
+      desc: 'Upload je eerste .fit, .tcx of .gpx bestand om je trainingsdata te zien.',
+      ctaText: '+ Rit uploaden',
+      ctaAction: () => elements.tcxFileInput?.click(),
+    });
+  }
 }
+
 
 // ─── Sociale Feed Laden & Renderen ──────────────────────────────────
 export async function loadFeedSection(followingOnly = false) {
@@ -1477,4 +1494,73 @@ function renderBadgeWall(activities) {
     `;
     wall.appendChild(chip);
   }
+}
+
+// ─── Global window hooks (voor auth.js bridge) ────────────────────────────────
+window._checkOnboarding = checkOnboarding;
+window._initHelpButton  = initHelpButton;
+
+// ─── Lege staat helpers ───────────────────────────────────────────────────────
+export function renderEmptyFeed() {
+  const el = document.getElementById('activities-list');
+  if (el && el.children.length === 0) {
+    renderEmptyState(el, {
+      emoji: '🚴',
+      title: 'Nog geen activiteiten',
+      desc: 'Upload je eerste .fit, .tcx of .gpx bestand om je stats te zien.',
+      ctaText: 'Ga naar Mijn Ritten',
+      ctaAction: () => document.getElementById('link-rides')?.click(),
+    });
+  }
+}
+
+export function renderEmptyLeaderboard() {
+  const el = document.getElementById('leaderboard-list');
+  if (el && el.children.length === 0) {
+    renderEmptyState(el, {
+      emoji: '🏆',
+      title: 'Leaderboard is leeg',
+      desc: 'Upload ritten om op het leaderboard te komen.',
+    });
+  }
+}
+
+// ─── Interval tijdlijn renderen in activiteitenkaart ─────────────────────────
+export function renderIntervalTimeline(container, activity) {
+  if (!container || !activity) return;
+  const struct = analyzeTrainingStructure(activity);
+  if (!struct) return;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'interval-timeline-wrap';
+  wrap.innerHTML = `
+    <div class="interval-timeline-label">
+      Trainingsstructuur
+      <span class="interval-estimate-tag">schatting</span>
+    </div>
+    <div class="interval-bar" id="ibar-${activity.id || Math.random()}"></div>
+    <div class="interval-legend" id="ileg-${activity.id || Math.random()}"></div>
+  `;
+
+  const bar = wrap.querySelector('[id^="ibar-"]');
+  const leg = wrap.querySelector('[id^="ileg-"]');
+  const seen = new Set();
+
+  struct.segments.forEach(seg => {
+    const segEl = document.createElement('div');
+    segEl.className = 'interval-seg';
+    segEl.style.cssText = `width:${seg.pct * 100}%;background:${seg.color};`;
+    segEl.innerHTML = `<div class="interval-seg-tooltip">${seg.label} · ${seg.desc}</div>`;
+    bar.appendChild(segEl);
+
+    if (!seen.has(seg.label)) {
+      seen.add(seg.label);
+      const dot = document.createElement('div');
+      dot.className = 'interval-legend-item';
+      dot.innerHTML = `<div class="interval-legend-dot" style="background:${seg.color};"></div><span>${seg.label}</span>`;
+      leg.appendChild(dot);
+    }
+  });
+
+  container.appendChild(wrap);
 }

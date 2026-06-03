@@ -56,6 +56,10 @@
               <span id="nav-username-label" style="font-size:12px;font-weight:600;color:var(--text-primary);"></span>
             </button>
           </li>
+          <!-- ? Help knop -->
+          <li class="auth-only" id="nav-help-item" style="display:none;">
+            <button id="btn-help-tour" title="App rondleiding">?</button>
+          </li>
         </ul>
       </nav>
     </div>
@@ -65,21 +69,24 @@
   <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
     <a href="#" class="mobile-nav-item active" id="mob-link-home">
       <i data-lucide="home"></i>
-      <span>Feed</span>
+      <span class="nav-label">Feed</span>
     </a>
     <a href="#" class="mobile-nav-item" id="mob-link-planner">
       <i data-lucide="calendar"></i>
-      <span>Planner</span>
+      <span class="nav-label">Planner</span>
     </a>
     <a href="#" class="mobile-nav-item auth-only" id="mob-link-rides">
       <i data-lucide="activity"></i>
-      <span>Ritten</span>
+      <span class="nav-label">Ritten</span>
     </a>
     <a href="#" class="mobile-nav-item auth-only" id="mob-link-profile">
       <i data-lucide="user"></i>
-      <span>Profiel</span>
+      <span class="nav-label">Profiel</span>
     </a>
   </nav>
+
+  <!-- Onboarding overlay (dynamisch toegevoegd door onboarding.js) -->
+  <div id="onboarding-root"></div>
 
   <!-- Notification Banner -->
   <div id="toast" class="toast">

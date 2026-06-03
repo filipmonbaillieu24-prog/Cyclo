@@ -1,4 +1,4 @@
-// Cyclo — Analytics & Zones Module
+﻿// Cyclo — Analytics & Zones Module
 // FTP/MaxHR auto-schatting, training zones, CTL/ATL/TSB, PR tracker, heatmap prep
 import { state } from './state.js';
 
@@ -541,4 +541,114 @@ export function calculateBadges(activities) {
     ...badge,
     earned: badge.check(activities),
   }));
+}
+
+// ─── Trainingsstructuur analyse ──────────────────────────────────────────────
+// Schat de trainingsstructuur op basis van beschikbare gemiddelden + zones.
+// Zonder per-seconde data: we modelleren een plausibele verdeling.
+
+export function analyzeTrainingStructure(activity) {
+  const ftp   = state.user?.ftp  || 200;
+  const maxHR = state.user?.maxHR || 190;
+  const durMin = (activity.duration_secs || 0) / 60;
+  const power  = activity.avg_power_watts || 0;
+  const hr     = activity.avg_heart_rate  || 0;
+
+  // Bepaal dominante zone
+  let zone = 2; // Standaard endurance
+  if (power && ftp) {
+    const pct = power / ftp;
+    if (pct < 0.55) zone = 1;
+    else if (pct < 0.75) zone = 2;
+    else if (pct < 0.90) zone = 3;
+    else if (pct < 1.05) zone = 4;
+    else if (pct < 1.20) zone = 5;
+    else zone = 6;
+  } else if (hr && maxHR) {
+    const pct = hr / maxHR;
+    if (pct < 0.60) zone = 1;
+    else if (pct < 0.70) zone = 2;
+    else if (pct < 0.80) zone = 3;
+    else if (pct < 0.90) zone = 4;
+    else zone = 5;
+  }
+
+  // Modelleer trainingsstructuur op basis van zone + duur
+  // Blokken = hoge-intensiteitsperiodes, warmup/cooldown = Z1-2
+  const zoneColors = {
+    1: '#4ade80', 2: '#a3e635', 3: '#facc15',
+    4: '#fb923c', 5: '#f87171', 6: '#c084fc'
+  };
+  const zoneNames = {
+    1: 'Recovery', 2: 'Endurance', 3: 'Tempo',
+    4: 'Drempel', 5: 'VO₂Max', 6: 'Anaeroob'
+  };
+
+  // Standaard structuur: warmup (10%) + kern + cooldown (8%)
+  const warmupPct   = Math.min(0.15, 10 / Math.max(durMin, 20));
+  const cooldownPct = Math.min(0.10, 8  / Math.max(durMin, 20));
+  const mainPct     = 1 - warmupPct - cooldownPct;
+
+  const segments = [];
+
+  // Warmup
+  segments.push({
+    label: 'Warming-up',
+    pct: warmupPct,
+    zone: 1,
+    color: zoneColors[1],
+    desc: `~${Math.round(durMin * warmupPct)} min`,
+  });
+
+  // Hoofdblok(ken)
+  if (zone >= 4 && durMin > 30) {
+    // Intervallen: afwisseling hoofdzone ↔ herstel
+    const blockCount  = zone === 6 ? 6 : zone === 5 ? 4 : 3;
+    const blockPct    = mainPct / (blockCount * 2 - 1);
+    for (let i = 0; i < blockCount; i++) {
+      segments.push({
+        label: `Blok ${i + 1}`,
+        pct: blockPct,
+        zone,
+        color: zoneColors[zone],
+        desc: `~${Math.round(durMin * blockPct)} min · ${power ? power + 'W' : hr + 'bpm'}`,
+      });
+      if (i < blockCount - 1) {
+        segments.push({
+          label: 'Herstel',
+          pct: blockPct,
+          zone: 1,
+          color: zoneColors[1],
+          desc: `~${Math.round(durMin * blockPct)} min`,
+        });
+      }
+    }
+  } else {
+    // Steady-state of duurrit
+    segments.push({
+      label: zone <= 2 ? 'Duurrit' : zone === 3 ? 'Tempoblok' : 'Drempelblok',
+      pct: mainPct,
+      zone,
+      color: zoneColors[zone],
+      desc: `~${Math.round(durMin * mainPct)} min · Zone ${zone} ${zoneNames[zone]}`,
+    });
+  }
+
+  // Cooldown
+  segments.push({
+    label: 'Cooldown',
+    pct: cooldownPct,
+    zone: 1,
+    color: zoneColors[1],
+    desc: `~${Math.round(durMin * cooldownPct)} min`,
+  });
+
+  return {
+    segments,
+    zone,
+    zoneName: zoneNames[zone],
+    zoneColor: zoneColors[zone],
+    totalMin: Math.round(durMin),
+    isEstimate: true, // Altijd schatting zonder second-by-second data
+  };
 }

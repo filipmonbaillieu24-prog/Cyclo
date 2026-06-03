@@ -1,4 +1,4 @@
-﻿// Cyclo - Authentication & Profile Manager Module
+// Cyclo - Authentication & Profile Manager Module
 import { state, elements, config, showToast, navigateTo, MOCK_PROFILES } from './state.js';
 
 export function translateBikeType(type) {
@@ -113,8 +113,20 @@ export function setUser(userProfile, setUserCallback) {
     if (navLabel  && userProfile?.full_name)   navLabel.textContent = userProfile.full_name.split(' ')[0];
     if (elements.navAuthItem) elements.navAuthItem.style.display = 'none';
 
+    // Toon ? help knop
+    const helpItem = document.getElementById('nav-help-item');
+    if (helpItem) helpItem.style.display = '';
+
     // Ga naar sociale feed (Home) na inloggen
     navigateTo('feed', setUserCallback);
+
+    // Onboarding check (na feed laden)
+    setTimeout(() => {
+      try {
+        if (window._checkOnboarding) window._checkOnboarding();
+        if (window._initHelpButton) window._initHelpButton();
+      } catch(e) { console.warn('Onboarding:', e); }
+    }, 1200);
   } else {
     // Uitgelogd
     elements.navAuthItem.innerHTML = `<a href="#" class="btn btn-primary btn-sm" id="btn-login-nav">Inloggen</a>`;
