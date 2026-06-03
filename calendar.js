@@ -79,60 +79,75 @@ export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
   cell.appendChild(numberEl);
   
   const dayAvails = state.availabilities.filter(a => a.date === dateStr);
-  
-  // Eigen beschikbaarheid
+
+  // Bouw een gecombineerde lijst: eigen beschikbaarheid + vrienden
+  const allAvailsToShow = [];
+
   if (state.user) {
     const myAvail = dayAvails.find(a => a.user_id === state.user.id);
     if (myAvail) {
-      const indicator = document.createElement('div');
-      indicator.className = `availability-indicator indicator-${myAvail.status}`;
-      cell.appendChild(indicator);
+      // Eigen beschikbaarheid altijd als eerste
+      allAvailsToShow.push({ avail: myAvail, isMe: true });
     }
   }
-  
-  // Vrienden
-  const otherAvails = state.user ? 
-    dayAvails.filter(a => a.user_id !== state.user.id && (a.status === 'available' || a.status === 'tentative')) : 
-    dayAvails;
-  
-  if (otherAvails.length > 0) {
+
+  // Vrienden die beschikbaar of misschien zijn
+  const friendAvails = state.user
+    ? dayAvails.filter(a => a.user_id !== state.user.id && (a.status === 'available' || a.status === 'tentative'))
+    : dayAvails;
+
+  friendAvails.forEach(avail => allAvailsToShow.push({ avail, isMe: false }));
+
+  if (allAvailsToShow.length > 0) {
     const avatarList = document.createElement('div');
     avatarList.classList.add('avatar-list');
-    
-    otherAvails.slice(0, 3).forEach(avail => {
-      const profile = state.profiles.find(p => p.id === avail.user_id);
-      if (profile) {
-        const img = document.createElement('img');
-        img.src = profile.avatar_url;
-        img.alt = profile.full_name;
-        img.className = 'avatar';
-        img.title = `${profile.full_name} (${avail.status === 'available' ? 'Kan' : 'Misschien'})${avail.notes ? ': ' + avail.notes : ''}`;
-        avatarList.appendChild(img);
-      }
+
+    // Max 4 avatars tonen
+    allAvailsToShow.slice(0, 4).forEach(({ avail, isMe }) => {
+      const profile = state.profiles.find(p => p.id === avail.user_id)
+        || (isMe ? state.user : null);
+      if (!profile) return;
+
+      const img = document.createElement('img');
+      img.src = profile.avatar_url;
+      img.alt = profile.full_name;
+      img.className = 'avatar cal-avatar';
+
+      // Kleurring op basis van status
+      const ringColor = avail.status === 'available'
+        ? 'var(--status-available)'
+        : avail.status === 'tentative'
+          ? 'var(--status-tentative)'
+          : 'var(--status-unavailable)';
+      img.style.outline = `2px solid ${ringColor}`;
+      img.style.outlineOffset = '1px';
+
+      const statusLabel = avail.status === 'available' ? 'Kan'
+        : avail.status === 'tentative' ? 'Misschien' : 'Kan niet';
+      const meLabel = isMe ? ' (jij)' : '';
+      img.title = `${profile.full_name}${meLabel} — ${statusLabel}${avail.notes ? ': ' + avail.notes : ''}`;
+
+      avatarList.appendChild(img);
     });
-    
-    if (otherAvails.length > 3) {
+
+    // +N indicator als er meer zijn
+    if (allAvailsToShow.length > 4) {
       const moreCount = document.createElement('div');
-      moreCount.style.fontSize = '9px';
-      moreCount.style.fontWeight = '700';
-      moreCount.style.color = 'var(--text-secondary)';
-      moreCount.style.alignSelf = 'center';
-      moreCount.style.marginLeft = '4px';
-      moreCount.textContent = `+${otherAvails.length - 3}`;
+      moreCount.className = 'cal-avatar-more';
+      moreCount.textContent = `+${allAvailsToShow.length - 4}`;
       avatarList.appendChild(moreCount);
     }
-    
+
     cell.appendChild(avatarList);
   }
-  
+
   cell.addEventListener('click', () => {
     document.querySelectorAll('.calendar-day').forEach(c => c.classList.remove('selected'));
     cell.classList.add('selected');
-    
     state.selectedDate = new Date(dateStr);
     updateAvailabilityEditor();
   });
-  
+
   elements.calendarDaysGrid.appendChild(cell);
 }
 

@@ -434,27 +434,61 @@ class ActivityParser {
    * @returns {number} Score van 10 tot 1000
    */
   static calculateRiderScore(ride) {
-    const distanceKm = ride.distanceKm || 0;
-    const ascentMeters = ride.totalAscentMeters || 0;
-    const avgSpeed = ride.avgSpeedKmh || 0;
-    const avgPower = ride.avgPowerWatts || 0;
-    const avgHr = ride.avgHeartRate || 140;
+    const distKm     = ride.distanceKm         || 0;
+    const ascentM    = ride.totalAscentMeters  || 0;
+    const durationH  = (ride.totalTimeSeconds  || 0) / 3600;
+    const avgSpeed   = ride.avgSpeedKmh        || 0;
+    const avgPower   = ride.avgPowerWatts       || 0;
+    const avgHr      = ride.avgHeartRate        || 0;
 
-    let score = (distanceKm * 3.5) + (ascentMeters * 0.6);
-    
+    if (distKm < 0.5 || durationH < 0.05) return 10; // Minimale rit
+
+    // ─── Component 1: Afstand (met afnemend rendement)
+    // Korte ritten scoren lineair, lange ritten logaritmisch
+    const distScore = distKm <= 50
+      ? distKm * 2.8
+      : 140 + Math.log(distKm / 50) * 120;
+
+    // ─── Component 2: Hoogtemeters (kliminspanning)
+    // VAM-gebaseerd: elke 100m klim = significant meer effort
+    const ascentScore = ascentM <= 500
+      ? ascentM * 0.55
+      : 275 + (ascentM - 500) * 0.38;
+
+    // ─── Component 3: Snelheidsfactor (normalisatie)
+    // 27.5 km/u = referentietempo voor een gemiddelde recreatieve fietser
+    // Factor loopt van 0.6 (15km/u) tot 1.45 (40+ km/u)
     let speedFactor = 1.0;
-    if (avgSpeed > 0) {
-      speedFactor = Math.max(0.5, Math.min(2.0, avgSpeed / 27.5));
+    if (avgSpeed >= 10) {
+      speedFactor = Math.max(0.6, Math.min(1.45, 0.3 + avgSpeed / 30));
     }
-    score = score * speedFactor;
 
+    // ─── Component 4: Duur-bonus (endurance)
+    // Ritten langer dan 2u krijgen een progressieve bonustoeslag
+    const enduranceBonus = durationH > 2
+      ? Math.min(80, (durationH - 2) * 18)
+      : 0;
+
+    // ─── Component 5: Intensiteitsbonus (vermogen of hartslag)
+    let intensityBonus = 0;
     if (avgPower > 0) {
-      score += (avgPower * 0.25);
-    } else if (avgHr > 150) {
-      score += 20; // Extra bonus voor zware inspanning
+      // W/kg-achtige bonus: hoog vermogen = hoge inspanning
+      // Basis 150W = +20, 250W = +60, 350W = +100 (gecapped)
+      intensityBonus = Math.min(120, avgPower * 0.33);
+    } else if (avgHr > 0) {
+      // Hartslag als fallback: zones 1-5
+      // <120 = licht, 120-140 = matig, 140-160 = tempo, 160+ = hard
+      if (avgHr > 160)      intensityBonus = 50;
+      else if (avgHr > 150) intensityBonus = 35;
+      else if (avgHr > 140) intensityBonus = 20;
+      else if (avgHr > 130) intensityBonus = 10;
     }
 
-    return Math.max(10, Math.min(1000, Math.round(score)));
+    // ─── Totaalscore
+    const raw = (distScore + ascentScore) * speedFactor + enduranceBonus + intensityBonus;
+
+    // Afronden en clamp naar 10–1000
+    return Math.max(10, Math.min(1000, Math.round(raw)));
   }
 
   /**
