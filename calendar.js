@@ -16,15 +16,18 @@ export function changeMonth(direction, loadDashboardDataCallback) {
 
 export function renderCalendar() {
   const year = state.currentDate.getFullYear();
+  // Haal elementen live op (vermijdt gecachede null-refs)
+  const gridEl  = document.getElementById('calendar-days-grid');
+  const titleEl = document.getElementById('calendar-month-year');
+  if (!gridEl) { console.warn('[Calendar] grid element niet gevonden'); return; }
   const month = state.currentDate.getMonth();
   
   const monthNames = [
     "Januari", "Februari", "Maart", "April", "Mei", "Juni", 
     "Juli", "Augustus", "September", "Oktober", "November", "December"
   ];
-  elements.calendarMonthYear.textContent = `${monthNames[month]} ${year}`;
   
-  elements.calendarDaysGrid.innerHTML = '';
+  gridEl.innerHTML = '';
   
   const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Zondag
   const totalDays = new Date(year, month + 1, 0).getDate();
@@ -167,6 +170,10 @@ export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
       updateAvailabilityEditor();
     }
   });
+
+  // Voeg cel toe aan het kalenderraster
+  const grid = document.getElementById('calendar-days-grid');
+  if (grid) grid.appendChild(cell);
 }
 
 // ─── Visuele multi-selectie bijwerken ──────────────────
