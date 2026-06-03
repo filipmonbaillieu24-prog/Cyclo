@@ -662,3 +662,46 @@
   color: var(--primary) !important;
 }
 
+
+/* ─── Profile Page Avatar Customizer ─── */
+#profile-avatar-customizer .swatch-circle {
+  transition: transform .15s, border-color .15s;
+  flex-shrink: 0;
+}
+#profile-avatar-customizer .swatch-circle:hover {
+  transform: scale(1.15);
+}
+#profile-avatar-customizer .swatch-circle.active,
+#profile-avatar-customizer .swatch-circle[style*="outline"] {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px var(--primary);
+}
+.profile-page-chip {
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-glass);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+  user-select: none;
+}
+.profile-page-chip:hover {
+  border-color: rgba(212,255,0,0.4);
+  color: var(--text-primary);
+}
+.profile-page-chip.active {
+  background: rgba(212,255,0,0.12);
+  border-color: rgba(212,255,0,0.5);
+  color: var(--primary);
+  font-weight: 700;
+}
+.profile-page-preset {
+  transition: border-color .15s, transform .15s;
+}
+.profile-page-preset:hover {
+  border-color: var(--primary) !important;
+  transform: scale(1.08);
+}

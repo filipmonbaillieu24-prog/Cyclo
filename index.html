@@ -870,6 +870,7 @@
   </div>
 
   <!-- PROFIEL PAGINA -->
+  <!-- PROFIEL PAGINA -->
   <section id="section-profile" class="app-section">
     <div class="profile-page-container">
 
@@ -887,21 +888,22 @@
             <h2 id="profile-page-name" style="font-size:22px;font-weight:800;margin:0;"></h2>
             <div id="profile-page-username" style="font-size:13px;color:var(--text-muted);"></div>
             <div style="display:flex;gap:16px;margin-top:10px;">
-              <span style="font-size:12px;"><strong id="profile-page-riders" style="color:var(--primary);font-size:16px;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">RITTEN</span></span>
-              <span style="font-size:12px;"><strong id="profile-page-score" style="color:var(--primary);font-size:16px;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">SCORE</span></span>
-              <span style="font-size:12px;"><strong id="profile-page-following-cnt" style="color:var(--primary);font-size:16px;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">VOLGEND</span></span>
-              <span style="font-size:12px;"><strong id="profile-page-followers-cnt" style="color:var(--primary);font-size:16px;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">VOLGERS</span></span>
+              <span><strong id="profile-page-riders" style="color:var(--primary);font-size:16px;font-weight:800;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">RITTEN</span></span>
+              <span><strong id="profile-page-score" style="color:var(--primary);font-size:16px;font-weight:800;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">SCORE</span></span>
+              <span><strong id="profile-page-following-cnt" style="color:var(--primary);font-size:16px;font-weight:800;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">VOLGEND</span></span>
+              <span><strong id="profile-page-followers-cnt" style="color:var(--primary);font-size:16px;font-weight:800;">0</strong><br><span style="color:var(--text-muted);font-size:10px;">VOLGERS</span></span>
             </div>
           </div>
-          <div style="margin-left:auto;display:flex;flex-direction:column;gap:8px;">
-            <button class="btn btn-secondary btn-sm" id="btn-profile-page-logout" style="gap:6px;">
+          <div style="margin-left:auto;">
+            <button class="btn btn-secondary btn-sm" id="btn-profile-page-logout">
               <i data-lucide="log-out" style="width:13px;height:13px;"></i> Uitloggen
             </button>
           </div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <!-- 2-kolom grid: Profiel bewerken | Avatar aanpassen -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
 
         <!-- Links: Profiel bewerken -->
         <div class="glass-panel">
@@ -938,31 +940,119 @@
           </form>
         </div>
 
-        <!-- Rechts: Avatar editor -->
-        <div class="glass-panel">
-          <h3 class="widget-title mb-4"><i data-lucide="user-circle" style="color:var(--secondary)"></i> Avatar</h3>
-          <!-- Preview -->
-          <div class="text-center mb-4">
-            <img src="" id="profile-page-preview-avatar" style="width:90px;height:90px;border-radius:50%;border:3px solid var(--primary);margin:0 auto;display:block;">
-            <div class="d-flex gap-8 justify-center mt-3">
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-profile-randomize">
-                <i data-lucide="shuffle" style="width:12px;height:12px;"></i> Verras me
-              </button>
+        <!-- Rechts: Avatar aanpassen (volledig) -->
+        <div class="glass-panel" style="min-width:0;overflow:hidden;">
+          <h3 class="widget-title mb-3"><i data-lucide="user-circle" style="color:var(--secondary)"></i> Avatar Aanpassen</h3>
+
+          <!-- Live preview + actieknoppen -->
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:12px;background:rgba(255,255,255,0.02);border-radius:var(--radius-sm);border:1px solid var(--border-glass);">
+            <img src="" id="profile-page-preview-avatar" style="width:80px;height:80px;border-radius:50%;border:3px solid var(--primary);flex-shrink:0;box-shadow:0 0 20px rgba(212,255,0,0.2);">
+            <div style="flex:1;">
+              <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Live preview van je avatar</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-profile-randomize">
+                  <i data-lucide="shuffle" style="width:12px;height:12px;"></i> Willekeurig
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-profile-save-avatar">
+                  <i data-lucide="save" style="width:12px;height:12px;"></i> Opslaan
+                </button>
+              </div>
             </div>
           </div>
-          <!-- Presets -->
-          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;">
-            <div class="avatar-preset-chip" data-seed="wout" title="Wout van Aert" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" style="width:26px;height:26px;border-radius:50%;"></div>
-            <div class="avatar-preset-chip" data-seed="remco" title="Remco Evenepoel" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=remco" style="width:26px;height:26px;border-radius:50%;"></div>
-            <div class="avatar-preset-chip" data-seed="mathieu" title="Mathieu van der Poel" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=mathieu" style="width:26px;height:26px;border-radius:50%;"></div>
-            <div class="avatar-preset-chip" data-seed="marianne" title="Marianne Vos" style="cursor:pointer;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=marianne" style="width:26px;height:26px;border-radius:50%;"></div>
+
+          <!-- Wielerheld presets -->
+          <div style="margin-bottom:14px;">
+            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">Presets</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <div class="profile-page-preset" data-seed="wout" title="Wout van Aert" style="cursor:pointer;border-radius:50%;border:2px solid transparent;transition:border-color .2s;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=wout" style="width:34px;height:34px;border-radius:50%;display:block;"></div>
+              <div class="profile-page-preset" data-seed="remco" title="Remco Evenepoel" style="cursor:pointer;border-radius:50%;border:2px solid transparent;transition:border-color .2s;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=remco" style="width:34px;height:34px;border-radius:50%;display:block;"></div>
+              <div class="profile-page-preset" data-seed="mathieu" title="Mathieu van der Poel" style="cursor:pointer;border-radius:50%;border:2px solid transparent;transition:border-color .2s;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=mathieu" style="width:34px;height:34px;border-radius:50%;display:block;"></div>
+              <div class="profile-page-preset" data-seed="marianne" title="Marianne Vos" style="cursor:pointer;border-radius:50%;border:2px solid transparent;transition:border-color .2s;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=marianne" style="width:34px;height:34px;border-radius:50%;display:block;"></div>
+              <div class="profile-page-preset" data-seed="puck" title="Puck Pieterse" style="cursor:pointer;border-radius:50%;border:2px solid transparent;transition:border-color .2s;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=puck" style="width:34px;height:34px;border-radius:50%;display:block;"></div>
+              <div class="profile-page-preset" data-seed="sagan" title="Peter Sagan" style="cursor:pointer;border-radius:50%;border:2px solid transparent;transition:border-color .2s;"><img src="https://api.dicebear.com/7.x/adventurer/svg?seed=sagan" style="width:34px;height:34px;border-radius:50%;display:block;"></div>
+            </div>
           </div>
-          <button type="button" class="btn btn-primary btn-sm w-full" id="btn-profile-save-avatar">
-            <i data-lucide="save" style="width:12px;height:12px;"></i> Avatar Opslaan
-          </button>
-        </div>
-      </div>
-    </div>
+
+          <!-- Customizer paneel -->
+          <div id="profile-avatar-customizer" style="background:rgba(255,255,255,0.02);border:1px solid var(--border-glass);border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;gap:12px;">
+
+            <!-- Achtergrond kleur -->
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">Achtergrond</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;" id="profile-swatches-bg">
+                <div class="swatch-circle active" data-prop="bg" data-val="transparent" style="width:24px;height:24px;border-radius:50%;background:linear-gradient(45deg,#222,#444);border:2px dashed rgba(255,255,255,0.5);cursor:pointer;" title="Transparant"></div>
+                <div class="swatch-circle" data-prop="bg" data-val="b6e3f4" style="width:24px;height:24px;border-radius:50%;background:#b6e3f4;border:2px solid transparent;cursor:pointer;" title="Lichtblauw"></div>
+                <div class="swatch-circle" data-prop="bg" data-val="d4ff00" style="width:24px;height:24px;border-radius:50%;background:#d4ff00;border:2px solid transparent;cursor:pointer;" title="Volt"></div>
+                <div class="swatch-circle" data-prop="bg" data-val="00f0ff" style="width:24px;height:24px;border-radius:50%;background:#00f0ff;border:2px solid transparent;cursor:pointer;" title="Cyaan"></div>
+                <div class="swatch-circle" data-prop="bg" data-val="ff6b9d" style="width:24px;height:24px;border-radius:50%;background:#ff6b9d;border:2px solid transparent;cursor:pointer;" title="Roze"></div>
+                <div class="swatch-circle" data-prop="bg" data-val="7c3aed" style="width:24px;height:24px;border-radius:50%;background:#7c3aed;border:2px solid transparent;cursor:pointer;" title="Paars"></div>
+                <div class="swatch-circle" data-prop="bg" data-val="0f1420" style="width:24px;height:24px;border-radius:50%;background:#0f1420;border:2px solid transparent;cursor:pointer;" title="Donker"></div>
+              </div>
+            </div>
+
+            <!-- Huidskleur -->
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">Huidskleur</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;" id="profile-swatches-skin">
+                <div class="swatch-circle" data-prop="skin" data-val="f2d3b1" style="width:24px;height:24px;border-radius:50%;background:#f2d3b1;border:2px solid transparent;cursor:pointer;"></div>
+                <div class="swatch-circle" data-prop="skin" data-val="ecad80" style="width:24px;height:24px;border-radius:50%;background:#ecad80;border:2px solid transparent;cursor:pointer;"></div>
+                <div class="swatch-circle" data-prop="skin" data-val="d08b5b" style="width:24px;height:24px;border-radius:50%;background:#d08b5b;border:2px solid transparent;cursor:pointer;"></div>
+                <div class="swatch-circle" data-prop="skin" data-val="9e5622" style="width:24px;height:24px;border-radius:50%;background:#9e5622;border:2px solid transparent;cursor:pointer;"></div>
+                <div class="swatch-circle" data-prop="skin" data-val="763900" style="width:24px;height:24px;border-radius:50%;background:#763900;border:2px solid transparent;cursor:pointer;"></div>
+              </div>
+            </div>
+
+            <!-- Haarkleur -->
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">Haarkleur</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;" id="profile-swatches-haircolor">
+                <div class="swatch-circle" data-prop="haircolor" data-val="0e0e0e" style="width:24px;height:24px;border-radius:50%;background:#0e0e0e;border:2px solid rgba(255,255,255,0.3);cursor:pointer;"></div>
+                <div class="swatch-circle" data-prop="haircolor" data-val="6a4e35" style="width:24px;height:24px;border-radius:50%;background:#6a4e35;border:2px solid transparent;cursor:pointer;"></div>
+                <div class="swatch-circle" data-prop="haircolor" data-val="e5d7a3" style="width:24px;height:24px;border-radius:50%;background:#e5d7a3;border:2px solid transparent;cursor:pointer;"></div>
+                <div class="swatch-circle" data-prop="haircolor" data-val="ab2a18" style="width:24px;height:24px;border-radius:50%;background:#ab2a18;border:2px solid transparent;cursor:pointer;"></div>
+                <div class="swatch-circle" data-prop="haircolor" data-val="d4ff00" style="width:24px;height:24px;border-radius:50%;background:#d4ff00;border:2px solid transparent;cursor:pointer;"></div>
+                <div class="swatch-circle" data-prop="haircolor" data-val="afafaf" style="width:24px;height:24px;border-radius:50%;background:#afafaf;border:2px solid transparent;cursor:pointer;"></div>
+              </div>
+            </div>
+
+            <!-- Haarstijl chips -->
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">Haarstijl</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;" id="profile-chips-hair">
+                <div class="profile-page-chip choice-chip" data-prop="hair" data-val="short01">Kort 1</div>
+                <div class="profile-page-chip choice-chip" data-prop="hair" data-val="short05">Krullend</div>
+                <div class="profile-page-chip choice-chip" data-prop="hair" data-val="long01">Lang 1</div>
+                <div class="profile-page-chip choice-chip" data-prop="hair" data-val="long03">Bob</div>
+                <div class="profile-page-chip choice-chip" data-prop="hair" data-val="none">Kaal</div>
+              </div>
+            </div>
+
+            <!-- Ogen chips -->
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">Ogen</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;" id="profile-chips-eyes">
+                <div class="profile-page-chip choice-chip" data-prop="eyes" data-val="variant01">Normaal</div>
+                <div class="profile-page-chip choice-chip" data-prop="eyes" data-val="variant03">Blij</div>
+                <div class="profile-page-chip choice-chip" data-prop="eyes" data-val="variant11">Knipoog</div>
+                <div class="profile-page-chip choice-chip" data-prop="eyes" data-val="variant15">Spleet</div>
+              </div>
+            </div>
+
+            <!-- Mond chips -->
+            <div>
+              <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">Mond</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;" id="profile-chips-mouth">
+                <div class="profile-page-chip choice-chip" data-prop="mouth" data-val="variant01">Lach</div>
+                <div class="profile-page-chip choice-chip" data-prop="mouth" data-val="variant05">Serieus</div>
+                <div class="profile-page-chip choice-chip" data-prop="mouth" data-val="variant10">Open</div>
+              </div>
+            </div>
+
+          </div><!-- /profile-avatar-customizer -->
+        </div><!-- /Avatar panel -->
+
+      </div><!-- /2-kolom grid -->
+    </div><!-- /profile-page-container -->
   </section>
 
   <!-- Scripts -->
