@@ -90,10 +90,15 @@ export function setUser(userProfile, setUserCallback) {
     updatePhysicalWidget(userProfile);
     
     if (userProfile.rider_score) {
-      elements.widgetUserScoreVal.textContent = userProfile.rider_score;
-      elements.widgetUserScoreContainer.style.display = 'flex';
+      if (elements.widgetUserScoreVal) elements.widgetUserScoreVal.textContent = userProfile.rider_score;
+      if (elements.widgetUserScoreContainer) elements.widgetUserScoreContainer.style.display = 'flex';
+      // Ook in Mijn Ritten sidebar
+      const rideScorePanel = document.getElementById('rides-score-panel');
+      const rideScoreVal = document.getElementById('rides-score-val');
+      if (rideScorePanel) { rideScorePanel.style.display = 'block'; }
+      if (rideScoreVal) rideScoreVal.textContent = userProfile.rider_score;
     } else {
-      elements.widgetUserScoreContainer.style.display = 'none';
+      if (elements.widgetUserScoreContainer) elements.widgetUserScoreContainer.style.display = 'none';
     }
     
     // Toon rittenlink

@@ -119,6 +119,14 @@ export async function loadDashboardData() {
     updateRouteDropdown();
     await loadAndRenderFeed();
 
+    // Rider Score ook updaten in Mijn Ritten sidebar
+    const rideScorePanel = document.getElementById('rides-score-panel');
+    const rideScoreVal = document.getElementById('rides-score-val');
+    if (rideScorePanel && state.user?.rider_score) {
+      rideScorePanel.style.display = 'block';
+      if (rideScoreVal) rideScoreVal.textContent = state.user.rider_score;
+    }
+
     // Realtime synchronisatie opzetten (eenmalig)
     if (!activeRealtimeChannel) {
       activeRealtimeChannel = setupRealtimeSubscriptions(loadDashboardData);

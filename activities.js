@@ -692,20 +692,31 @@ export function renderActivitiesList(loadDashboardDataCallback) {
   });
 
   // Update totalen (altijd op basis van alle activiteiten, niet gefilterd)
+  const profileStatsEmpty = document.getElementById('profile-stats-empty');
   if (allMyActivities.length > 0) {
     let totalDist = 0;
     let totalAsc = 0;
-    
     allMyActivities.forEach(act => {
       totalDist += parseFloat(act.distance_km || 0);
       totalAsc += parseInt(act.ascent_m || 0);
     });
+    if (elements.profileStatDistance) elements.profileStatDistance.textContent = totalDist.toFixed(1);
+    if (elements.profileStatAscent) elements.profileStatAscent.textContent = totalAsc;
+    if (elements.profileStatsContainer) elements.profileStatsContainer.style.display = 'grid';
+    if (profileStatsEmpty) profileStatsEmpty.style.display = 'none';
 
-    elements.profileStatDistance.textContent = totalDist.toFixed(1);
-    elements.profileStatAscent.textContent = totalAsc;
-    elements.profileStatsContainer.style.display = 'grid';
+    // Rider Score tonen in Mijn Ritten sidebar
+    const rideScorePanel = document.getElementById('rides-score-panel');
+    const rideScoreVal = document.getElementById('rides-score-val');
+    if (rideScorePanel && state.user?.rider_score) {
+      rideScorePanel.style.display = 'block';
+      if (rideScoreVal) rideScoreVal.textContent = state.user.rider_score;
+    }
   } else {
-    elements.profileStatsContainer.style.display = 'none';
+    if (elements.profileStatsContainer) elements.profileStatsContainer.style.display = 'none';
+    if (profileStatsEmpty) profileStatsEmpty.style.display = 'block';
+    const rideScorePanel = document.getElementById('rides-score-panel');
+    if (rideScorePanel) rideScorePanel.style.display = 'none';
   }
 
   // Persoonlijke records tonen
@@ -819,8 +830,16 @@ export function showActivityDetails(activity) {
   }
   
   elements.tcxResultPanel.style.display = 'block';
-  elements.routeMap.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  showToast(`Rit "${activity.name}" geladen op de kaart!`, "success");
+
+  // Navigeer eerst naar Mijn Ritten pagina als we er niet al zijn
+  const ridesSection = document.getElementById('section-rides');
+  if (ridesSection && !ridesSection.classList.contains('active')) {
+    import('./state.js').then(({ navigateTo }) => navigateTo('rides'));
+    setTimeout(() => elements.routeMap.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
+  } else {
+    elements.routeMap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  showToast(`Rit "${activity.name}" geladen!`, "success");
 }
 
 export async function deleteActivity(activityId, loadDashboardDataCallback) {
