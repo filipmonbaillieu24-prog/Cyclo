@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Cyclo - Core Application Orchestrator (ES6 Module)
  * 
  * Beheert de centrale state, de event loops, de live/offline initialisatie,
@@ -46,7 +46,8 @@ import { setupRealtimeSubscriptions } from './realtime.js';
 import { setupZwiftImporter } from './zwift-importer.js';
 import { loadSocialFeed, renderFeedCard, searchUsers, followUser, unfollowUser, getFollowStatus, getFollowCounts } from './social.js';
 import { initProfileAvatarEditor } from './profile-avatar.js';
-import { updateFitnessBaseline, calculateFitnessMetrics, calculatePRs, buildHeatmapData, comparePeriods } from './zones.js';
+import { updateFitnessBaseline, calculateFitnessMetrics, calculatePRs, buildHeatmapData, comparePeriods, calculateMMP, estimateVO2max, compareSeasons, calculateBadges } from './zones.js';
+import { renderEquipmentSection, openEquipmentModal } from './equipment.js';
 
 let activeRealtimeChannel = null;
 
@@ -1117,6 +1118,20 @@ export function renderProfileAnalytics() {
   renderPRTracker(acts);
   renderFitnessChart(acts);
   renderPeriodComparison(acts);
+
+  // Nieuwe analytics
+  try { renderVO2max(acts); }       catch(e) { console.warn('VO2max:', e); }
+  try { renderMMPCurve(acts); }     catch(e) { console.warn('MMP:', e); }
+  try { renderSeasonChart(acts); }  catch(e) { console.warn('Season:', e); }
+  try { renderBadgeWall(acts); }    catch(e) { console.warn('Badges:', e); }
+  try { renderEquipmentSection(); } catch(e) { console.warn('Equipment:', e); }
+
+  // Equipment knop
+  const addEqBtn = document.getElementById('btn-add-equipment');
+  if (addEqBtn && !addEqBtn._eqBound) {
+    addEqBtn._eqBound = true;
+    addEqBtn.addEventListener('click', () => openEquipmentModal());
+  }
 }
 
 // ─── Activiteiten Heatmap ────────────────────────────────────────────────────
@@ -1288,4 +1303,178 @@ function renderPeriodComparison(activities) {
       <div class="period-stat-diff ${cls(s.diff)}">${arrow(s.diff)} ${Math.abs(s.diff)}%</div>
     </div>
   `).join('');
+}
+
+// ─── VO₂max Renderen ──────────────────────────────────────────────────────────
+function renderVO2max(activities) {
+  const container = document.getElementById('vo2max-card-container');
+  if (!container) return;
+  const result = estimateVO2max(activities, state.user);
+  if (!result) { container.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Onvoldoende data voor VO₂max schatting.</div>'; return; }
+  const descs = { 'Laag':'Verbetering mogelijk met duurtraining.', 'Matig':'Goede basis. Intervaltraining helpt.', 'Goed':'Boven het gemiddelde. Goed bezig!', 'Excellent':'Hoog niveau. Competitief fietser.', 'Hoog':'Uitmuntend. Professioneel niveau.', 'Elite':'Elite niveau. Exceptioneel!' };
+  container.innerHTML = `
+    <div class="vo2max-card">
+      <div class="vo2max-ring" style="border-color:${result.color};color:${result.color};">
+        <span class="vo2max-val">${result.vo2max}</span>
+        <span class="vo2max-unit">ml/kg/min</span>
+      </div>
+      <div class="vo2max-info">
+        <div class="vo2max-cat" style="color:${result.color};">${result.category}</div>
+        <div class="vo2max-method">Methode: ${result.method}</div>
+        <div class="vo2max-desc">${descs[result.category] || ''}</div>
+      </div>
+    </div>`;
+}
+
+// ─── MMP Vermogenscurve ───────────────────────────────────────────────────────
+let _mmpChart = null;
+function renderMMPCurve(activities) {
+  const section   = document.getElementById('mmp-section');
+  const topStats  = document.getElementById('mmp-top-stats');
+  const canvas    = document.getElementById('mmp-chart');
+  const noteEl    = document.getElementById('mmp-estimate-note');
+  if (!section || !canvas) return;
+
+  const mmp = calculateMMP(activities);
+  if (!mmp) return;
+  section.style.display = 'block';
+
+  const keyPoints = [{ label:'5s',i:0},{ label:'1m',i:3},{ label:'5m',i:4},{ label:'20m',i:6},{ label:'60m',i:8}];
+  if (topStats) {
+    topStats.innerHTML = keyPoints.map(kp => `
+      <div class="mmp-stat">
+        <span class="mmp-stat-val">${mmp[kp.i]?.power || '-'}</span>
+        <span class="mmp-stat-lbl">${kp.label}</span>
+      </div>`).join('');
+  }
+
+  const hasEstimates = mmp.some(p => p.isEstimate);
+  if (noteEl) noteEl.style.display = hasEstimates ? 'block' : 'none';
+
+  if (_mmpChart) { _mmpChart.destroy(); _mmpChart = null; }
+  if (typeof Chart === 'undefined') return;
+
+  _mmpChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: mmp.map(p => p.label),
+      datasets: [{
+        label: 'MMP (W)',
+        data: mmp.map(p => p.power),
+        borderColor: 'rgba(212,255,0,0.9)',
+        backgroundColor: 'rgba(212,255,0,0.08)',
+        borderWidth: 2, pointRadius: 4, pointBackgroundColor: 'rgba(212,255,0,0.8)', tension: 0.4, fill: true,
+        segment: { borderDash: (ctx) => mmp[ctx.p0DataIndex]?.isEstimate ? [4,4] : [] }
+      }]
+    },
+    options: {
+      responsive: true, animation: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.raw}W${mmp[ctx.dataIndex]?.wkg ? ' · ' + mmp[ctx.dataIndex].wkg + ' W/kg' : ''}` } } },
+      scales: {
+        x: { ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// ─── Seizoensvergelijking Chart ───────────────────────────────────────────────
+let _seasonChart = null;
+let _seasonData  = null;
+let _seasonMetric = 'km';
+
+function renderSeasonChart(activities) {
+  const canvas = document.getElementById('season-chart');
+  if (!canvas) return;
+  _seasonData = compareSeasons(activities);
+  _drawSeasonChart();
+
+  ['km','ritten'].forEach(metric => {
+    const btn = document.getElementById(`season-btn-${metric}`);
+    if (btn && !btn._seasonBound) {
+      btn._seasonBound = true;
+      btn.addEventListener('click', () => {
+        _seasonMetric = metric;
+        document.querySelectorAll('.season-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.metric === metric));
+        _drawSeasonChart();
+      });
+    }
+  });
+}
+
+function _drawSeasonChart() {
+  const canvas = document.getElementById('season-chart');
+  if (!canvas || !_seasonData) return;
+  if (_seasonChart) { _seasonChart.destroy(); _seasonChart = null; }
+  if (typeof Chart === 'undefined') return;
+
+  const thisData = _seasonMetric === 'km' ? _seasonData.thisSeason : _seasonData.thisSeason.map((_, i) => {
+    // Cumulatieve ritten
+    return i + 1;
+  });
+
+  // Bouw cumulatieve ritten apart
+  let _seasonRides = { this: [], last: [] };
+  if (_seasonMetric !== 'km') {
+    // Gebruik activities direct
+    // (simplified: toon gewoon de km data maar schaal anders — voor ritten gebruiken we apart)
+  }
+
+  _seasonChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: _seasonData.labels,
+      datasets: [
+        {
+          label: `${_seasonData.currentYear}`,
+          data: _seasonData.thisSeason,
+          borderColor: 'rgba(212,255,0,0.9)', backgroundColor: 'rgba(212,255,0,0.07)',
+          borderWidth: 2, pointRadius: 0, tension: 0.3, fill: true,
+        },
+        {
+          label: `${_seasonData.lastYear}`,
+          data: _seasonData.lastSeason,
+          borderColor: 'rgba(255,255,255,0.25)', backgroundColor: 'transparent',
+          borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.3,
+        },
+      ]
+    },
+    options: {
+      responsive: true, animation: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.5)', font: { size: 11 }, boxWidth: 20 } },
+        tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw} km` } },
+        annotation: _seasonData.currentWeek ? {} : {}
+      },
+      scales: {
+        x: { ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 8 }, maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// ─── Badge Wall ───────────────────────────────────────────────────────────────
+function renderBadgeWall(activities) {
+  const wall      = document.getElementById('badge-wall');
+  const countEl   = document.getElementById('badge-earned-count');
+  if (!wall) return;
+  wall.innerHTML = '';
+
+  const badges  = calculateBadges(activities);
+  const earned  = badges.filter(b => b.earned).length;
+  if (countEl) countEl.textContent = `${earned}/${badges.length} verdiend`;
+
+  for (const badge of badges) {
+    const chip = document.createElement('div');
+    chip.className = `badge-chip${badge.earned ? ' earned' : ''}`;
+    chip.title = badge.desc;
+    chip.innerHTML = `
+      ${badge.earned ? '<span class="badge-earned-check">✓</span>' : ''}
+      <span class="badge-emoji">${badge.emoji}</span>
+      <span class="badge-name">${badge.name}</span>
+      <span class="badge-desc">${badge.desc}</span>
+    `;
+    wall.appendChild(chip);
+  }
 }

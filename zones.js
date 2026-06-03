@@ -279,11 +279,266 @@ export function buildElevationData(coordinates) {
       const dlng = (c[1] - prev[1]) * 111000 * Math.cos(prev[0] * Math.PI / 180);
       dist += Math.sqrt(dlat * dlat + dlng * dlng) / 1000;
     }
-    // Elke 10e punt of eerste/laatste
     if (i % Math.max(1, Math.floor(coordinates.length / 100)) === 0 || i === coordinates.length - 1) {
       labels.push(dist.toFixed(1));
       elevs.push(c[2] || 0);
     }
   }
   return { labels, elevs };
+}
+
+// ─── Mean Maximal Power (MMP) Curve ──────────────────────────────────────────
+//
+// Zwift levert avg_power_watts per activiteit.
+// MMP per tijdsduur wordt geschat via een power-decay model op basis van FTP:
+//   P(t) = FTP × (t_FTP/t)^0.07
+// Waarbij we voor elk tijdsinterval ook de best gemeten activiteit meenemen.
+
+const MMP_DURATIONS = [5, 10, 30, 60, 300, 600, 1200, 1800, 3600]; // seconden
+const MMP_LABELS    = ['5s', '10s', '30s', '1m', '5m', '10m', '20m', '30m', '60m'];
+
+export function calculateMMP(activities) {
+  const withPower = activities.filter(a => a.avg_power_watts > 0 && a.duration_secs > 0);
+  const ftp = state.user?.ftp;
+  if (withPower.length === 0 || !ftp) return null;
+
+  const FTP_DURATION = 3600; // 60 minuten als referentie voor FTP
+
+  return MMP_DURATIONS.map((dur, i) => {
+    // Theoretisch model: activiteiten die minstens zo lang duren
+    const candidates = withPower.filter(a => a.duration_secs >= dur);
+
+    let bestPower = 0;
+    if (candidates.length > 0) {
+      // Schaal avg power naar de korter tijdsduur via power-duration model
+      bestPower = Math.max(...candidates.map(a => {
+        const t  = Math.min(a.duration_secs, dur);
+        const scale = Math.pow(FTP_DURATION / t, 0.07);
+        return Math.round(a.avg_power_watts * scale);
+      }));
+    } else {
+      // Alleen model-curve gebruiken als geen data
+      const scale = Math.pow(FTP_DURATION / dur, 0.07);
+      bestPower = Math.round(ftp * scale);
+    }
+
+    return {
+      label:    MMP_LABELS[i],
+      duration: dur,
+      power:    bestPower,
+      wkg:      state.user?.weight ? +(bestPower / state.user.weight).toFixed(2) : null,
+      isEstimate: candidates.length === 0,
+    };
+  });
+}
+
+// ─── VO₂max Schatting ────────────────────────────────────────────────────────
+//
+// Methode 1 (beste): Vermogen + gewicht (Zwift / power meter)
+//   VO₂max ≈ (P_best_20min × 10.8) / gewicht + 7
+// Methode 2: Hartslag (Uth-formule)
+//   VO₂max ≈ 15 × (HRmax / HRrust)
+// Methode 3 (fallback): Snelheid
+//   VO₂max ≈ avgSpeed × 3.5
+
+const VO2_CATEGORIES = [
+  { min: 0,  max: 30, label: 'Laag',      color: '#f87171' },
+  { min: 30, max: 40, label: 'Matig',     color: '#fb923c' },
+  { min: 40, max: 50, label: 'Goed',      color: '#facc15' },
+  { min: 50, max: 60, label: 'Excellent', color: '#a3e635' },
+  { min: 60, max: 70, label: 'Hoog',      color: '#4ade80' },
+  { min: 70, max: 999,label: 'Elite',     color: '#34d399' },
+];
+
+export function estimateVO2max(activities, profile) {
+  const weight  = profile?.weight || 70;
+  const ftp     = state.user?.ftp;
+  const maxHR   = state.user?.maxHR || 190;
+  let vo2max    = null;
+  let method    = '';
+
+  // Methode 1: Beste 20-min power (FTP ≈ 95% van 20-min power)
+  if (ftp && weight) {
+    const p20 = ftp / 0.95; // FTP = 20min power × 0.95 → terug naar 20min power
+    vo2max = (p20 * 10.8) / weight + 7;
+    method = 'Vermogen + gewicht';
+  }
+
+  // Methode 2: Hartslag (als geen vermogen)
+  if (!vo2max) {
+    const hrRest = activities.length > 0
+      ? Math.min(...activities.filter(a => a.avg_heart_rate > 0).map(a => a.avg_heart_rate))
+      : 60;
+    if (maxHR && hrRest < maxHR) {
+      vo2max = 15 * (maxHR / hrRest);
+      method = 'Hartslag (Uth)';
+    }
+  }
+
+  // Methode 3: Gemiddelde snelheid (fallback)
+  if (!vo2max && activities.length > 0) {
+    const speeds = activities.map(a => parseFloat(a.avg_speed_kmh || 0)).filter(s => s > 0);
+    if (speeds.length > 0) {
+      const bestSpeed = Math.max(...speeds);
+      vo2max = bestSpeed * 3.5;
+      method = 'Snelheid (schatting)';
+    }
+  }
+
+  if (!vo2max) return null;
+
+  vo2max = Math.round(vo2max * 10) / 10;
+  const cat = VO2_CATEGORIES.find(c => vo2max >= c.min && vo2max < c.max) || VO2_CATEGORIES[0];
+
+  return { vo2max, category: cat.label, color: cat.color, method };
+}
+
+// ─── Seizoensvergelijking (week per week) ────────────────────────────────────
+
+export function compareSeasons(activities) {
+  const getWeek = (date) => {
+    const d = new Date(date);
+    const jan1 = new Date(d.getFullYear(), 0, 1);
+    return Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+  };
+
+  const thisYear = new Date().getFullYear();
+  const lastYear = thisYear - 1;
+
+  // Cumulatieve km per weeknummer per jaar
+  const buckets = { [thisYear]: {}, [lastYear]: {} };
+
+  for (const act of activities) {
+    const d    = new Date(act.date);
+    const year = d.getFullYear();
+    if (year !== thisYear && year !== lastYear) continue;
+    const week = getWeek(d);
+    buckets[year][week] = (buckets[year][week] || 0) + parseFloat(act.distance_km || 0);
+  }
+
+  const weeks = Array.from({ length: 52 }, (_, i) => i + 1);
+
+  // Cumulatief optellen
+  const cumulative = (yearData) => {
+    let sum = 0;
+    return weeks.map(w => {
+      sum += yearData[w] || 0;
+      return Math.round(sum);
+    });
+  };
+
+  const currentWeek = getWeek(new Date());
+
+  return {
+    labels:       weeks.map(w => `W${w}`),
+    currentYear:  thisYear,
+    lastYear:     lastYear,
+    thisSeason:   cumulative(buckets[thisYear]),
+    lastSeason:   cumulative(buckets[lastYear]),
+    currentWeek,
+  };
+}
+
+// ─── Badges & Achievements ────────────────────────────────────────────────────
+
+export const BADGE_DEFINITIONS = [
+  {
+    key:   'first_ride',
+    emoji: '🚀',
+    name:  'Eerste Rit',
+    desc:  'Je eerste activiteit geüpload!',
+    check: (acts) => acts.length >= 1,
+  },
+  {
+    key:   'century',
+    emoji: '💯',
+    name:  'Eeuweling',
+    desc:  'Één rit van 100 km of meer gereden.',
+    check: (acts) => acts.some(a => parseFloat(a.distance_km || 0) >= 100),
+  },
+  {
+    key:   'climber',
+    emoji: '⛰️',
+    name:  'Klimmer',
+    desc:  '1000 hoogtemeters in één rit.',
+    check: (acts) => acts.some(a => parseInt(a.ascent_m || 0) >= 1000),
+  },
+  {
+    key:   'weekly_warrior',
+    emoji: '🔥',
+    name:  'Week Warrior',
+    desc:  '5 of meer ritten in één kalenderweek.',
+    check: (acts) => {
+      const weekMap = {};
+      acts.forEach(a => {
+        const d    = new Date(a.date);
+        const key  = `${d.getFullYear()}-W${Math.ceil(d.getDate() / 7)}`;
+        weekMap[key] = (weekMap[key] || 0) + 1;
+      });
+      return Object.values(weekMap).some(c => c >= 5);
+    },
+  },
+  {
+    key:   'monthly_trophy',
+    emoji: '📅',
+    name:  'Maandtrofee',
+    desc:  '10 of meer ritten in één kalendermaand.',
+    check: (acts) => {
+      const monthMap = {};
+      acts.forEach(a => {
+        const key = (a.date || '').substring(0, 7);
+        monthMap[key] = (monthMap[key] || 0) + 1;
+      });
+      return Object.values(monthMap).some(c => c >= 10);
+    },
+  },
+  {
+    key:   'early_bird',
+    emoji: '🌅',
+    name:  'Vroege Vogel',
+    desc:  'Een rit gestart vóór 7:00 uur.',
+    check: (acts) => acts.some(a => {
+      const h = new Date(a.date).getHours();
+      return h >= 4 && h < 7;
+    }),
+  },
+  {
+    key:   'thousand_km',
+    emoji: '🌍',
+    name:  'Duizendpoot',
+    desc:  '1000 km totaal gereden.',
+    check: (acts) => acts.reduce((s, a) => s + parseFloat(a.distance_km || 0), 0) >= 1000,
+  },
+  {
+    key:   'ten_thousand_m',
+    emoji: '🗻',
+    name:  'Alpenklimmer',
+    desc:  '10.000 hoogtemeters totaal gereden.',
+    check: (acts) => acts.reduce((s, a) => s + parseInt(a.ascent_m || 0), 0) >= 10000,
+  },
+  {
+    key:   'power_rider',
+    emoji: '⚡',
+    name:  'Power Rider',
+    desc:  'Gemiddeld 250W of meer gereden in één rit.',
+    check: (acts) => acts.some(a => parseInt(a.avg_power_watts || 0) >= 250),
+  },
+  {
+    key:   'explorer',
+    emoji: '🗺️',
+    name:  'Ontdekkingsreiziger',
+    desc:  '25 verschillende ritten gereden.',
+    check: (acts) => acts.length >= 25,
+  },
+];
+
+/**
+ * Berekent welke badges verdiend zijn op basis van activiteiten.
+ * Geeft een array terug van { ...badgeDef, earned: boolean }.
+ */
+export function calculateBadges(activities) {
+  return BADGE_DEFINITIONS.map(badge => ({
+    ...badge,
+    earned: badge.check(activities),
+  }));
 }

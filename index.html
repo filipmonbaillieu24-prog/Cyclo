@@ -1119,7 +1119,72 @@
         </div>
       </div>
 
+      <!-- ─── VO₂max Kaartje ──────────────────────────────────── -->
+      <div class="glass-panel mt-3">
+        <div class="d-flex align-center gap-8 mb-3">
+          <i data-lucide="wind" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span style="font-size:13px;font-weight:700;">VO₂max Schatting</span>
+        </div>
+        <div id="vo2max-card-container">
+          <div style="color:var(--text-muted);font-size:12px;">Berekenen op basis van activiteiten...</div>
+        </div>
+      </div>
+
+      <!-- ─── MMP Vermogenscurve ──────────────────────────────── -->
+      <div class="glass-panel mt-3" id="mmp-section" style="display:none;">
+        <div class="d-flex align-center gap-8 mb-3">
+          <i data-lucide="zap" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span style="font-size:13px;font-weight:700;">Vermogenscurve (MMP)</span>
+          <span style="font-size:10px;color:var(--text-muted);margin-left:auto;">Mean Maximal Power per tijdsduur</span>
+        </div>
+        <div class="mmp-top-stats" id="mmp-top-stats"></div>
+        <div class="mmp-chart-wrap">
+          <canvas id="mmp-chart" height="120"></canvas>
+        </div>
+        <div id="mmp-estimate-note" class="mmp-estimate-note" style="display:none;">
+          * Gearceerde waarden zijn modelschattingen op basis van FTP, geen gemeten data.
+        </div>
+      </div>
+
+      <!-- ─── Seizoensvergelijking ────────────────────────────── -->
+      <div class="glass-panel mt-3">
+        <div class="d-flex align-center gap-8 mb-3">
+          <i data-lucide="bar-chart-2" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span style="font-size:13px;font-weight:700;">Seizoensvergelijking</span>
+        </div>
+        <div class="season-toggle">
+          <button class="season-toggle-btn active" data-metric="km" id="season-btn-km">km</button>
+          <button class="season-toggle-btn" data-metric="ritten" id="season-btn-ritten">Ritten</button>
+        </div>
+        <div class="season-chart-wrap">
+          <canvas id="season-chart" height="120"></canvas>
+        </div>
+      </div>
+
+      <!-- ─── Badges & Achievements ───────────────────────────── -->
+      <div class="glass-panel mt-3">
+        <div class="d-flex align-center gap-8 mb-3">
+          <i data-lucide="award" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span style="font-size:13px;font-weight:700;">Badges & Achievements</span>
+          <span id="badge-earned-count" style="font-size:10px;color:var(--text-muted);margin-left:auto;"></span>
+        </div>
+        <div id="badge-wall" class="badge-wall">
+          <div style="color:var(--text-muted);font-size:12px;">Laden...</div>
+        </div>
+      </div>
+
+      <!-- ─── Materiaalregistratie ────────────────────────────── -->
+      <div class="glass-panel mt-3">
+        <div class="d-flex align-center gap-8 mb-3">
+          <i data-lucide="settings" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span style="font-size:13px;font-weight:700;">Mijn Materiaal</span>
+        </div>
+        <div id="equipment-list"></div>
+        <button class="eq-add-btn" id="btn-add-equipment">+ Fiets toevoegen</button>
+      </div>
+
     </div><!-- /profile-page-container -->
+
 
   </section>
 
