@@ -1,12 +1,154 @@
 // Cyclo - Group Rides Module
 import { state, elements, config, showToast } from './state.js';
 
+// ─────────────────────────────────────────────
+//  Weer API (Open-Meteo, gratis, geen key)
+// ─────────────────────────────────────────────
+const WMO_CODES = {
+  0: { label: 'Helder', emoji: '☀️' },
+  1: { label: 'Overwegend helder', emoji: '🌤️' },
+  2: { label: 'Bewolkt', emoji: '⛅' },
+  3: { label: 'Bewolkt', emoji: '☁️' },
+  45: { label: 'Mist', emoji: '🌫️' },
+  48: { label: 'Rijp', emoji: '🌫️' },
+  51: { label: 'Lichte motregen', emoji: '🌦️' },
+  53: { label: 'Motregen', emoji: '🌧️' },
+  55: { label: 'Zware motregen', emoji: '🌧️' },
+  61: { label: 'Lichte regen', emoji: '🌦️' },
+  63: { label: 'Regen', emoji: '🌧️' },
+  65: { label: 'Zware regen', emoji: '🌧️' },
+  71: { label: 'Lichte sneeuw', emoji: '🌨️' },
+  73: { label: 'Sneeuw', emoji: '❄️' },
+  75: { label: 'Zware sneeuw', emoji: '❄️' },
+  80: { label: 'Regenbui', emoji: '🌦️' },
+  81: { label: 'Regenbui', emoji: '🌧️' },
+  82: { label: 'Zware bui', emoji: '⛈️' },
+  85: { label: 'Sneeuwbui', emoji: '🌨️' },
+  95: { label: 'Onweer', emoji: '⛈️' },
+  99: { label: 'Onweer + hagel', emoji: '⛈️' }
+};
+
+const WEATHER_CACHE_KEY = 'cyclo_weather_cache';
+const WEATHER_CACHE_TTL = 60 * 60 * 1000; // 1 uur
+
+async function fetchWeatherForDate(dateStr) {
+  // Cache check
+  try {
+    const cache = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || '{}');
+    const cached = cache[dateStr];
+    if (cached && Date.now() - cached.ts < WEATHER_CACHE_TTL) return cached.data;
+  } catch(_) {}
+
+  // Belgisch gemiddelde coördinaten (Brussel)
+  const lat = 50.85;
+  const lon = 4.35;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,windspeed_10m_max&timezone=Europe/Brussels&start_date=${dateStr}&end_date=${dateStr}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = await res.json();
+    const d = json.daily;
+    if (!d || !d.time || !d.time[0]) return null;
+
+    const data = {
+      code: d.weathercode[0],
+      maxTemp: Math.round(d.temperature_2m_max[0]),
+      minTemp: Math.round(d.temperature_2m_min[0]),
+      precip: d.precipitation_probability_max[0],
+      wind: Math.round(d.windspeed_10m_max[0])
+    };
+
+    // Sla op in cache
+    try {
+      const cache = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || '{}');
+      cache[dateStr] = { ts: Date.now(), data };
+      // Max 30 dagen cache bijhouden
+      const keys = Object.keys(cache);
+      if (keys.length > 30) delete cache[keys[0]];
+      localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(cache));
+    } catch(_) {}
+
+    return data;
+  } catch(e) {
+    console.warn('Weer ophalen mislukt:', e.message);
+    return null;
+  }
+}
+
+function renderWeatherBadge(weather) {
+  if (!weather) return '';
+  const wmo = WMO_CODES[weather.code] || { label: '?', emoji: '🌡️' };
+  return `
+    <div class="weather-badge">
+      <span class="weather-emoji">${wmo.emoji}</span>
+      <span class="weather-temp">${weather.maxTemp}°</span>
+      <span class="weather-detail">${weather.precip}% regen · ${weather.wind} km/u wind</span>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+//  Moeilijkheidsgraad
+// ─────────────────────────────────────────────
+function getDifficultyBadge(distKm, ascentM) {
+  if (!distKm) return '';
+  const dist = parseFloat(distKm);
+  const asc = parseInt(ascentM || 0);
+  let level, color;
+  if (dist < 40 && asc < 300) { level = 'Rustig'; color = '#4caf50'; }
+  else if (dist < 80 && asc < 800) { level = 'Matig'; color = '#ff9800'; }
+  else if (dist < 130 && asc < 1500) { level = 'Pittig'; color = '#f44336'; }
+  else { level = 'Zwaar'; color = '#9c27b0'; }
+  return `<span class="difficulty-badge" style="background:${color}20;border-color:${color}50;color:${color};">${level}</span>`;
+}
+
+// ─────────────────────────────────────────────
+//  iCal export
+// ─────────────────────────────────────────────
+export function exportRideToIcal(ride) {
+  const dateStr = ride.date.replace(/-/g, '');
+  const dtStart = `${dateStr}T090000`;
+  const dtEnd = `${dateStr}T120000`;
+  const uid = `cyclo-${ride.id}@cyclo-app.be`;
+  const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const desc = (ride.description || '').replace(/\n/g, '\\n').substring(0, 200);
+  const url = ride.route_link ? `\nURL:${ride.route_link}` : '';
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Cyclo App//NL',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `DTSTART;TZID=Europe/Brussels:${dtStart}`,
+    `DTEND;TZID=Europe/Brussels:${dtEnd}`,
+    `DTSTAMP:${now}`,
+    `UID:${uid}`,
+    `SUMMARY:🚴 ${ride.title}`,
+    `DESCRIPTION:${desc}`,
+    `LOCATION:Cyclo Groepsrit${url}`,
+    'STATUS:CONFIRMED',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `cyclo-${ride.title.replace(/\s+/g, '-').toLowerCase()}.ics`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+  showToast('iCal gedownload! Importeer in je kalender-app.', 'success');
+}
+
 // Edit-modus: sla rit-id op als we bewerken in plaats van aanmaken
 let editingRideId = null;
 
-export function renderRidesList() {
+export async function renderRidesList() {
   elements.ridesListContainer.innerHTML = '';
-  
+
   if (state.rides.length === 0) {
     elements.ridesListContainer.innerHTML = `
       <div class="empty-state">
@@ -15,102 +157,132 @@ export function renderRidesList() {
     `;
     return;
   }
-  
+
   const sortedRides = [...state.rides].sort((a, b) => new Date(a.date) - new Date(b.date));
-  
+
+  // Haal weer op voor alle ritten (parallel)
+  const today = new Date().toISOString().split('T')[0];
+  const weatherMap = {};
+  await Promise.all(sortedRides.map(async ride => {
+    if (ride.date >= today) {
+      weatherMap[ride.date] = await fetchWeatherForDate(ride.date);
+    }
+  }));
+
   sortedRides.forEach(ride => {
     const rideDiv = document.createElement('div');
     rideDiv.classList.add('ride-item');
-    
-    const opt = { day: 'numeric', month: 'long' };
+
+    const opt = { day: 'numeric', month: 'long', weekday: 'long' };
     const dateFormatted = new Intl.DateTimeFormat('nl-NL', opt).format(new Date(ride.date));
-    
+
     let rideParticipants = [];
     if (config.isDemoMode) {
       rideParticipants = ride.participants || [];
     } else {
       rideParticipants = ride.ride_participants ? ride.ride_participants.map(p => p.user_id) : [];
     }
-    
+
+    const maxPart = ride.max_participants || null;
+    const isFull = maxPart && rideParticipants.length >= maxPart;
     const isParticipating = state.user ? rideParticipants.includes(state.user.id) : false;
     const isCreator = state.user && ride.created_by === state.user.id;
-    
-    let avatarsHtml = '';
-    rideParticipants.forEach(userId => {
+
+    // Deelnemers-avatars (overlappend)
+    let avatarsHtml = rideParticipants.map(userId => {
       const p = state.profiles.find(prof => prof.id === userId);
-      if (p) {
-        avatarsHtml += `<img src="${p.avatar_url}" alt="${p.full_name}" class="avatar" title="${p.full_name}">`;
-      }
-    });
-    
-    // Check of er een route gekoppeld is of een link
+      return p ? `<img src="${p.avatar_url}" alt="${p.full_name}" class="avatar participant-avatar" title="${p.full_name}">` : '';
+    }).join('');
+
+    // Route badge
     let routeHtml = '';
     if (ride.activity_id) {
-      routeHtml = `<a href="#" class="nav-link view-coupled-route-btn" data-activity-id="${ride.activity_id}" data-ride-title="${ride.title}" style="color:var(--primary); text-decoration:underline; font-size:12px; margin-top: 4px; display:inline-block;"><i data-lucide="map" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Bekijk Route op Kaart</a>`;
+      routeHtml = `<a href="#" class="nav-link view-coupled-route-btn" data-activity-id="${ride.activity_id}" data-ride-title="${ride.title}" style="color:var(--primary);text-decoration:underline;font-size:12px;margin-top:4px;display:inline-block;"><i data-lucide="map" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Bekijk Route</a>`;
     } else if (ride.route_link) {
-      routeHtml = `<a href="${ride.route_link}" target="_blank" class="nav-link" style="color:var(--secondary); text-decoration:underline; font-size:12px; margin-top: 4px; display:inline-block;"><i data-lucide="external-link" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Bekijk GPX/Route (Link)</a>`;
+      routeHtml = `<a href="${ride.route_link}" target="_blank" class="nav-link" style="color:var(--secondary);text-decoration:underline;font-size:12px;margin-top:4px;display:inline-block;"><i data-lucide="external-link" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Route bekijken</a>`;
     }
 
-    // Verwachte afstand/tempo badges
-    let metaBadges = '';
-    if (ride.expected_distance_km) {
-      metaBadges += `<span class="ride-meta-badge"><i data-lucide="map-pin" style="width:10px;height:10px;display:inline;vertical-align:middle;margin-right:2px;"></i>${ride.expected_distance_km} km</span>`;
+    // Meta badges + difficulty
+    const diffBadge = getDifficultyBadge(ride.expected_distance_km, null);
+    let metaBadgesHtml = '';
+    if (ride.expected_distance_km) metaBadgesHtml += `<span class="ride-meta-badge"><i data-lucide="map-pin" style="width:10px;height:10px;display:inline;vertical-align:middle;margin-right:2px;"></i>${ride.expected_distance_km} km</span>`;
+    if (ride.expected_speed_kmh) metaBadgesHtml += `<span class="ride-meta-badge"><i data-lucide="zap" style="width:10px;height:10px;display:inline;vertical-align:middle;margin-right:2px;"></i>~${ride.expected_speed_kmh} km/u</span>`;
+    if (diffBadge) metaBadgesHtml += diffBadge;
+
+    // Capaciteitsbalk
+    const capacityHtml = maxPart ? (() => {
+      const pct = Math.min(100, Math.round(rideParticipants.length / maxPart * 100));
+      const barColor = pct >= 100 ? '#f44336' : pct >= 75 ? '#ff9800' : 'var(--primary)';
+      return `
+        <div class="capacity-bar-wrap">
+          <div class="capacity-bar" style="width:${pct}%;background:${barColor};"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${rideParticipants.length}/${maxPart} deelnemers${isFull ? ' · <span style="color:#f44336;">VOL</span>' : ''}</div>`;
+    })() : `<div style="font-size:11px;color:var(--text-muted);">${rideParticipants.length} deelnemer(s)</div>`;
+
+    // Weer badge
+    const weather = weatherMap[ride.date];
+    const weatherHtml = renderWeatherBadge(weather);
+
+    // Join knop
+    let joinBtnHtml = '';
+    if (state.user) {
+      if (isFull && !isParticipating) {
+        joinBtnHtml = `<button class="btn btn-secondary btn-sm btn-join-ride" data-id="${ride.id}" disabled style="opacity:.5;cursor:not-allowed;"><i data-lucide="users"></i> Vol</button>`;
+      } else {
+        joinBtnHtml = `<button class="btn ${isParticipating ? 'btn-secondary' : 'btn-primary'} btn-sm btn-join-ride" data-id="${ride.id}">${isParticipating ? '<i data-lucide="x-circle"></i> Afmelden' : '<i data-lucide="check"></i> Deelnemen'}</button>`;
+      }
     }
-    if (ride.expected_speed_kmh) {
-      metaBadges += `<span class="ride-meta-badge"><i data-lucide="zap" style="width:10px;height:10px;display:inline;vertical-align:middle;margin-right:2px;"></i>~${ride.expected_speed_kmh} km/u</span>`;
-    }
-      
+
     rideDiv.innerHTML = `
-      <div class="d-flex justify-between align-center">
-        <div class="ride-date">${dateFormatted.toUpperCase()}</div>
+      <div class="ride-card-header">
+        <div>
+          <div class="ride-date">${dateFormatted.toUpperCase()}</div>
+          <div class="ride-title">${ride.title}</div>
+        </div>
         <div class="d-flex gap-8 align-center">
+          ${weatherHtml}
           ${isCreator ? `
-            <button class="btn btn-secondary btn-sm btn-edit-ride" data-id="${ride.id}" title="Bewerken" style="padding: 3px 8px;">
-              <i data-lucide="pencil" style="width:12px;height:12px;"></i>
-            </button>
-            <button class="btn btn-secondary btn-sm btn-delete-ride" data-id="${ride.id}" title="Verwijderen" style="padding: 3px 8px; color: var(--status-unavailable);">
-              <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
-            </button>
+            <button class="btn btn-secondary btn-sm btn-edit-ride" data-id="${ride.id}" title="Bewerken" style="padding:3px 8px;"><i data-lucide="pencil" style="width:12px;height:12px;"></i></button>
+            <button class="btn btn-secondary btn-sm btn-delete-ride" data-id="${ride.id}" title="Verwijderen" style="padding:3px 8px;color:var(--status-unavailable);"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>
           ` : ''}
-          ${state.user ? `
-          <button class="btn btn-secondary btn-sm btn-join-ride" data-id="${ride.id}">
-            ${isParticipating ? '<i data-lucide="x-circle"></i> Afmelden' : '<i data-lucide="check"></i> Deelnemen'}
-          </button>` : ''}
         </div>
       </div>
-      <div class="ride-title">${ride.title}</div>
-      ${metaBadges ? `<div class="d-flex gap-8 mt-1 mb-1">${metaBadges}</div>` : ''}
-      <p style="font-size: 13px; line-height: 1.4; margin-bottom: 6px;">${ride.description}</p>
+
+      ${metaBadgesHtml ? `<div class="d-flex gap-8 mt-2 flex-wrap">${metaBadgesHtml}</div>` : ''}
+      <p style="font-size:13px;line-height:1.5;margin:8px 0 6px;color:var(--text-secondary);">${ride.description}</p>
       ${routeHtml}
-      
-      <div class="ride-participants">
-        <span style="font-size: 11px; color: var(--text-muted);">${rideParticipants.length} deelnemer(s):</span>
-        <div class="ride-participants-avatars">
-          ${avatarsHtml}
+
+      <div class="ride-footer">
+        <div class="ride-participants-block">
+          <div class="participant-avatars">${avatarsHtml || '<span style="font-size:11px;color:var(--text-muted);">Nog geen deelnemers</span>'}</div>
+          ${capacityHtml}
+        </div>
+        <div class="ride-actions">
+          ${joinBtnHtml}
+          <button class="btn btn-secondary btn-sm btn-ical-ride" data-id="${ride.id}" title="Exporteer naar Kalender" style="padding:3px 8px;">
+            <i data-lucide="calendar-plus" style="width:12px;height:12px;"></i>
+          </button>
         </div>
       </div>
     `;
-    
-    if (state.user) {
-      rideDiv.querySelector('.btn-join-ride').addEventListener('click', () => toggleRideParticipation(ride.id, isParticipating));
-    }
 
+    if (state.user && !isFull || isParticipating) {
+      const joinBtn = rideDiv.querySelector('.btn-join-ride');
+      if (joinBtn && !joinBtn.disabled) joinBtn.addEventListener('click', () => toggleRideParticipation(ride.id, isParticipating));
+    }
     if (isCreator) {
-      rideDiv.querySelector('.btn-edit-ride').addEventListener('click', () => openPlanRideModal(ride));
-      rideDiv.querySelector('.btn-delete-ride').addEventListener('click', () => deleteRide(ride.id));
+      rideDiv.querySelector('.btn-edit-ride')?.addEventListener('click', () => openPlanRideModal(ride));
+      rideDiv.querySelector('.btn-delete-ride')?.addEventListener('click', () => deleteRide(ride.id));
     }
-
-    // Klik event voor de gekoppelde route
     if (ride.activity_id) {
-      rideDiv.querySelector('.view-coupled-route-btn').addEventListener('click', (e) => {
-        e.preventDefault();
-        showCoupledRoute(ride.activity_id, ride.title);
-      });
+      rideDiv.querySelector('.view-coupled-route-btn')?.addEventListener('click', (e) => { e.preventDefault(); showCoupledRoute(ride.activity_id, ride.title); });
     }
-    
+    rideDiv.querySelector('.btn-ical-ride')?.addEventListener('click', () => exportRideToIcal(ride));
+
     elements.ridesListContainer.appendChild(rideDiv);
   });
-  
+
   lucide.createIcons();
 }
 
