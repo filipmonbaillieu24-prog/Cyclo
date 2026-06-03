@@ -1,7 +1,16 @@
 // Cyclo - Activities & Performance Metrics Module
 import { state, elements, config, showToast } from './state.js';
+import { addFeedEntry } from './rides.js';
 
 let statsChartInstance = null;
+
+// ─────────────────────────────────────────────
+//  Activiteiten filter state
+// ─────────────────────────────────────────────
+let filterState = {
+  period: 'all',   // all | 30d | 90d | year
+  sort: 'date'     // date | distance | score | speed
+};
 
 export function setupTcxUploader(loadDashboardDataCallback) {
   const dropzone = elements.tcxDropzone;
@@ -34,6 +43,27 @@ export function setupTcxUploader(loadDashboardDataCallback) {
       processTcxFile(fileInput.files[0], loadDashboardDataCallback);
     }
   });
+
+  // Filter / sort knoppen
+  const filterBar = document.getElementById('activity-filter-bar');
+  if (filterBar) {
+    filterBar.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-filter-period], [data-filter-sort]');
+      if (!btn) return;
+
+      if (btn.dataset.filterPeriod !== undefined) {
+        filterBar.querySelectorAll('[data-filter-period]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filterState.period = btn.dataset.filterPeriod;
+      }
+      if (btn.dataset.filterSort !== undefined) {
+        filterBar.querySelectorAll('[data-filter-sort]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filterState.sort = btn.dataset.filterSort;
+      }
+      renderActivitiesList(loadDashboardDataCallback);
+    });
+  }
 }
 
 export function processTcxFile(file, loadDashboardDataCallback) {
@@ -61,6 +91,9 @@ export function processTcxFile(file, loadDashboardDataCallback) {
       elements.metricHr.textContent = parsedRide.avgHeartRate || '-';
       elements.metricPower.textContent = parsedRide.avgPowerWatts || '-';
       elements.calculatedRiderScore.textContent = parsedRide.riderScore;
+
+      // W/kg berekenen en tonen
+      updateWkgDisplay(parsedRide.avgPowerWatts);
       
       // Renders Leaflet route map
       if (parsedRide.coordinates && parsedRide.coordinates.length > 0) {
@@ -77,6 +110,13 @@ export function processTcxFile(file, loadDashboardDataCallback) {
       
       // Update Rider Score
       await updateUserRiderScore(parsedRide.riderScore);
+
+      // Feed entry aanmaken
+      await addFeedEntry('uploaded_activity', {
+        name: file.name.replace(/\.(tcx|gpx)$/i, ''),
+        distance_km: parsedRide.distanceKm,
+        rider_score: parsedRide.riderScore
+      });
       
       if (typeof loadDashboardDataCallback === 'function') {
         loadDashboardDataCallback();
@@ -93,6 +133,20 @@ export function processTcxFile(file, loadDashboardDataCallback) {
   };
   
   reader.readAsText(file);
+}
+
+function updateWkgDisplay(avgPowerWatts) {
+  const wkgEl = document.getElementById('metric-wkg');
+  if (!wkgEl) return;
+  const weight = state.user?.weight;
+  if (avgPowerWatts && weight && weight > 0) {
+    wkgEl.textContent = (avgPowerWatts / weight).toFixed(2);
+    const wkgCard = document.getElementById('metric-wkg-card');
+    if (wkgCard) wkgCard.style.display = 'block';
+  } else {
+    const wkgCard = document.getElementById('metric-wkg-card');
+    if (wkgCard) wkgCard.style.display = 'none';
+  }
 }
 
 export async function updateUserRiderScore(newScore) {
@@ -165,6 +219,9 @@ export async function saveActivity(parsedRide, fileName, loadDashboardDataCallba
     mockActivities.push(activityData);
     localStorage.setItem('cyclo_mock_activities', JSON.stringify(mockActivities));
     
+    // Update persoonlijke records
+    await updatePersonalRecords([...mockActivities]);
+
     if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
     return;
   }
@@ -175,6 +232,10 @@ export async function saveActivity(parsedRide, fileName, loadDashboardDataCallba
       .insert([activityData]);
       
     if (error) throw error;
+
+    // Update persoonlijke records na opslaan
+    const allActivities = await loadActivitiesRaw();
+    await updatePersonalRecords(allActivities);
     
     if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
   } catch (err) {
@@ -202,6 +263,123 @@ export async function loadActivities() {
     console.error("Fout bij laden activiteiten:", err);
     state.activities = [];
   }
+}
+
+async function loadActivitiesRaw() {
+  if (config.isDemoMode) {
+    return JSON.parse(localStorage.getItem('cyclo_mock_activities') || '[]');
+  }
+  try {
+    const { data } = await config.supabaseClient
+      .from('activities')
+      .select('*')
+      .eq('user_id', state.user.id);
+    return data || [];
+  } catch { return []; }
+}
+
+// ─────────────────────────────────────────────
+//  Persoonlijke records
+// ─────────────────────────────────────────────
+export async function updatePersonalRecords(allActivities) {
+  const myActivities = allActivities.filter(a => a.user_id === state.user.id);
+  if (myActivities.length === 0) return;
+
+  const prDist = Math.max(...myActivities.map(a => parseFloat(a.distance_km) || 0));
+  const prSpeed = Math.max(...myActivities.map(a => parseFloat(a.avg_speed_kmh) || 0));
+  const prAscent = Math.max(...myActivities.map(a => parseInt(a.ascent_m) || 0));
+  
+  const weight = state.user?.weight;
+  let prWkg = null;
+  if (weight && weight > 0) {
+    const activitiesWithPower = myActivities.filter(a => a.avg_power_watts && a.avg_power_watts > 0);
+    if (activitiesWithPower.length > 0) {
+      prWkg = Math.max(...activitiesWithPower.map(a => a.avg_power_watts / weight));
+    }
+  }
+
+  const prData = {
+    pr_distance_km: prDist > 0 ? prDist : null,
+    pr_speed_kmh: prSpeed > 0 ? prSpeed : null,
+    pr_ascent_m: prAscent > 0 ? prAscent : null,
+    pr_wkg: prWkg ? parseFloat(prWkg.toFixed(2)) : null
+  };
+
+  // Sla op in state
+  state.user.pr_distance_km = prData.pr_distance_km;
+  state.user.pr_speed_kmh = prData.pr_speed_kmh;
+  state.user.pr_ascent_m = prData.pr_ascent_m;
+  state.user.pr_wkg = prData.pr_wkg;
+
+  if (config.isDemoMode) {
+    let savedMockProfiles = JSON.parse(localStorage.getItem('cyclo_mock_profiles') || '[]');
+    const idx = savedMockProfiles.findIndex(p => p.id === state.user.id);
+    if (idx !== -1) {
+      savedMockProfiles[idx] = { ...savedMockProfiles[idx], ...prData };
+    } else {
+      savedMockProfiles.push({ ...state.user, ...prData });
+    }
+    localStorage.setItem('cyclo_mock_profiles', JSON.stringify(savedMockProfiles));
+  } else {
+    try {
+      await config.supabaseClient
+        .from('profiles')
+        .update(prData)
+        .eq('id', state.user.id);
+    } catch (err) {
+      console.warn("PR update mislukt:", err.message);
+    }
+  }
+
+  // Render PR-blok opnieuw
+  renderPersonalRecords();
+}
+
+export function renderPersonalRecords() {
+  const prContainer = document.getElementById('pr-container');
+  if (!prContainer) return;
+
+  const pr = state.user;
+  const hasPr = pr.pr_distance_km || pr.pr_speed_kmh || pr.pr_ascent_m || pr.pr_wkg;
+
+  if (!hasPr) {
+    prContainer.style.display = 'none';
+    return;
+  }
+
+  prContainer.style.display = 'block';
+  prContainer.innerHTML = `
+    <h4 class="widget-title" style="font-size: 12px; margin-bottom: 10px;">
+      <i data-lucide="award" style="color: var(--primary);"></i> Persoonlijke Records
+    </h4>
+    <div class="pr-grid">
+      ${pr.pr_distance_km ? `
+        <div class="pr-card">
+          <div class="pr-icon">🏅</div>
+          <div class="pr-val">${parseFloat(pr.pr_distance_km).toFixed(1)}<span class="pr-unit">km</span></div>
+          <div class="pr-lbl">Langste rit</div>
+        </div>` : ''}
+      ${pr.pr_speed_kmh ? `
+        <div class="pr-card">
+          <div class="pr-icon">⚡</div>
+          <div class="pr-val">${parseFloat(pr.pr_speed_kmh).toFixed(1)}<span class="pr-unit">km/u</span></div>
+          <div class="pr-lbl">Snelste gem.</div>
+        </div>` : ''}
+      ${pr.pr_ascent_m ? `
+        <div class="pr-card">
+          <div class="pr-icon">⛰️</div>
+          <div class="pr-val">${pr.pr_ascent_m}<span class="pr-unit">m</span></div>
+          <div class="pr-lbl">Meeste hoogte</div>
+        </div>` : ''}
+      ${pr.pr_wkg ? `
+        <div class="pr-card">
+          <div class="pr-icon">💪</div>
+          <div class="pr-val">${parseFloat(pr.pr_wkg).toFixed(2)}<span class="pr-unit">W/kg</span></div>
+          <div class="pr-lbl">Best vermogen</div>
+        </div>` : ''}
+    </div>
+  `;
+  lucide.createIcons();
 }
 
 export function renderLeaderboard() {
@@ -239,18 +417,126 @@ export function renderLeaderboard() {
   });
 }
 
+// ─────────────────────────────────────────────
+//  Activiteiten feed
+// ─────────────────────────────────────────────
+export async function loadAndRenderFeed() {
+  const feedContainer = document.getElementById('activity-feed-list');
+  if (!feedContainer) return;
+
+  let feedEntries = [];
+
+  if (config.isDemoMode) {
+    feedEntries = JSON.parse(localStorage.getItem('cyclo_mock_feed') || '[]');
+  } else {
+    try {
+      const { data, error } = await config.supabaseClient
+        .from('activity_feed')
+        .select('*, profiles(full_name, avatar_url, username)')
+        .order('created_at', { ascending: false })
+        .limit(15);
+      if (!error) feedEntries = data || [];
+    } catch (err) {
+      console.warn("Feed kon niet worden geladen:", err.message);
+    }
+  }
+
+  if (feedEntries.length === 0) {
+    feedContainer.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 8px;">Nog geen clubactiviteit.</div>';
+    return;
+  }
+
+  feedContainer.innerHTML = feedEntries.slice(0, 10).map(entry => {
+    const profile = config.isDemoMode
+      ? state.profiles.find(p => p.id === entry.user_id)
+      : entry.profiles;
+
+    const name = profile?.full_name || 'Onbekend';
+    const avatar = profile?.avatar_url || '';
+    const timeAgo = formatTimeAgo(new Date(entry.created_at));
+
+    let icon = '🚴';
+    let text = '';
+    const p = entry.payload || {};
+
+    switch (entry.type) {
+      case 'uploaded_activity':
+        icon = '📤';
+        text = `heeft een rit geüpload${p.name ? ` <strong>${p.name}</strong>` : ''}${p.distance_km ? ` (${p.distance_km} km)` : ''}`;
+        break;
+      case 'joined_ride':
+        icon = '✅';
+        text = `meldt zich aan voor <strong>${p.ride_title || 'een rit'}</strong>`;
+        break;
+      case 'left_ride':
+        icon = '❌';
+        text = `meldt zich af voor <strong>${p.ride_title || 'een rit'}</strong>`;
+        break;
+      case 'new_pr':
+        icon = '🏆';
+        text = `heeft een nieuw persoonlijk record!`;
+        break;
+      default:
+        text = entry.type;
+    }
+
+    return `
+      <div class="feed-entry">
+        ${avatar ? `<img src="${avatar}" alt="${name}" class="feed-avatar">` : `<div class="feed-icon">${icon}</div>`}
+        <div class="feed-body">
+          <div class="feed-text"><strong>${name}</strong> ${text}</div>
+          <div class="feed-time">${timeAgo}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function formatTimeAgo(date) {
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return 'Zojuist';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m geleden`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}u geleden`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay}d geleden`;
+}
+
+// ─────────────────────────────────────────────
+//  Activiteiten lijst (met filter)
+// ─────────────────────────────────────────────
 export function renderActivitiesList(loadDashboardDataCallback) {
   if (!elements.activitiesListContainer) return;
   elements.activitiesListContainer.innerHTML = '';
 
-  const myActivities = (state.activities || []).filter(act => act.user_id === state.user.id);
+  const allMyActivities = (state.activities || []).filter(act => act.user_id === state.user.id);
 
-  // Update totalen
-  if (myActivities.length > 0) {
+  // Filter op periode
+  const now = new Date();
+  let filtered = allMyActivities.filter(act => {
+    const actDate = new Date(act.date);
+    if (filterState.period === '30d') return (now - actDate) <= 30 * 86400000;
+    if (filterState.period === '90d') return (now - actDate) <= 90 * 86400000;
+    if (filterState.period === 'year') return actDate.getFullYear() === now.getFullYear();
+    return true;
+  });
+
+  // Sortering
+  filtered.sort((a, b) => {
+    if (filterState.sort === 'distance') return parseFloat(b.distance_km) - parseFloat(a.distance_km);
+    if (filterState.sort === 'score') return (b.rider_score || 0) - (a.rider_score || 0);
+    if (filterState.sort === 'speed') return parseFloat(b.avg_speed_kmh) - parseFloat(a.avg_speed_kmh);
+    return new Date(b.date) - new Date(a.date); // default: datum
+  });
+
+  // Update totalen (altijd op basis van alle activiteiten, niet gefilterd)
+  if (allMyActivities.length > 0) {
     let totalDist = 0;
     let totalAsc = 0;
     
-    myActivities.forEach(act => {
+    allMyActivities.forEach(act => {
       totalDist += parseFloat(act.distance_km || 0);
       totalAsc += parseInt(act.ascent_m || 0);
     });
@@ -262,19 +548,26 @@ export function renderActivitiesList(loadDashboardDataCallback) {
     elements.profileStatsContainer.style.display = 'none';
   }
 
+  // Persoonlijke records tonen
+  renderPersonalRecords();
+
   // Teken de grafiek
   renderStatsChart();
 
-  if (myActivities.length === 0) {
+  if (filtered.length === 0) {
     elements.activitiesListContainer.innerHTML = `
       <div class="empty-state">
-        Je hebt nog geen ritten geüpload. Upload een TCX of GPX bestand hiernaast!
+        ${allMyActivities.length === 0
+          ? 'Je hebt nog geen ritten geüpload. Upload een TCX of GPX bestand hiernaast!'
+          : 'Geen ritten gevonden voor dit filter.'}
       </div>
     `;
     return;
   }
 
-  myActivities.forEach(act => {
+  const weight = state.user?.weight;
+
+  filtered.forEach(act => {
     const actDiv = document.createElement('div');
     actDiv.className = 'activity-item';
     
@@ -289,11 +582,19 @@ export function renderActivitiesList(loadDashboardDataCallback) {
     const minutes = Math.floor((durSec % 3600) / 60);
     const formattedDur = hours > 0 ? `${hours}u ${minutes}m` : `${minutes}m`;
 
+    // W/kg berekenen
+    let wkgHtml = '';
+    if (act.avg_power_watts && weight && weight > 0) {
+      const wkg = (act.avg_power_watts / weight).toFixed(2);
+      wkgHtml = `<span class="activity-badge" style="background: rgba(255,200,0,0.12); color: #ffd700; border-color: rgba(255,200,0,0.3);">⚡ ${wkg} W/kg</span>`;
+    }
+
     actDiv.innerHTML = `
       <div class="activity-header">
         <div>
-          <span class="activity-title" style="cursor:pointer; text-decoration:underline; color:var(--primary);" class="btn-view-activity">${act.name}</span>
+          <span class="activity-title" style="cursor:pointer; text-decoration:underline; color:var(--primary);">${act.name}</span>
           <span class="activity-badge">${act.rider_score} pts</span>
+          ${wkgHtml}
         </div>
         <div class="d-flex align-center gap-8">
           <span class="activity-date">${formattedDate}</span>
@@ -346,6 +647,9 @@ export function showActivityDetails(activity) {
   elements.metricHr.textContent = activity.avg_heart_rate || '-';
   elements.metricPower.textContent = activity.avg_power_watts || '-';
   elements.calculatedRiderScore.textContent = activity.rider_score;
+
+  // W/kg
+  updateWkgDisplay(activity.avg_power_watts);
   
   if (activity.coordinates && activity.coordinates.length > 0) {
     elements.routeMap.style.display = 'block';
@@ -374,6 +678,9 @@ export async function deleteActivity(activityId, loadDashboardDataCallback) {
     const newScore = Math.max(100, (state.user.rider_score || 100) - scoreDiff);
     await updateUserRiderScore(newScore);
     
+    // PR's herberekenen
+    await updatePersonalRecords(mockActivities);
+
     showToast("Rit succesvol verwijderd.", "info");
     if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
     return;
@@ -393,6 +700,10 @@ export async function deleteActivity(activityId, loadDashboardDataCallback) {
     
     const newScore = Math.max(100, (state.user.rider_score || 100) - scoreDiff);
     await updateUserRiderScore(newScore);
+
+    // PR's herberekenen
+    const allActivities = await loadActivitiesRaw();
+    await updatePersonalRecords(allActivities);
     
     showToast("Rit verwijderd uit database.", "info");
     if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
@@ -481,47 +792,22 @@ export function renderStatsChart() {
       },
       scales: {
         x: {
-          grid: {
-            color: 'rgba(255, 255, 255, 0.05)'
-          },
-          ticks: {
-            color: 'rgba(255, 255, 255, 0.5)',
-            font: { size: 9 }
-          }
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: { color: 'rgba(255, 255, 255, 0.5)', font: { size: 9 } }
         },
         'y-score': {
           type: 'linear',
           position: 'left',
-          grid: {
-            color: 'rgba(255, 255, 255, 0.05)'
-          },
-          ticks: {
-            color: '#d4ff00',
-            font: { size: 9 }
-          },
-          title: {
-            display: true,
-            text: 'Rider Score',
-            color: '#d4ff00',
-            font: { size: 10, weight: 'bold' }
-          }
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: { color: '#d4ff00', font: { size: 9 } },
+          title: { display: true, text: 'Rider Score', color: '#d4ff00', font: { size: 10, weight: 'bold' } }
         },
         'y-dist': {
           type: 'linear',
           position: 'right',
-          grid: {
-            drawOnChartArea: false
-          },
-          ticks: {
-            color: '#00F0FF',
-            font: { size: 9 }
-          },
-          title: {
-            display: true,
-            text: 'Afstand (km)',
-            color: '#00F0FF',
-            font: { size: 10, weight: 'bold' }
-          }
+          grid: { drawOnChartArea: false },
+          ticks: { color: '#00F0FF', font: { size: 9 } },
+          title: { display: true, text: 'Afstand (km)', color: '#00F0FF', font: { size: 10, weight: 'bold' } }
         }
       }
     }

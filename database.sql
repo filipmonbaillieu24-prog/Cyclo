@@ -1,5 +1,6 @@
 -- DATABASE SETUP FOR CYCLO
 -- Run deze queries in de SQL Editor van je Supabase project om de database te configureren.
+-- Bij een bestaande database: gebruik de ALTER TABLE statements onderaan (sectie 8).
 
 -- 1. Create a table for Public Profiles
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -9,7 +10,18 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name TEXT,
   avatar_url TEXT,
   rider_score INTEGER DEFAULT 100,
-  
+  bike_type TEXT DEFAULT 'Road',
+  gender TEXT CHECK (gender IN ('Male', 'Female', 'Other')),
+  birthdate DATE,
+  height INTEGER,
+  weight NUMERIC(5,1),
+
+  -- Persoonlijke records (automatisch bijgehouden)
+  pr_distance_km NUMERIC(7,2),
+  pr_speed_kmh NUMERIC(5,2),
+  pr_ascent_m INTEGER,
+  pr_wkg NUMERIC(4,2),
+
   CONSTRAINT username_length CHECK (char_length(username) >= 3)
 );
 
@@ -26,7 +38,7 @@ CREATE POLICY "Allow users to update their own profile" ON public.profiles
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username, full_name, avatar_url, rider_score)
+  INSERT INTO public.profiles (id, username, full_name, avatar_url, rider_score, bike_type)
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'username', 'rider_' || substring(new.id::text from 1 for 6)),
@@ -35,7 +47,8 @@ BEGIN
       new.raw_user_meta_data->>'avatar_url', 
       'https://api.dicebear.com/7.x/adventurer/svg?seed=' || new.id::text
     ),
-    100
+    100,
+    COALESCE(new.raw_user_meta_data->>'bike_type', 'Road')
   );
   RETURN NEW;
 END;
@@ -82,6 +95,9 @@ CREATE TABLE IF NOT EXISTS public.rides (
   title TEXT NOT NULL,
   description TEXT,
   route_link TEXT,
+  activity_id UUID REFERENCES public.activities(id) ON DELETE SET NULL,
+  expected_distance_km NUMERIC(6,1),
+  expected_speed_kmh NUMERIC(4,1),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -169,3 +185,48 @@ CREATE POLICY "Allow users to insert their own activities" ON public.activities
 CREATE POLICY "Allow users to delete their own activities" ON public.activities
   FOR DELETE TO authenticated USING (auth.uid() = user_id);
 
+
+-- 7. Create a table for Activity Feed (Clubactiviteitenfeed)
+CREATE TABLE IF NOT EXISTS public.activity_feed (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('uploaded_activity', 'joined_ride', 'left_ride', 'new_pr')),
+  payload JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS for Activity Feed
+ALTER TABLE public.activity_feed ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow authenticated users to read feed" ON public.activity_feed
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Allow users to insert their own feed entries" ON public.activity_feed
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow users to delete their own feed entries" ON public.activity_feed
+  FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+
+-- =============================================================
+-- 8. MIGRATIE: ALTER TABLE statements voor bestaande databases
+-- Voer deze uit als je al een bestaande Cyclo-database hebt.
+-- =============================================================
+
+-- Profiles: nieuwe kolommen toevoegen
+ALTER TABLE public.profiles 
+  ADD COLUMN IF NOT EXISTS bike_type TEXT DEFAULT 'Road',
+  ADD COLUMN IF NOT EXISTS gender TEXT CHECK (gender IN ('Male', 'Female', 'Other')),
+  ADD COLUMN IF NOT EXISTS birthdate DATE,
+  ADD COLUMN IF NOT EXISTS height INTEGER,
+  ADD COLUMN IF NOT EXISTS weight NUMERIC(5,1),
+  ADD COLUMN IF NOT EXISTS pr_distance_km NUMERIC(7,2),
+  ADD COLUMN IF NOT EXISTS pr_speed_kmh NUMERIC(5,2),
+  ADD COLUMN IF NOT EXISTS pr_ascent_m INTEGER,
+  ADD COLUMN IF NOT EXISTS pr_wkg NUMERIC(4,2);
+
+-- Rides: verwachte afstand en tempo toevoegen
+ALTER TABLE public.rides
+  ADD COLUMN IF NOT EXISTS activity_id UUID REFERENCES public.activities(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS expected_distance_km NUMERIC(6,1),
+  ADD COLUMN IF NOT EXISTS expected_speed_kmh NUMERIC(4,1);

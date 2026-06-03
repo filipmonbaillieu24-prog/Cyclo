@@ -1321,5 +1321,126 @@ select.form-control option {
   color: var(--text-muted);
 }
 
+/* ─── Persoonlijke Records ───────────────────── */
+.pr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
 
+.pr-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
 
+.pr-card:hover {
+  border-color: rgba(212, 255, 0, 0.2);
+  background: rgba(212, 255, 0, 0.04);
+}
+
+.pr-icon {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.pr-val {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.1;
+}
+
+.pr-unit {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.pr-lbl {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 3px;
+}
+
+/* ─── Activiteitenfeed ───────────────────────── */
+.feed-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.feed-entry:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.feed-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border-glass);
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.feed-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.feed-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.feed-text strong {
+  color: var(--text-primary);
+}
+
+.feed-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ─── Rit meta badges ────────────────────────── */
+.ride-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+}
+
+/* ─── Filter bar actieve staat ───────────────── */
+#activity-filter-bar [data-filter-period].active,
+#activity-filter-bar [data-filter-sort].active {
+  background: rgba(212, 255, 0, 0.15) !important;
+  color: var(--primary) !important;
+  border-color: rgba(212, 255, 0, 0.3) !important;
+}

@@ -35,7 +35,9 @@ import {
   setupTcxUploader, 
   loadActivities, 
   renderLeaderboard, 
-  renderActivitiesList 
+  renderActivitiesList,
+  loadAndRenderFeed,
+  renderPersonalRecords
 } from './activities.js';
 import { setupRealtimeSubscriptions } from './realtime.js';
 
@@ -113,7 +115,9 @@ export async function loadDashboardData() {
     renderRidesList();
     renderActivitiesList(loadDashboardData);
     renderLeaderboard();
+    renderPersonalRecords();
     updateRouteDropdown();
+    await loadAndRenderFeed();
 
     // Realtime synchronisatie opzetten (eenmalig)
     if (!activeRealtimeChannel) {
@@ -188,7 +192,9 @@ export function loadMockDashboardData() {
     renderRidesList();
     renderActivitiesList(loadDashboardData);
     renderLeaderboard();
+    renderPersonalRecords();
     updateRouteDropdown();
+    loadAndRenderFeed();
   });
 }
 
@@ -348,4 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   setupEventListeners();
   checkUserSession(loadDashboardData);
+  // Expose voor ride delete callbacks
+  window._loadDashboardData = loadDashboardData;
 });

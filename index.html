@@ -202,9 +202,27 @@
 
           <!-- Rittenhistorie Panel -->
           <div class="glass-panel mt-4">
-            <h2 class="widget-title"><i data-lucide="history" style="color:var(--secondary)"></i> Mijn Rittenhistorie</h2>
+            <div class="d-flex justify-between align-center mb-4">
+              <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="history" style="color:var(--secondary)"></i> Mijn Rittenhistorie</h2>
+            </div>
+
+            <!-- Filter & Sorteer balk -->
+            <div id="activity-filter-bar" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-glass);">
+              <div style="display:flex; gap:4px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 3px;">
+                <button data-filter-period="all" class="btn btn-secondary btn-sm active" style="padding:3px 8px; font-size:10px;">Alles</button>
+                <button data-filter-period="30d" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">30 dagen</button>
+                <button data-filter-period="90d" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">90 dagen</button>
+                <button data-filter-period="year" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">Dit jaar</button>
+              </div>
+              <div style="display:flex; gap:4px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 3px;">
+                <button data-filter-sort="date" class="btn btn-secondary btn-sm active" style="padding:3px 8px; font-size:10px;">Datum</button>
+                <button data-filter-sort="distance" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">Afstand</button>
+                <button data-filter-sort="score" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">Score</button>
+                <button data-filter-sort="speed" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:10px;">Snelheid</button>
+              </div>
+            </div>
+
             <div id="activities-list-container">
-              <!-- Geüploade ritten komen hier -->
               <div class="empty-state">
                 Je hebt nog geen ritten geüpload.
               </div>
@@ -258,11 +276,24 @@
             </div>
           </div>
 
+          <!-- Persoonlijke Records Widget -->
+          <div class="glass-panel" id="pr-container" style="display:none;">
+            <!-- Wordt dynamisch ingevuld door activities.js -->
+          </div>
+
           <!-- Leaderboard Widget -->
           <div class="glass-panel" id="leaderboard-panel">
             <h3 class="widget-title"><i data-lucide="trophy" style="color:var(--primary)"></i> Klassement</h3>
             <div id="leaderboard-list">
               <!-- Wordt dynamisch opgebouwd -->
+            </div>
+          </div>
+
+          <!-- Activiteitenfeed Widget -->
+          <div class="glass-panel" id="activity-feed-panel">
+            <h3 class="widget-title"><i data-lucide="activity" style="color:var(--secondary)"></i> Clubfeed</h3>
+            <div id="activity-feed-list" style="display:flex; flex-direction:column; gap:8px;">
+              <div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 8px;">Nog geen clubactiviteit.</div>
             </div>
           </div>
 
@@ -331,6 +362,10 @@
                   <div class="metric-val" id="metric-power">195</div>
                   <div class="metric-lbl">Gem. Watt</div>
                 </div>
+                <div class="metric-card" id="metric-wkg-card" style="display:none;">
+                  <div class="metric-val" id="metric-wkg">-</div>
+                  <div class="metric-lbl">W/kg</div>
+                </div>
               </div>
 
               <!-- Route Kaart (Leaflet) -->
@@ -349,7 +384,7 @@
   <div class="modal-overlay" id="ride-modal">
     <div class="modal-content glass-panel">
       <div class="modal-header">
-        <h2 style="font-size: 20px;">Groepsrit Plannen</h2>
+        <h2 style="font-size: 20px;" id="ride-modal-title-header">Groepsrit Plannen</h2>
         <button class="modal-close" id="btn-close-modal">&times;</button>
       </div>
       
@@ -369,6 +404,16 @@
         <div class="form-group">
           <label for="ride-modal-route">GPX / Route Link (Optioneel)</label>
           <input type="url" id="ride-modal-route" class="form-control" placeholder="https://www.komoot.nl/tour/...">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label for="ride-modal-expected-distance">Verwachte afstand (km)</label>
+            <input type="number" id="ride-modal-expected-distance" class="form-control" min="1" max="500" placeholder="bijv. 80">
+          </div>
+          <div class="form-group">
+            <label for="ride-modal-expected-speed">Gemiddeld tempo (km/u)</label>
+            <input type="number" id="ride-modal-expected-speed" class="form-control" min="10" max="60" step="0.5" placeholder="bijv. 30">
+          </div>
         </div>
         <div class="form-group">
           <label for="ride-modal-activity">Koppel een van je geüploade routes (Optioneel)</label>
