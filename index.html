@@ -315,27 +315,6 @@
           </div>
 
           <!-- Rittenhistorie -->
-          <div class="glass-panel">
-            <div class="d-flex justify-between align-center mb-4">
-              <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="history" style="color:var(--secondary)"></i> Rittenhistorie</h2>
-            </div>
-
-            <!-- Filter & Sorteer balk -->
-            <div id="activity-filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border-glass);">
-              <div style="display:flex;gap:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-sm);padding:3px;">
-                <button data-filter-period="all" class="btn btn-secondary btn-sm active" style="padding:3px 8px;font-size:10px;">Alles</button>
-                <button data-filter-period="30d" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">30 dagen</button>
-                <button data-filter-period="90d" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">90 dagen</button>
-                <button data-filter-period="year" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Dit jaar</button>
-              </div>
-              <div style="display:flex;gap:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-sm);padding:3px;">
-                <button data-filter-sort="date" class="btn btn-secondary btn-sm active" style="padding:3px 8px;font-size:10px;">Datum</button>
-                <button data-filter-sort="distance" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Afstand</button>
-                <button data-filter-sort="score" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Score</button>
-                <button data-filter-sort="speed" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Snelheid</button>
-              </div>
-            </div>
-
           <!-- Tab switcher: Mijn Ritten / Club Ritten -->
           <div class="rides-tabs" id="rides-tabs">
             <button class="rides-tab active" id="tab-my-rides" data-tab="my">
@@ -350,15 +329,43 @@
 
           <!-- Mijn Ritten inhoud -->
           <div id="my-rides-content">
-            <div id="activities-list-container">
-              <div class="empty-state">Je hebt nog geen ritten geüpload. Upload een TCX, GPX of FIT bestand hierboven!</div>
+            <div class="glass-panel">
+              <div class="d-flex justify-between align-center mb-4">
+                <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="history" style="color:var(--secondary)"></i> Rittenhistorie</h2>
+              </div>
+
+              <!-- Filter & Sorteer balk -->
+              <div id="activity-filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border-glass);">
+                <div style="display:flex;gap:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-sm);padding:3px;">
+                  <button data-filter-period="all" class="btn btn-secondary btn-sm active" style="padding:3px 8px;font-size:10px;">Alles</button>
+                  <button data-filter-period="30d" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">30 dagen</button>
+                  <button data-filter-period="90d" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">90 dagen</button>
+                  <button data-filter-period="year" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Dit jaar</button>
+                </div>
+                <div style="display:flex;gap:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-sm);padding:3px;">
+                  <button data-filter-sort="date" class="btn btn-secondary btn-sm active" style="padding:3px 8px;font-size:10px;">Datum</button>
+                  <button data-filter-sort="distance" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Afstand</button>
+                  <button data-filter-sort="score" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Score</button>
+                  <button data-filter-sort="speed" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:10px;">Snelheid</button>
+                </div>
+              </div>
+
+              <div id="activities-list-container">
+                <div class="empty-state">Je hebt nog geen ritten geüpload. Upload een TCX, GPX of FIT bestand hierboven!</div>
+              </div>
             </div>
           </div>
 
           <!-- Club Ritten inhoud -->
           <div id="club-rides-content" style="display:none;">
-            <div id="club-activities-list">
-              <div class="empty-state">Geen ritten gevonden van andere leden.</div>
+            <div class="glass-panel">
+              <div class="d-flex justify-between align-center mb-4">
+                <h2 class="widget-title" style="margin-bottom:0;"><i data-lucide="users" style="color:var(--secondary)"></i> Club Ritten</h2>
+                <span style="font-size:11px;color:var(--text-muted);">Activiteiten van alle leden</span>
+              </div>
+              <div id="club-activities-list">
+                <div class="empty-state">Geen ritten gevonden van andere leden.</div>
+              </div>
             </div>
           </div>
 
@@ -392,10 +399,11 @@
           <div class="glass-panel text-center" id="rides-score-panel" style="display:none;">
             <h3 class="widget-title" style="margin-bottom:12px;"><i data-lucide="zap" style="color:var(--primary)"></i> Rider Score</h3>
             <div class="score-badge" style="margin:0 auto;">
-              <div id="rides-score-val">100</div>
+              <div id="rides-score-val">0</div>
               <span>Punten</span>
             </div>
-            <p style="font-size:11px;color:var(--text-muted);margin-top:10px;">Gebaseerd op je beste rit</p>
+            <div id="rides-score-delta" style="font-size:12px;margin-top:8px;font-weight:700;"></div>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">Op basis van al je ritten</p>
           </div>
 
           <!-- Naar Planner knop -->

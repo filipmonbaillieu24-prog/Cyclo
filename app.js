@@ -124,13 +124,8 @@ export async function loadDashboardData() {
     try { updateRouteDropdown(); } catch(e) { console.warn('updateRouteDropdown:', e); }
     await loadAndRenderFeed();
 
-    // Rider Score ook updaten in Mijn Ritten sidebar
-    const rideScorePanel = document.getElementById('rides-score-panel');
-    const rideScoreVal = document.getElementById('rides-score-val');
-    if (rideScorePanel && state.user?.rider_score) {
-      rideScorePanel.style.display = 'block';
-      if (rideScoreVal) rideScoreVal.textContent = state.user.rider_score;
-    }
+    // Rider Score herberekenen op basis van alle activiteiten
+    _displayRiderScoreFromActivities();
 
     // Realtime synchronisatie opzetten (eenmalig)
     if (!activeRealtimeChannel) {
@@ -148,13 +143,13 @@ export async function loadDashboardData() {
 // 3. MOCK DATA VOOR DEMO STAND
 export function loadMockDashboardData() {
   let mockProfiles = [
-    { 
-      id: 'demo-user-id', 
-      username: 'demorider', 
-      full_name: 'Jij (Demo Rider)', 
-      avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=demo', 
-      rider_score: 100, 
-      bike_type: 'Road' 
+    {
+      id: 'demo-user-id',
+      username: 'demorider',
+      full_name: 'Jij (Demo Rider)',
+      avatar_url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=demo',
+      rider_score: 0,
+      bike_type: 'Road'
     }
   ];
   const extraProfiles = JSON.parse(localStorage.getItem('cyclo_mock_profiles') || '[]');
@@ -208,7 +203,38 @@ export function loadMockDashboardData() {
     renderPersonalRecords();
     try { updateRouteDropdown(); } catch(e) { console.warn('updateRouteDropdown:', e); }
     loadAndRenderFeed();
+
+    // Rider Score berekenen en tonen op basis van bestaande ritten
+    _displayRiderScoreFromActivities();
   });
+}
+
+// Herbereken en toon de Rider Score op basis van alle al geüploade activiteiten
+function _displayRiderScoreFromActivities() {
+  if (!state.user) return;
+  const myActs = (state.activities || []).filter(a => a.user_id === state.user.id);
+  if (myActs.length === 0) return;
+
+  const sorted = [...myActs].sort((a, b) => new Date(b.date) - new Date(a.date));
+  let weightedSum = 0, weightTotal = 0;
+  sorted.forEach((act, i) => {
+    const weight = Math.max(0.1, 1.0 - i * 0.1);
+    weightedSum += (act.rider_score || 0) * weight;
+    weightTotal += weight;
+  });
+  const avg = weightTotal > 0 ? weightedSum / weightTotal : 0;
+  const consistencyBonus = Math.min(30, (myActs.length - 1) * 3);
+  const totalKm = myActs.reduce((s, a) => s + parseFloat(a.distance_km || 0), 0);
+  const volumeBonus = Math.min(40, totalKm * 0.04);
+  const score = Math.max(10, Math.min(1000, Math.round(avg + consistencyBonus + volumeBonus)));
+
+  state.user.rider_score = score;
+  if (elements.widgetUserScoreVal) elements.widgetUserScoreVal.textContent = score;
+  if (elements.widgetUserScoreContainer) elements.widgetUserScoreContainer.style.display = 'flex';
+  const rsv = document.getElementById('rides-score-val');
+  const rsp = document.getElementById('rides-score-panel');
+  if (rsv) rsv.textContent = score;
+  if (rsp) rsp.style.display = 'block';
 }
 
 function seedMockAvailabilities() {

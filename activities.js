@@ -185,48 +185,90 @@ function updateWkgDisplay(avgPowerWatts) {
   }
 }
 
-export async function updateUserRiderScore(newScore) {
-  const currentScore = state.user.rider_score || 100;
-  const updatedScore = Math.max(currentScore, newScore);
+export async function updateUserRiderScore(newRideScore) {
+  // Bereken de totale Rider Score op basis van ALLE ritten
+  const allMyActivities = (state.activities || []).filter(a => a.user_id === state.user?.id);
+
+  let computedScore;
+  if (allMyActivities.length === 0) {
+    // Geen ritten: gebruik de score van de zojuist geüploade rit
+    computedScore = newRideScore;
+  } else {
+    // Gewogen gemiddelde: recentere ritten wegen zwaarder
+    // Sorteer op datum (nieuwste eerst)
+    const sorted = [...allMyActivities].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    let weightedSum = 0;
+    let weightTotal = 0;
+    sorted.forEach((act, i) => {
+      // Gewicht daalt met 10% per oudere rit (nieuwste = 1.0, 2e = 0.9, ...)
+      const weight = Math.max(0.1, 1.0 - i * 0.1);
+      const score  = act.rider_score || 0;
+      weightedSum  += score * weight;
+      weightTotal  += weight;
+    });
+    const avg = weightTotal > 0 ? weightedSum / weightTotal : newRideScore;
+
+    // Consistentiebonus: elke extra rit geeft +3 pts (max +30)
+    const consistencyBonus = Math.min(30, (allMyActivities.length - 1) * 3);
+
+    // Volumebonus: totale km van alle ritten (gecapped op +40)
+    const totalKm = allMyActivities.reduce((s, a) => s + parseFloat(a.distance_km || 0), 0);
+    const volumeBonus = Math.min(40, totalKm * 0.04);
+
+    computedScore = Math.round(avg + consistencyBonus + volumeBonus);
+  }
+
+  const finalScore = Math.max(10, Math.min(1000, computedScore));
+
+  // Delta berekenen (verschil t.o.v. huidige opgeslagen score)
+  const previousScore = state.user.rider_score || 0;
+  const delta = finalScore - previousScore;
 
   // Helper: update alle score-widgets in de UI
-  function _updateScoreWidgets(score) {
+  function _updateScoreWidgets(score, diff) {
     state.user.rider_score = score;
+    // Planner sidebar widget
     if (elements.widgetUserScoreVal) elements.widgetUserScoreVal.textContent = score;
     if (elements.widgetUserScoreContainer) elements.widgetUserScoreContainer.style.display = 'flex';
     // Mijn Ritten sidebar
     const rsv = document.getElementById('rides-score-val');
     const rsp = document.getElementById('rides-score-panel');
+    const rsd = document.getElementById('rides-score-delta');
     if (rsv) rsv.textContent = score;
     if (rsp) rsp.style.display = 'block';
+    if (rsd && diff !== 0) {
+      const positive = diff > 0;
+      rsd.textContent = `${positive ? '▲' : '▼'} ${positive ? '+' : ''}${diff} pts`;
+      rsd.style.color  = positive ? 'var(--status-available)' : 'var(--status-unavailable)';
+    } else if (rsd) {
+      rsd.textContent = previousScore === 0 ? '' : '= geen wijziging';
+      rsd.style.color = 'var(--text-muted)';
+    }
   }
 
   if (config.isDemoMode) {
     let savedMockProfiles = JSON.parse(localStorage.getItem('cyclo_mock_profiles') || '[]');
     const idx = savedMockProfiles.findIndex(p => p.id === state.user.id);
-
     if (idx !== -1) {
-      savedMockProfiles[idx].rider_score = updatedScore;
+      savedMockProfiles[idx].rider_score = finalScore;
     } else {
-      // Demo-user-id: voeg toe aan opgeslagen profielen
       const demoProfile = { ...(state.profiles.find(p => p.id === state.user.id) || state.user) };
-      demoProfile.rider_score = updatedScore;
+      demoProfile.rider_score = finalScore;
       savedMockProfiles.push(demoProfile);
     }
     localStorage.setItem('cyclo_mock_profiles', JSON.stringify(savedMockProfiles));
-    _updateScoreWidgets(updatedScore);
-    showToast(`Rider Score bijgewerkt naar: ${updatedScore} pts`, 'success');
+    _updateScoreWidgets(finalScore, delta);
     return;
   }
 
   try {
     const { error } = await config.supabaseClient
       .from('profiles')
-      .update({ rider_score: updatedScore })
+      .update({ rider_score: finalScore })
       .eq('id', state.user.id);
     if (error) throw error;
-    _updateScoreWidgets(updatedScore);
-    showToast(`Rider Score bijgewerkt naar ${updatedScore} pts!`, 'success');
+    _updateScoreWidgets(finalScore, delta);
   } catch (err) {
     console.error('Fout bij opslaan Rider Score:', err);
     showToast('Kon Rider Score niet opslaan.', 'error');
@@ -254,7 +296,10 @@ export async function saveActivity(parsedRide, fileName, loadDashboardDataCallba
     activityData.id = `act-${Date.now()}`;
     mockActivities.push(activityData);
     localStorage.setItem('cyclo_mock_activities', JSON.stringify(mockActivities));
-    
+
+    // Direct in state zetten zodat updateUserRiderScore de nieuwe rit al ziet
+    state.activities = mockActivities;
+
     // Update persoonlijke records
     await updatePersonalRecords([...mockActivities]);
 
@@ -263,20 +308,25 @@ export async function saveActivity(parsedRide, fileName, loadDashboardDataCallba
   }
 
   try {
-    const { error } = await config.supabaseClient
+    const { data: newAct, error } = await config.supabaseClient
       .from('activities')
-      .insert([activityData]);
-      
+      .insert([activityData])
+      .select()
+      .single();
+
     if (error) throw error;
+
+    // Direct in state zetten zodat updateUserRiderScore de nieuwe rit al ziet
+    if (newAct) state.activities = [newAct, ...(state.activities || [])];
 
     // Update persoonlijke records na opslaan
     const allActivities = await loadActivitiesRaw();
     await updatePersonalRecords(allActivities);
-    
+
     if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
   } catch (err) {
-    console.error("Fout bij opslaan activiteit:", err);
-    showToast("Kon rit niet opslaan in database.", "error");
+    console.error('Fout bij opslaan activiteit:', err);
+    showToast('Kon rit niet opslaan in database.', 'error');
   }
 }
 
