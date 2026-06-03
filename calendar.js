@@ -27,6 +27,9 @@ export function renderCalendar() {
     "Januari", "Februari", "Maart", "April", "Mei", "Juni", 
     "Juli", "Augustus", "September", "Oktober", "November", "December"
   ];
+
+  // ✅ Maandtitel bijwerken
+  if (titleEl) titleEl.textContent = `${monthNames[month]} ${year}`;
   
   gridEl.innerHTML = '';
   
