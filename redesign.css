@@ -844,3 +844,407 @@
   font-weight: 700;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   NIEUWE FEATURES — Analytics, Zones, Kudos, Heatmap, Charts
+   ══════════════════════════════════════════════════════════════ */
+
+/* ─── Training Zone Balk ─────────────────────────────────────── */
+.zone-bar-wrap {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.zone-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  gap: 2px;
+  margin-bottom: 5px;
+}
+.zone-seg {
+  flex: 1;
+  border-radius: 2px;
+  position: relative;
+  transition: transform .15s, opacity .15s;
+}
+.zone-seg.active {
+  transform: scaleY(1.6);
+  transform-origin: center;
+  box-shadow: 0 0 6px currentColor;
+}
+.zone-seg-label {
+  display: none;
+}
+.zone-meta {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ─── Hoogteprofiel Chart ────────────────────────────────────── */
+.elevation-chart-wrap {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  position: relative;
+}
+.elevation-chart-wrap canvas {
+  border-radius: 6px;
+  display: block;
+}
+.elevation-chart-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 6px;
+}
+
+/* ─── Kudos & Reacties ───────────────────────────────────────── */
+.feed-social-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.btn-kudos {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  font-family: var(--font-body);
+}
+.btn-kudos:hover {
+  border-color: #fb923c;
+  color: #fb923c;
+  background: rgba(251,146,60,0.08);
+}
+.btn-kudos.active {
+  border-color: #fb923c;
+  color: #fb923c;
+  background: rgba(251,146,60,0.12);
+}
+.btn-kudos .kudos-emoji { font-size: 14px; line-height: 1; }
+
+.btn-comment-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  font-family: var(--font-body);
+}
+.btn-comment-toggle:hover {
+  border-color: var(--secondary);
+  color: var(--secondary);
+  background: rgba(0,240,255,0.05);
+}
+
+.comments-section {
+  margin-top: 10px;
+  display: none;
+}
+.comments-section.open { display: block; }
+
+.comment-item {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.comment-item:last-child { border-bottom: none; }
+.comment-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 1px solid var(--border-glass);
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.comment-body { flex: 1; min-width: 0; }
+.comment-author { font-size: 11px; font-weight: 700; color: var(--text-primary); }
+.comment-text   { font-size: 12px; color: var(--text-secondary); line-height: 1.4; margin-top: 1px; }
+.comment-time   { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+.comment-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+.comment-input-row input {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 12px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color .15s;
+}
+.comment-input-row input:focus { border-color: var(--secondary); }
+.comment-input-row input::placeholder { color: var(--text-muted); }
+.comment-submit-btn {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: none;
+  background: var(--secondary);
+  color: #000;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: opacity .15s;
+}
+.comment-submit-btn:hover { opacity: 0.85; }
+
+/* ─── Periode Vergelijking Widget ─────────────────────────────── */
+.period-comparison-widget {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.period-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+.period-stat {
+  text-align: center;
+  padding: 10px 6px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.period-stat-val {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+.period-stat-lbl {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-top: 2px;
+}
+.period-stat-diff {
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 3px;
+}
+.period-stat-diff.up   { color: #4ade80; }
+.period-stat-diff.down { color: #f87171; }
+.period-stat-diff.flat { color: var(--text-muted); }
+
+/* ─── Activiteiten Heatmap ───────────────────────────────────── */
+.heatmap-container {
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.heatmap-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 12px);
+  grid-auto-flow: column;
+  gap: 3px;
+  width: max-content;
+}
+.heatmap-cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform .1s;
+  position: relative;
+}
+.heatmap-cell:hover { transform: scale(1.4); z-index: 1; }
+.heatmap-cell[data-level="0"] { background: rgba(255,255,255,0.05); }
+.heatmap-cell[data-level="1"] { background: rgba(212,255,0,0.25); }
+.heatmap-cell[data-level="2"] { background: rgba(212,255,0,0.50); }
+.heatmap-cell[data-level="3"] { background: rgba(212,255,0,0.75); }
+.heatmap-cell[data-level="4"] { background: rgba(212,255,0,1.00); }
+
+.heatmap-months {
+  display: flex;
+  gap: 0;
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  width: max-content;
+}
+.heatmap-month-label {
+  width: calc(12px * 4 + 3px * 4 + 2px);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.heatmap-legend-cell {
+  width: 10px; height: 10px; border-radius: 2px;
+}
+
+/* Heatmap tooltip */
+.heatmap-tooltip {
+  position: fixed;
+  background: rgba(15,20,35,0.95);
+  border: 1px solid var(--border-glass);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--text-primary);
+  pointer-events: none;
+  z-index: 9999;
+  white-space: nowrap;
+  display: none;
+}
+
+/* ─── PR Tracker Cards ───────────────────────────────────────── */
+.pr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.pr-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.pr-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+.pr-bucket-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 8px;
+}
+.pr-count-badge {
+  font-size: 10px;
+  color: var(--primary);
+  font-weight: 600;
+  float: right;
+  margin-top: -2px;
+}
+.pr-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.pr-stat-row:last-child { border-bottom: none; }
+.pr-stat-lbl { font-size: 10px; color: var(--text-muted); }
+.pr-stat-val {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* ─── CTL / ATL / TSB Fitness Grafiek ───────────────────────── */
+.fitness-chart-wrap {
+  position: relative;
+  margin-top: 12px;
+}
+.fitness-chart-wrap canvas { border-radius: 8px; }
+
+.fitness-status-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.fitness-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  min-width: 70px;
+}
+.fitness-pill-val {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+}
+.fitness-pill-lbl {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-top: 3px;
+}
+.fitness-status-label {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  align-self: center;
+}
+.fitness-status-label.fresh    { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+.fitness-status-label.tired    { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+.fitness-status-label.optimal  { background: rgba(212,255,0,0.12);  color: var(--primary); border: 1px solid rgba(212,255,0,0.3); }
+.fitness-status-label.neutral  { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--border-glass); }
+
+/* ─── Kalender Weer Badge ────────────────────────────────────── */
+.cal-weather {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1;
+}
+.cal-weather-emoji { font-size: 10px; }
+.cal-weather-temp  { font-weight: 700; color: var(--text-secondary); }
+
+@media (max-width: 768px) {
+  .period-comparison-grid { grid-template-columns: repeat(2, 1fr); }
+  .pr-grid { grid-template-columns: repeat(2, 1fr); }
+  .fitness-status-pills { gap: 6px; }
+  .fitness-pill { padding: 6px 10px; min-width: 55px; }
+  .heatmap-cell { width: 10px; height: 10px; }
+}

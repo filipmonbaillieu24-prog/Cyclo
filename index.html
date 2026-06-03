@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
@@ -1064,7 +1064,63 @@
         </div><!-- /Avatar panel -->
 
       </div><!-- /2-kolom grid -->
+
+      <!-- ─── Periode Vergelijking ─────────────────────────────── -->
+      <div id="period-comparison-section" class="glass-panel mt-3" style="display:none;">
+        <div class="d-flex align-center gap-8 mb-3">
+          <i data-lucide="trending-up" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span style="font-size:13px;font-weight:700;">Vergelijking afgelopen 30 dagen</span>
+          <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">vs. vorige periode</span>
+        </div>
+        <div id="period-comparison-content" class="period-comparison-grid"></div>
+      </div>
+
+      <!-- ─── Activiteiten Heatmap ──────────────────────────────── -->
+      <div class="glass-panel mt-3">
+        <div class="d-flex align-center gap-8 mb-3">
+          <i data-lucide="calendar-days" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span style="font-size:13px;font-weight:700;">Activiteiten dit jaar</span>
+        </div>
+        <div id="activity-heatmap" class="heatmap-container">
+          <div style="color:var(--text-muted);font-size:12px;">Heatmap laden...</div>
+        </div>
+        <div class="heatmap-legend" style="margin-top:8px;">
+          <span>Minder</span>
+          <div class="heatmap-legend-cell" style="background:rgba(255,255,255,0.05);"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(212,255,0,0.25);"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(212,255,0,0.50);"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(212,255,0,0.75);"></div>
+          <div class="heatmap-legend-cell" style="background:rgba(212,255,0,1.00);"></div>
+          <span>Meer</span>
+        </div>
+      </div>
+
+      <!-- ─── PR Tracker ────────────────────────────────────────── -->
+      <div class="glass-panel mt-3">
+        <div class="d-flex align-center gap-8 mb-3">
+          <i data-lucide="trophy" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span style="font-size:13px;font-weight:700;">Persoonlijke Records</span>
+        </div>
+        <div id="pr-tracker-grid" class="pr-grid">
+          <div style="color:var(--text-muted);font-size:12px;">Nog geen activiteiten beschikbaar.</div>
+        </div>
+      </div>
+
+      <!-- ─── CTL / ATL / TSB Fitness Grafiek ──────────────────── -->
+      <div class="glass-panel mt-3">
+        <div class="d-flex align-center gap-8 mb-3">
+          <i data-lucide="activity" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span style="font-size:13px;font-weight:700;">Form & Fitness (90 dagen)</span>
+          <span style="font-size:10px;color:var(--text-muted);margin-left:auto;">CTL = fitheid · ATL = vermoeidheid · TSB = vorm</span>
+        </div>
+        <div class="fitness-status-pills" id="fitness-pills"></div>
+        <div class="fitness-chart-wrap">
+          <canvas id="fitness-chart" height="120"></canvas>
+        </div>
+      </div>
+
     </div><!-- /profile-page-container -->
+
   </section>
 
   <!-- Scripts -->

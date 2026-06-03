@@ -1,10 +1,10 @@
-﻿// Cyclo - Group Rides Module
+// Cyclo - Group Rides Module
 import { state, elements, config, showToast } from './state.js';
 
 // ─────────────────────────────────────────────
 //  Weer API (Open-Meteo, gratis, geen key)
 // ─────────────────────────────────────────────
-const WMO_CODES = {
+export const WMO_CODES = {
   0: { label: 'Helder', emoji: '☀️' },
   1: { label: 'Overwegend helder', emoji: '🌤️' },
   2: { label: 'Bewolkt', emoji: '⛅' },
@@ -31,7 +31,7 @@ const WMO_CODES = {
 const WEATHER_CACHE_KEY = 'cyclo_weather_cache';
 const WEATHER_CACHE_TTL = 60 * 60 * 1000; // 1 uur
 
-async function fetchWeatherForDate(dateStr) {
+export async function fetchWeatherForDate(dateStr) {
   // Cache check
   try {
     const cache = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || '{}');

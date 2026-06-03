@@ -1,5 +1,6 @@
-﻿// Cyclo - Calendar & Availability Module
+// Cyclo - Calendar & Availability Module
 import { state, elements, config, showToast } from './state.js';
+import { fetchWeatherForDate, WMO_CODES } from './rides.js';
 
 // Multi-selectie state (lokaal in deze module)
 let selectedDates = []; // array van dateStr strings
@@ -146,6 +147,20 @@ export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
     }
 
     cell.appendChild(avatarList);
+  }
+
+  // ─── Weersverwachting voor toekomstige dagen ───────────────────
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  if (dateStr >= todayDateStr && !isOtherMonth) {
+    // Asynchroon: update de cel zodra data binnen is
+    fetchWeatherForDate(dateStr).then(weather => {
+      if (!weather) return;
+      const wmo = WMO_CODES[weather.code] || { emoji: '🌡️' };
+      const weatherEl = document.createElement('div');
+      weatherEl.className = 'cal-weather';
+      weatherEl.innerHTML = `<span class="cal-weather-emoji">${wmo.emoji}</span><span class="cal-weather-temp">${weather.maxTemp}°</span>`;
+      cell.appendChild(weatherEl);
+    }).catch(() => {});
   }
 
   // --- Klik: toggle dag in/uit multi-selectie ---

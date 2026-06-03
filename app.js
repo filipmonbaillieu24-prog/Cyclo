@@ -46,6 +46,7 @@ import { setupRealtimeSubscriptions } from './realtime.js';
 import { setupZwiftImporter } from './zwift-importer.js';
 import { loadSocialFeed, renderFeedCard, searchUsers, followUser, unfollowUser, getFollowStatus, getFollowCounts } from './social.js';
 import { initProfileAvatarEditor } from './profile-avatar.js';
+import { updateFitnessBaseline, calculateFitnessMetrics, calculatePRs, buildHeatmapData, comparePeriods } from './zones.js';
 
 let activeRealtimeChannel = null;
 
@@ -124,6 +125,9 @@ export async function loadDashboardData() {
 
     // E. Activiteiten ophalen en UI renderen
     try { await loadActivities(); } catch(e) { console.warn('loadActivities:', e); }
+
+    // ─── Fitness baseline bijwerken na activiteiten laden ─────────
+    try { updateFitnessBaseline(state.activities); } catch(e) {}
     try { renderCalendar(); } catch(e) { console.warn('renderCalendar:', e); }
     try { renderRidesList(); } catch(e) { console.warn('renderRidesList:', e); }
     renderActivitiesList(loadDashboardData);
@@ -929,6 +933,9 @@ function loadProfilePage() {
   if (ridersEl)  ridersEl.textContent = myAct.length;
   if (scoreEl)   scoreEl.textContent  = u.rider_score || 0;
 
+  // ─── Analytics secties renderen ────────────────────────────────
+  try { renderProfileAnalytics(); } catch(e) { console.warn('renderProfileAnalytics:', e); }
+
   // Volg stats
   if (!config.isDemoMode) {
     getFollowCounts(u.id).then(counts => {
@@ -1097,3 +1104,188 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+//  ANALYTICS RENDERING — Heatmap, PR Tracker, Fitness Grafiek, Vergelijking
+// ════════════════════════════════════════════════════════════════════════════
+
+// Wordt aangeroepen wanneer de profielpagina zichtbaar wordt
+export function renderProfileAnalytics() {
+  const acts = state.activities || [];
+  if (!acts.length) return;
+
+  renderActivityHeatmap(acts);
+  renderPRTracker(acts);
+  renderFitnessChart(acts);
+  renderPeriodComparison(acts);
+}
+
+// ─── Activiteiten Heatmap ────────────────────────────────────────────────────
+function renderActivityHeatmap(activities) {
+  const container = document.getElementById('activity-heatmap');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const heatData = buildHeatmapData(activities);
+  const today    = new Date();
+  const startDate = new Date(today.getFullYear(), 0, 1); // 1 jan dit jaar
+
+  // Bereken startdag (maandag voor 1 jan)
+  const startOffset = (startDate.getDay() + 6) % 7; // 0=ma
+  startDate.setDate(startDate.getDate() - startOffset);
+
+  const MONTHS = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+  const grid = document.createElement('div');
+  grid.className = 'heatmap-grid';
+
+  // Tooltip element
+  let tooltip = document.getElementById('heatmap-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'heatmap-tooltip';
+    tooltip.className = 'heatmap-tooltip';
+    document.body.appendChild(tooltip);
+  }
+
+  const curYear = today.getFullYear();
+  const endDate = new Date(curYear, 11, 31);
+  let d = new Date(startDate);
+
+  while (d <= endDate) {
+    const ds = d.toISOString().split('T')[0];
+    const info = heatData[ds];
+    const cell = document.createElement('div');
+    cell.className = 'heatmap-cell';
+    const km = info ? info.km : 0;
+    const level = km === 0 ? 0 : km < 30 ? 1 : km < 60 ? 2 : km < 100 ? 3 : 4;
+    cell.dataset.level = level;
+    cell.dataset.date  = ds;
+
+    cell.addEventListener('mouseenter', (e) => {
+      const txt = info
+        ? `${ds}: ${info.count} rit(ten) · ${info.km.toFixed(0)} km`
+        : `${ds}: geen activiteit`;
+      tooltip.textContent = txt;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top  = (e.clientY - 28) + 'px';
+    });
+    cell.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    grid.appendChild(cell);
+    d.setDate(d.getDate() + 1);
+  }
+
+  container.appendChild(grid);
+}
+
+// ─── PR Tracker ──────────────────────────────────────────────────────────────
+function renderPRTracker(activities) {
+  const grid = document.getElementById('pr-tracker-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const prs = calculatePRs(activities);
+  if (prs.length === 0) {
+    grid.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">Upload ritten om je PR\'s te zien.</div>';
+    return;
+  }
+
+  for (const pr of prs) {
+    const b = pr.best;
+    const card = document.createElement('div');
+    card.className = 'pr-card';
+    card.innerHTML = `
+      <div class="pr-bucket-label">${pr.bucket}<span class="pr-count-badge">${pr.count}×</span></div>
+      <div class="pr-stat-row"><span class="pr-stat-lbl">Beste afstand</span><span class="pr-stat-val">${b.distance.toFixed(1)} km</span></div>
+      <div class="pr-stat-row"><span class="pr-stat-lbl">Topsnelheid gem.</span><span class="pr-stat-val">${b.speed.toFixed(1)} km/u</span></div>
+      ${b.ascent > 0 ? `<div class="pr-stat-row"><span class="pr-stat-lbl">Max hoogtemeters</span><span class="pr-stat-val">${b.ascent} m</span></div>` : ''}
+      ${b.power > 0  ? `<div class="pr-stat-row"><span class="pr-stat-lbl">Max gem. vermogen</span><span class="pr-stat-val">${b.power} W</span></div>` : ''}
+    `;
+    grid.appendChild(card);
+  }
+}
+
+// ─── CTL / ATL / TSB Fitness Grafiek ─────────────────────────────────────────
+let _fitnessChart = null;
+function renderFitnessChart(activities) {
+  const canvas = document.getElementById('fitness-chart');
+  const pills  = document.getElementById('fitness-pills');
+  if (!canvas || !pills) return;
+
+  const metrics = calculateFitnessMetrics(activities);
+  if (!metrics.length) return;
+
+  const latest = metrics[metrics.length - 1];
+  const tsb    = latest.tsb;
+
+  // Status bepalen
+  let status = 'neutral', statusLabel = 'Neutraal';
+  if      (tsb > 10)              { status = 'fresh';   statusLabel = `🟢 Fris (+${tsb})`; }
+  else if (tsb < -10)             { status = 'tired';   statusLabel = `🔴 Vermoeid (${tsb})`; }
+  else if (tsb >= 0 && tsb <= 10) { status = 'optimal'; statusLabel = `⚡ Optimale vorm (+${tsb})`; }
+  else                            { status = 'tired';   statusLabel = `🟡 Licht vermoeid (${tsb})`; }
+
+  pills.innerHTML = `
+    <div class="fitness-pill"><span class="fitness-pill-val" style="color:#60a5fa;">${latest.ctl.toFixed(0)}</span><span class="fitness-pill-lbl">CTL / Fitheid</span></div>
+    <div class="fitness-pill"><span class="fitness-pill-val" style="color:#f87171;">${latest.atl.toFixed(0)}</span><span class="fitness-pill-lbl">ATL / Vermoeidheid</span></div>
+    <div class="fitness-pill"><span class="fitness-pill-val" style="color:${tsb >= 0 ? '#4ade80' : '#f87171'};">${tsb >= 0 ? '+' : ''}${tsb.toFixed(0)}</span><span class="fitness-pill-lbl">TSB / Vorm</span></div>
+    <div class="fitness-status-label ${status}">${statusLabel}</div>
+  `;
+
+  // Destroy vorige chart instance
+  if (_fitnessChart) { _fitnessChart.destroy(); _fitnessChart = null; }
+  if (typeof Chart === 'undefined') return;
+
+  _fitnessChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: metrics.map(m => m.date.slice(5)), // MM-DD
+      datasets: [
+        { label: 'CTL (Fitheid)',     data: metrics.map(m => m.ctl), borderColor: '#60a5fa', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.4 },
+        { label: 'ATL (Vermoeidheid)',data: metrics.map(m => m.atl), borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.4 },
+        { label: 'TSB (Vorm)',        data: metrics.map(m => m.tsb), borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.07)', borderWidth: 1.5, pointRadius: 0, tension: 0.4, fill: true },
+      ]
+    },
+    options: {
+      responsive: true, animation: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.5)', font: { size: 11 }, boxWidth: 20 } },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        x: { ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 9 }, maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 9 } },                   grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// ─── Periode Vergelijking ────────────────────────────────────────────────────
+function renderPeriodComparison(activities) {
+  const section = document.getElementById('period-comparison-section');
+  const content = document.getElementById('period-comparison-content');
+  if (!section || !content) return;
+
+  const cmp = comparePeriods(activities, 30);
+  if (cmp.current.ritten === 0 && cmp.previous.ritten === 0) return;
+
+  section.style.display = 'block';
+
+  const arrow = (pct) => pct > 5 ? '↑' : pct < -5 ? '↓' : '→';
+  const cls   = (pct) => pct > 5 ? 'up' : pct < -5 ? 'down' : 'flat';
+
+  const stats = [
+    { label: 'km',    val: cmp.current.km.toFixed(0),    diff: cmp.diff.km    },
+    { label: 'Ritten',val: cmp.current.ritten,           diff: cmp.diff.ritten },
+    { label: 'Uren',  val: cmp.current.uren.toFixed(1),  diff: cmp.diff.uren  },
+    { label: 'Hoogte',val: cmp.current.asc + 'm',        diff: cmp.diff.asc   },
+  ];
+
+  content.innerHTML = stats.map(s => `
+    <div class="period-stat">
+      <div class="period-stat-val">${s.val}</div>
+      <div class="period-stat-lbl">${s.label}</div>
+      <div class="period-stat-diff ${cls(s.diff)}">${arrow(s.diff)} ${Math.abs(s.diff)}%</div>
+    </div>
+  `).join('');
+}
