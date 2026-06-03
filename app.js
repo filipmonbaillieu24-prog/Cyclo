@@ -860,7 +860,7 @@ export async function loadFeedSection(followingOnly = false) {
   }
 
   feedList.innerHTML = '';
-  feedList.innerHTML = '';
+
   // Laad welke gebruikers al gevolgd worden (voor correcte knop-staat)
   let followedIds = new Set();
   if (!config.isDemoMode && state.user) {
@@ -904,6 +904,7 @@ export async function loadFeedSection(followingOnly = false) {
     });
   }
   if (typeof lucide !== 'undefined') lucide.createIcons();
+}
 
 // ─── Profiel Pagina Laden ───────────────────────────────────────────
 function loadProfilePage() {
