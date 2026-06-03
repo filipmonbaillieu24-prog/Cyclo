@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cyclo - Core Application Orchestrator (ES6 Module)
  * 
  * Beheert de centrale state, de event loops, de live/offline initialisatie,
@@ -655,11 +655,99 @@ function setupEventListeners() {
     });
   }
 
-  // "Naar Planner" knop op Mijn Ritten pagina
+  // ─── Mijn Ritten pagina tabs ─────────────────────────────────
+  document.querySelectorAll('.rides-page-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Actieve tab markeren
+      document.querySelectorAll('.rides-page-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const which = tab.dataset.tab;
+
+      // Panels tonen/verbergen
+      const myContent    = document.getElementById('my-rides-content');
+      const clubContent  = document.getElementById('club-rides-content');
+      const statsContent = document.getElementById('stats-content');
+
+      if (myContent)    myContent.style.display    = which === 'my'    ? '' : 'none';
+      if (clubContent)  clubContent.style.display  = which === 'club'  ? '' : 'none';
+      if (statsContent) statsContent.style.display = which === 'stats' ? '' : 'none';
+
+      // Statistieken panel
+      const chartPanel = document.getElementById('stats-chart-panel');
+      if (chartPanel) chartPanel.style.display = which === 'stats' ? 'block' : 'none';
+
+      // Club rides laden als je dat tabblad opent
+      if (which === 'club') {
+        loadClubRidesTab();
+      }
+    });
+  });
+
+  // \"Naar Planner\" knop op Mijn Ritten pagina
   const btnGoPlanner = document.getElementById('btn-go-planner');
   if (btnGoPlanner) {
     btnGoPlanner.addEventListener('click', () => navigateTo('dashboard', loadDashboardData));
   }
+}
+
+// ─── Club Ritten tab laden ─────────────────────────────────
+async function loadClubRidesTab() {
+  const list = document.getElementById('club-activities-list');
+  if (!list) return;
+  list.innerHTML = '<div class="empty-state">Laden...</div>';
+
+  let acts = [];
+  if (config.isDemoMode) {
+    acts = [...(state.activities || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+  } else {
+    try {
+      const { data } = await config.supabaseClient
+        .from('activities')
+        .select('*, profiles!activities_user_id_fkey(full_name, avatar_url, username)')
+        .order('date', { ascending: false })
+        .limit(30);
+      acts = data || [];
+    } catch (_) {
+      const { data } = await config.supabaseClient
+        .from('activities').select('*').order('date', { ascending: false }).limit(30)
+        .catch(() => ({ data: [] }));
+      acts = data || [];
+    }
+  }
+
+  if (!acts.length) {
+    list.innerHTML = '<div class="empty-state">Geen ritten van andere leden gevonden.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  acts.forEach(act => {
+    const profile = act.profiles || state.profiles?.find(p => p.id === act.user_id) || {};
+    const name = profile.full_name || 'Onbekend';
+    const dur = (() => {
+      const s = parseFloat(act.duration_secs || 0);
+      const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+      return h > 0 ? `${h}u ${m}m` : `${m}m`;
+    })();
+    const card = document.createElement('div');
+    card.className = 'activity-item';
+    card.innerHTML = `
+      <div class="activity-header">
+        <div class="activity-type-icon">🚴</div>
+        <div style="flex:1;min-width:0;">
+          <div class="activity-title">${act.name || 'Rit'}</div>
+          <div class="activity-date">${name} · ${new Intl.DateTimeFormat('nl-NL',{day:'numeric',month:'short'}).format(new Date(act.date))}</div>
+        </div>
+        <div class="activity-badge">${act.rider_score || 0} pts</div>
+      </div>
+      <div class="activity-stats-grid">
+        <div class="activity-stat-card"><div class="activity-stat-val color-dist">${parseFloat(act.distance_km||0).toFixed(1)}</div><div class="activity-stat-lbl">km</div></div>
+        <div class="activity-stat-card"><div class="activity-stat-val color-time">${dur}</div><div class="activity-stat-lbl">Tijd</div></div>
+        <div class="activity-stat-card"><div class="activity-stat-val color-ascent">${act.ascent_m||0}</div><div class="activity-stat-lbl">hm</div></div>
+        <div class="activity-stat-card"><div class="activity-stat-val color-speed">${parseFloat(act.avg_speed_kmh||0).toFixed(1)}</div><div class="activity-stat-lbl">km/u</div></div>
+      </div>`;
+    list.appendChild(card);
+  });
 }
 
 // ─── Sociale Feed Laden & Renderen ──────────────────────────────────
@@ -727,25 +815,42 @@ export async function loadFeedSection(followingOnly = false) {
 
   let activities;
   if (config.isDemoMode) {
-    // Demo: gebruik alle activiteiten in state
+    // Demo: gebruik alle activiteiten in state (inclusief eigen)
     activities = [...(state.activities || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
   } else if (followingOnly) {
-    // "Volgend" tab: alleen activiteiten van gevolgden + eigen
+    // "Volgend" tab: gevolgden + eigen
     activities = await loadSocialFeed();
+    // Voeg eigen activiteiten toe als ze er niet in zitten
+    const ownActs = (state.activities || []).filter(a => a.user_id === state.user?.id);
+    const existingIds = new Set(activities.map(a => a.id));
+    ownActs.forEach(a => { if (!existingIds.has(a.id)) activities.push(a); });
+    activities.sort((a, b) => new Date(b.date) - new Date(a.date));
   } else {
-    // "Iedereen" tab: ALLE activiteiten van alle gebruikers
+    // "Iedereen" tab: probeer Supabase, val terug op state.activities
     try {
       const { data, error } = await config.supabaseClient
         .from('activities')
-        .select('*, profiles(full_name, avatar_url, username, rider_score)')
+        .select('*, profiles!activities_user_id_fkey(full_name, avatar_url, username, rider_score)')
         .order('date', { ascending: false })
         .limit(50);
       if (error) throw error;
       activities = data || [];
     } catch (err) {
-      console.error('Feed laden fout:', err);
-      activities = [];
+      // Probeer zonder join als de FK naam anders is
+      try {
+        const { data } = await config.supabaseClient
+          .from('activities')
+          .select('*')
+          .order('date', { ascending: false })
+          .limit(50);
+        activities = data || [];
+      } catch (_) { activities = []; }
     }
+    // Voeg altijd eigen activiteiten toe die misschien ontbreken
+    const ownActs = (state.activities || []).filter(a => a.user_id === state.user?.id);
+    const existingIds = new Set(activities.map(a => a.id));
+    ownActs.forEach(a => { if (!existingIds.has(a.id)) activities.push(a); });
+    activities.sort((a, b) => new Date(b.date) - new Date(a.date));
   }
 
   if (!activities || activities.length === 0) {

@@ -250,12 +250,13 @@ export async function saveBulkAvailability(loadDashboardDataCallback) {
     return;
   }
 
+  // Demo mode
   if (config.isDemoMode) {
     let savedAvails = JSON.parse(localStorage.getItem('cyclo_mock_availabilities') || '[]');
     for (const dateStr of selectedDates) {
       const idx = savedAvails.findIndex(a => a.date === dateStr && a.user_id === state.user.id);
       const availData = {
-        id: idx !== -1 ? savedAvails[idx].id : `a-${Date.now()}-${dateStr}`,
+        id: idx !== -1 ? savedAvails[idx].id : `a-${dateStr}-${state.user.id}`,
         user_id: state.user.id,
         date: dateStr,
         status,
@@ -265,29 +266,47 @@ export async function saveBulkAvailability(loadDashboardDataCallback) {
       else savedAvails.push(availData);
     }
     localStorage.setItem('cyclo_mock_availabilities', JSON.stringify(savedAvails));
-    showToast(`Beschikbaarheid opgeslagen voor ${selectedDates.length} dagen!`, 'success');
+    showToast(`✓ Beschikbaarheid opgeslagen voor ${selectedDates.length} dag(en)!`, 'success');
     clearCalendarSelection();
     if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
     return;
   }
 
+  // Live Supabase — individueel per datum opslaan (meest betrouwbaar)
   try {
-    // Upsert voor elke geselecteerde dag
-    const records = selectedDates.map(dateStr => ({
-      user_id: state.user.id,
-      date: dateStr,
-      status,
-      notes
-    }));
+    let saved = 0;
+    let failed = 0;
 
-    // Gebruik upsert (insert of update op conflict)
-    const { error } = await config.supabaseClient
-      .from('availabilities')
-      .upsert(records, { onConflict: 'user_id,date' });
+    for (const dateStr of selectedDates) {
+      // Controleer of er al een record bestaat
+      const existing = state.availabilities?.find(
+        a => a.date === dateStr && a.user_id === state.user.id
+      );
 
-    if (error) throw error;
+      let error;
+      if (existing) {
+        // Update bestaand
+        ({ error } = await config.supabaseClient
+          .from('availabilities')
+          .update({ status, notes })
+          .eq('id', existing.id));
+      } else {
+        // Nieuw invoegen
+        ({ error } = await config.supabaseClient
+          .from('availabilities')
+          .insert([{ user_id: state.user.id, date: dateStr, status, notes }]));
+      }
 
-    showToast(`✓ Beschikbaarheid opgeslagen voor ${selectedDates.length} dagen!`, 'success');
+      if (error) { failed++; console.warn(`Fout voor ${dateStr}:`, error.message); }
+      else saved++;
+    }
+
+    if (saved > 0) {
+      showToast(`✓ Beschikbaarheid opgeslagen voor ${saved} dag(en)!${failed ? ` (${failed} mislukt)` : ''}`, 'success');
+    } else {
+      showToast(`Opslaan mislukt voor alle ${failed} dag(en).`, 'error');
+    }
+
     clearCalendarSelection();
     if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
   } catch (err) {
