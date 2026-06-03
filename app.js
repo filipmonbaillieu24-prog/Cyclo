@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cyclo - Core Application Orchestrator (ES6 Module)
  * 
  * Beheert de centrale state, de event loops, de live/offline initialisatie,
@@ -1499,6 +1499,8 @@ function renderBadgeWall(activities) {
 // ─── Global window hooks (voor auth.js bridge) ────────────────────────────────
 window._checkOnboarding = checkOnboarding;
 window._initHelpButton  = initHelpButton;
+window._setCurrentPage  = setCurrentPage;
+window._triggerPageTour = triggerPageTourIfNew;
 
 // ─── Lege staat helpers ───────────────────────────────────────────────────────
 export function renderEmptyFeed() {

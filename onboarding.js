@@ -13,6 +13,8 @@ export function checkOnboarding() {
   const isNew = !state.user?.full_name || state.user?.full_name === '';
   if (isNew || (state.activities || []).length === 0) {
     setTimeout(() => startOnboardingWizard(), 800);
+  } else {
+    localStorage.setItem(KEY_ONBOARDING, '1');
   }
 }
 
