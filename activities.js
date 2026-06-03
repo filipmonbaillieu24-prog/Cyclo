@@ -3,6 +3,7 @@ import { state, elements, config, showToast } from './state.js';
 import { addFeedEntry } from './rides.js';
 
 let statsChartInstance = null;
+let elevationChartInstance = null;
 
 // ─────────────────────────────────────────────
 //  Activiteiten filter state
@@ -18,6 +19,9 @@ export function setupTcxUploader(loadDashboardDataCallback) {
   
   if (!dropzone || !fileInput) return;
   
+  // Accepteer meer bestandsformaten
+  fileInput.accept = '.tcx,.gpx,.fit,.kml';
+
   dropzone.addEventListener('click', () => fileInput.click());
   
   dropzone.addEventListener('dragover', (e) => {
@@ -32,7 +36,6 @@ export function setupTcxUploader(loadDashboardDataCallback) {
   dropzone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropzone.classList.remove('dragover');
-    
     if (e.dataTransfer.files.length > 0) {
       processTcxFile(e.dataTransfer.files[0], loadDashboardDataCallback);
     }
@@ -50,7 +53,6 @@ export function setupTcxUploader(loadDashboardDataCallback) {
     filterBar.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-filter-period], [data-filter-sort]');
       if (!btn) return;
-
       if (btn.dataset.filterPeriod !== undefined) {
         filterBar.querySelectorAll('[data-filter-period]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -68,71 +70,82 @@ export function setupTcxUploader(loadDashboardDataCallback) {
 
 export function processTcxFile(file, loadDashboardDataCallback) {
   const nameLower = file.name.toLowerCase();
-  if (!nameLower.endsWith('.tcx') && !nameLower.endsWith('.gpx')) {
-    showToast("Alleen TCX- en GPX-bestanden worden ondersteund.", "error");
+  const isFit = nameLower.endsWith('.fit');
+  const isXml = nameLower.endsWith('.tcx') || nameLower.endsWith('.gpx') || nameLower.endsWith('.kml');
+
+  if (!isFit && !isXml) {
+    showToast("Ondersteunde formaten: TCX, GPX, FIT, KML.", "error");
     return;
   }
-  
-  const reader = new FileReader();
-  
-  reader.onload = async (e) => {
-    const xmlText = e.target.result;
-    
-    try {
-      showToast("Bestand verwerken...", "info");
-      
-      const parsedRide = window.ActivityParser.parse(xmlText);
-      
-      // Update UI metrics
-      elements.metricDistance.textContent = parsedRide.distanceKm;
-      elements.metricDuration.textContent = parsedRide.durationFormatted;
-      elements.metricAscent.textContent = parsedRide.totalAscentMeters;
-      elements.metricSpeed.textContent = parsedRide.avgSpeedKmh;
-      elements.metricHr.textContent = parsedRide.avgHeartRate || '-';
-      elements.metricPower.textContent = parsedRide.avgPowerWatts || '-';
-      elements.calculatedRiderScore.textContent = parsedRide.riderScore;
 
-      // W/kg berekenen en tonen
-      updateWkgDisplay(parsedRide.avgPowerWatts);
-      
-      // Renders Leaflet route map
-      if (parsedRide.coordinates && parsedRide.coordinates.length > 0) {
-        elements.routeMap.style.display = 'block';
-        window.ActivityParser.drawRouteOnLeaflet('route-map', parsedRide.coordinates);
-      } else {
-        elements.routeMap.style.display = 'none';
-      }
-      
-      elements.tcxResultPanel.style.display = 'block';
-      
-      // Sla op in DB/localStorage
-      await saveActivity(parsedRide, file.name, loadDashboardDataCallback);
-      
-      // Update Rider Score
-      await updateUserRiderScore(parsedRide.riderScore);
+  showToast("Bestand verwerken...", "info");
 
-      // Feed entry aanmaken
-      await addFeedEntry('uploaded_activity', {
-        name: file.name.replace(/\.(tcx|gpx)$/i, ''),
-        distance_km: parsedRide.distanceKm,
-        rider_score: parsedRide.riderScore
-      });
-      
-      if (typeof loadDashboardDataCallback === 'function') {
-        loadDashboardDataCallback();
+  if (isFit) {
+    // FIT: lees als ArrayBuffer (binair)
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const parsedRide = await window.ActivityParser.parseFit(e.target.result);
+        await _applyParsedRide(parsedRide, file.name, loadDashboardDataCallback);
+      } catch (err) {
+        console.error(err);
+        showToast("FIT fout: " + err.message, "error");
       }
-      
-    } catch (err) {
-      console.error(err);
-      showToast("Fout bij verwerken bestand: " + err.message, "error");
-    }
-  };
-  
-  reader.onerror = () => {
-    showToast("Fout bij lezen van bestand.", "error");
-  };
-  
-  reader.readAsText(file);
+    };
+    reader.onerror = () => showToast("Fout bij lezen van FIT bestand.", "error");
+    reader.readAsArrayBuffer(file);
+  } else {
+    // TCX / GPX / KML: lees als tekst
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const parsedRide = window.ActivityParser.parse(e.target.result);
+        await _applyParsedRide(parsedRide, file.name, loadDashboardDataCallback);
+      } catch (err) {
+        console.error(err);
+        showToast("Fout bij verwerken bestand: " + err.message, "error");
+      }
+    };
+    reader.onerror = () => showToast("Fout bij lezen van bestand.", "error");
+    reader.readAsText(file);
+  }
+}
+
+async function _applyParsedRide(parsedRide, fileName, loadDashboardDataCallback) {
+  // Update UI metrics
+  elements.metricDistance.textContent = parsedRide.distanceKm;
+  elements.metricDuration.textContent = parsedRide.durationFormatted;
+  elements.metricAscent.textContent = parsedRide.totalAscentMeters;
+  elements.metricSpeed.textContent = parsedRide.avgSpeedKmh;
+  elements.metricHr.textContent = parsedRide.avgHeartRate || '-';
+  elements.metricPower.textContent = parsedRide.avgPowerWatts || '-';
+  elements.calculatedRiderScore.textContent = parsedRide.riderScore;
+
+  updateWkgDisplay(parsedRide.avgPowerWatts);
+
+  // Route op kaart
+  if (parsedRide.coordinates && parsedRide.coordinates.length > 0) {
+    elements.routeMap.style.display = 'block';
+    window.ActivityParser.drawRouteOnLeaflet('route-map', parsedRide.coordinates);
+
+    // Hoogteprofiel
+    const elevProfile = window.ActivityParser.buildElevationProfile(parsedRide.coordinates);
+    if (elevProfile) renderElevationChart(elevProfile);
+  } else {
+    elements.routeMap.style.display = 'none';
+  }
+
+  elements.tcxResultPanel.style.display = 'block';
+
+  await saveActivity(parsedRide, fileName, loadDashboardDataCallback);
+  await updateUserRiderScore(parsedRide.riderScore);
+  await addFeedEntry('uploaded_activity', {
+    name: fileName.replace(/\.(tcx|gpx|fit|kml)$/i, ''),
+    distance_km: parsedRide.distanceKm,
+    rider_score: parsedRide.riderScore
+  });
+
+  if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
 }
 
 function updateWkgDisplay(avgPowerWatts) {
@@ -454,6 +467,9 @@ export async function loadAndRenderFeed() {
     const name = profile?.full_name || 'Onbekend';
     const avatar = profile?.avatar_url || '';
     const timeAgo = formatTimeAgo(new Date(entry.created_at));
+    const activityId = entry.payload?.activity_id || null;
+    const kudoCount = entry.kudos_count || 0;
+    const myKudo = entry.my_kudo || false;
 
     let icon = '🚴';
     let text = '';
@@ -480,16 +496,34 @@ export async function loadAndRenderFeed() {
         text = entry.type;
     }
 
+    const kudoBtnHtml = state.user ? `
+      <button class="kudo-btn ${myKudo ? 'active' : ''}" data-entry-id="${entry.id}" data-activity-id="${activityId || ''}" data-my-kudo="${myKudo}" title="${myKudo ? 'Kudo verwijderen' : 'Kudo geven'}">
+        👍 <span class="kudo-count">${kudoCount}</span>
+      </button>` : '';
+
     return `
       <div class="feed-entry">
         ${avatar ? `<img src="${avatar}" alt="${name}" class="feed-avatar">` : `<div class="feed-icon">${icon}</div>`}
         <div class="feed-body">
           <div class="feed-text"><strong>${name}</strong> ${text}</div>
-          <div class="feed-time">${timeAgo}</div>
+          <div class="feed-meta">
+            <span class="feed-time">${timeAgo}</span>
+            ${kudoBtnHtml}
+          </div>
         </div>
       </div>
     `;
   }).join('');
+
+  // Kudo event listeners koppelen
+  feedContainer.querySelectorAll('.kudo-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const actId = btn.dataset.activityId;
+      const myKudo = btn.dataset.myKudo === 'true';
+      if (!actId) return;
+      await toggleKudos(actId, myKudo, btn);
+    });
+  });
 }
 
 function formatTimeAgo(date) {
@@ -502,6 +536,132 @@ function formatTimeAgo(date) {
   if (diffHr < 24) return `${diffHr}u geleden`;
   const diffDay = Math.floor(diffHr / 24);
   return `${diffDay}d geleden`;
+}
+
+// ─────────────────────────────────────────────
+//  Kudos
+// ─────────────────────────────────────────────
+export async function toggleKudos(activityId, myKudo, btnEl) {
+  if (config.isDemoMode) {
+    let kudos = JSON.parse(localStorage.getItem('cyclo_mock_kudos') || '[]');
+    if (myKudo) {
+      kudos = kudos.filter(k => !(k.activity_id === activityId && k.user_id === state.user.id));
+    } else {
+      kudos.push({ activity_id: activityId, user_id: state.user.id, created_at: new Date().toISOString() });
+    }
+    localStorage.setItem('cyclo_mock_kudos', JSON.stringify(kudos));
+    // Update knop
+    const count = kudos.filter(k => k.activity_id === activityId).length;
+    btnEl.classList.toggle('active', !myKudo);
+    btnEl.dataset.myKudo = String(!myKudo);
+    btnEl.querySelector('.kudo-count').textContent = count;
+    return;
+  }
+
+  try {
+    if (myKudo) {
+      await config.supabaseClient.from('kudos')
+        .delete()
+        .eq('activity_id', activityId)
+        .eq('user_id', state.user.id);
+    } else {
+      await config.supabaseClient.from('kudos')
+        .insert([{ activity_id: activityId, user_id: state.user.id }]);
+    }
+    // Haal nieuwe count op
+    const { count } = await config.supabaseClient.from('kudos')
+      .select('*', { count: 'exact', head: true })
+      .eq('activity_id', activityId);
+    btnEl.classList.toggle('active', !myKudo);
+    btnEl.dataset.myKudo = String(!myKudo);
+    btnEl.querySelector('.kudo-count').textContent = count || 0;
+  } catch (err) {
+    console.warn('Kudo fout:', err.message);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Hoogteprofiel grafiek
+// ─────────────────────────────────────────────
+export function renderElevationChart(elevProfile) {
+  const panel = document.getElementById('elevation-chart-panel');
+  const canvas = document.getElementById('elevation-chart');
+  if (!panel || !canvas) return;
+
+  panel.style.display = 'block';
+
+  if (elevationChartInstance) {
+    elevationChartInstance.destroy();
+    elevationChartInstance = null;
+  }
+
+  const ctx = canvas.getContext('2d');
+
+  // Gradient fill: donkerblauw → volt groen
+  const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+  gradient.addColorStop(0, 'rgba(212, 255, 0, 0.5)');
+  gradient.addColorStop(1, 'rgba(212, 255, 0, 0.02)');
+
+  elevationChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: elevProfile.distances,
+      datasets: [{
+        label: 'Hoogte (m)',
+        data: elevProfile.altitudes,
+        borderColor: '#d4ff00',
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: true,
+        backgroundColor: gradient,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => `${items[0].label} km`,
+            label: (item) => `${item.raw} m hoogte`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            color: 'rgba(255,255,255,0.4)',
+            font: { size: 9 },
+            maxTicksLimit: 8,
+            callback: (val, i, ticks) => {
+              const label = elevProfile.distances[i];
+              return label !== undefined ? `${label}km` : '';
+            }
+          }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 9 } },
+          title: { display: true, text: 'Hoogte (m)', color: '#d4ff00', font: { size: 9 } }
+        }
+      }
+    }
+  });
+
+  // Toon stats naast de grafiek
+  const statsEl = document.getElementById('elevation-stats');
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <span class="elev-stat">⬆️ ${elevProfile.totalAscent}m</span>
+      <span class="elev-stat">⬇️ ${elevProfile.totalDescent}m</span>
+      <span class="elev-stat">🏔️ Max ${elevProfile.maxAlt}m</span>
+      <span class="elev-stat">🏞️ Min ${elevProfile.minAlt}m</span>
+    `;
+  }
 }
 
 // ─────────────────────────────────────────────

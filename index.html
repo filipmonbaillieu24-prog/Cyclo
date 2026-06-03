@@ -21,6 +21,9 @@
 
   <!-- Chart.js CDN for Performance Graphs -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- FIT File Parser (Garmin .fit binary format) -->
+  <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.9.0/dist/fit-parser.js"></script>
 </head>
 <body>
 
@@ -323,9 +326,9 @@
             
             <div class="uploader-box" id="tcx-dropzone">
               <i data-lucide="file-up" class="upload-icon"></i>
-              <p style="font-size: 13px; font-weight: 500;">Sleep je TCX bestand hierheen</p>
-              <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">of klik om te bladeren</p>
-              <input type="file" id="tcx-file-input" accept=".tcx">
+              <p style="font-size: 13px; font-weight: 500;">Sleep je ritbestand hierheen</p>
+              <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">TCX &bull; GPX &bull; FIT &bull; KML &mdash; of klik om te bladeren</p>
+              <input type="file" id="tcx-file-input" accept=".tcx,.gpx,.fit,.kml">
             </div>
 
             <!-- Uploader Resultaat -->
@@ -369,7 +372,18 @@
               </div>
 
               <!-- Route Kaart (Leaflet) -->
-            <div class="route-canvas-container" id="route-map"></div>
+              <div class="route-canvas-container" id="route-map"></div>
+
+              <!-- Hoogteprofiel -->
+              <div id="elevation-chart-panel" style="display:none; margin-top: 16px; border-top: 1px solid var(--border-glass); padding-top: 14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                  <h4 style="font-size: 13px; font-weight: 600; color: var(--primary);">⛰️ Hoogteprofiel</h4>
+                  <div id="elevation-stats" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+                </div>
+                <div style="height: 150px; position: relative;">
+                  <canvas id="elevation-chart"></canvas>
+                </div>
+              </div>
             </div>
           </div>
 
