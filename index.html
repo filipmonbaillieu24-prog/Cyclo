@@ -455,6 +455,18 @@
           <div id="avatar-customizer-options" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-glass); padding: 12px; border-radius: var(--radius-sm); text-align: left;">
             <h4 style="font-size: 12px; margin-bottom: 12px; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em;">Pas je avatar aan</h4>
             
+            <!-- Swatches for Background Color -->
+            <div class="swatch-group">
+              <div class="swatch-title">Achtergrond</div>
+              <div class="avatar-swatches" id="swatches-bg">
+                <div class="swatch-circle active" data-prop="bg" data-val="transparent" style="background: linear-gradient(45deg, #222, #444); border: 2px dashed rgba(255,255,255,0.4);" title="Transparant"></div>
+                <div class="swatch-circle" data-prop="bg" data-val="b6e3f4" style="background-color: #b6e3f4;" title="Lichtblauw"></div>
+                <div class="swatch-circle" data-prop="bg" data-val="d4ff00" style="background-color: #d4ff00;" title="Volt Groen"></div>
+                <div class="swatch-circle" data-prop="bg" data-val="00f0ff" style="background-color: #00f0ff;" title="Neon Cyaan"></div>
+                <div class="swatch-circle dark-swatch" data-prop="bg" data-val="0f1420" style="background-color: #0f1420;" title="Donker"></div>
+              </div>
+            </div>
+
             <!-- Swatches for Skin Color -->
             <div class="swatch-group">
               <div class="swatch-title">Huidskleur</div>
@@ -480,13 +492,31 @@
 
             <!-- Chips for Hair Style -->
             <div class="choice-group">
-              <div class="choice-title swatch-title">Haarstijl</div>
+              <div class="d-flex justify-between align-center mb-2">
+                <div class="choice-title swatch-title" style="margin-bottom: 0;">Haarstijl</div>
+                <div class="d-flex gap-8" id="hair-filter-buttons" style="background: rgba(255,255,255,0.02); padding: 2px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass);">
+                  <button type="button" class="btn btn-secondary btn-sm active" data-filter="all" style="padding: 2px 6px; font-size: 9px; line-height: 1; border: none; background: transparent;">Alles</button>
+                  <button type="button" class="btn btn-secondary btn-sm" data-filter="short" style="padding: 2px 6px; font-size: 9px; line-height: 1; border: none; background: transparent;">Kort</button>
+                  <button type="button" class="btn btn-secondary btn-sm" data-filter="long" style="padding: 2px 6px; font-size: 9px; line-height: 1; border: none; background: transparent;">Lang</button>
+                </div>
+              </div>
               <div class="choice-chips-grid" id="chips-hair">
-                <div class="choice-chip" data-prop="hair" data-val="short01">Kort</div>
-                <div class="choice-chip" data-prop="hair" data-val="long01">Lang</div>
+                <div class="choice-chip" data-prop="hair" data-val="short01">Kort 1</div>
                 <div class="choice-chip" data-prop="hair" data-val="short05">Krullend</div>
+                <div class="choice-chip" data-prop="hair" data-val="long01">Lang 1</div>
                 <div class="choice-chip" data-prop="hair" data-val="long03">Bob</div>
                 <div class="choice-chip" data-prop="hair" data-val="none">Kaal</div>
+              </div>
+            </div>
+
+            <!-- Chips for Eyebrows -->
+            <div class="choice-group">
+              <div class="choice-title swatch-title">Wenkbrauwen</div>
+              <div class="choice-chips-grid" id="chips-eyebrows">
+                <div class="choice-chip" data-prop="eyebrows" data-val="variant01">Normaal</div>
+                <div class="choice-chip" data-prop="eyebrows" data-val="variant05">Boos</div>
+                <div class="choice-chip" data-prop="eyebrows" data-val="variant09">Verbaasd</div>
+                <div class="choice-chip" data-prop="eyebrows" data-val="variant10">Zorgelijk</div>
               </div>
             </div>
 

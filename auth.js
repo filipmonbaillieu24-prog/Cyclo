@@ -260,9 +260,11 @@ export function openEditProfileModal() {
       if (avatarInput) avatarInput.value = 'custom';
       try {
         const url = new URL(state.user.avatar_url);
+        customizerState.bg = url.searchParams.get('backgroundColor') || 'transparent';
         customizerState.skin = url.searchParams.get('skinColor') || 'f2d3b1';
         customizerState.hair = url.searchParams.get('hair') || 'short01';
         customizerState.haircolor = url.searchParams.get('hairColor') || '0e0e0e';
+        customizerState.eyebrows = url.searchParams.get('eyebrows') || 'variant01';
         customizerState.eyes = url.searchParams.get('eyes') || 'variant01';
         customizerState.mouth = url.searchParams.get('mouth') || 'variant01';
         
@@ -301,9 +303,11 @@ export function openEditProfileModal() {
     highlightVisualCustomizer(customizerState);
   } else {
     // Standaard customizer initialiseren met default waardes
+    customizerState.bg = 'transparent';
     customizerState.skin = 'f2d3b1';
     customizerState.hair = 'short01';
     customizerState.haircolor = '0e0e0e';
+    customizerState.eyebrows = 'variant01';
     customizerState.eyes = 'variant01';
     customizerState.mouth = 'variant01';
     customizerState.features = 'none';
@@ -416,16 +420,22 @@ export async function saveProfileUpdate(e, onProfileUpdatedCallback) {
 
 // --- Visual Avatar Editor & Custom Photo Uploader States ---
 const customizerState = {
+  bg: 'transparent',
   skin: 'f2d3b1',
   hair: 'short01',
   haircolor: '0e0e0e',
+  eyebrows: 'variant01',
   eyes: 'variant01',
   mouth: 'variant01',
   features: 'none'
 };
 
 function buildCustomAvatarUrl(stateObj) {
-  let url = `https://api.dicebear.com/7.x/adventurer/svg?seed=custom&skinColor=${stateObj.skin}&hairColor=${stateObj.haircolor}&eyes=${stateObj.eyes}&mouth=${stateObj.mouth}`;
+  let url = `https://api.dicebear.com/7.x/adventurer/svg?seed=custom&skinColor=${stateObj.skin}&hairColor=${stateObj.haircolor}&eyes=${stateObj.eyes}&mouth=${stateObj.mouth}&eyebrows=${stateObj.eyebrows}`;
+  
+  if (stateObj.bg !== 'transparent') {
+    url += `&backgroundColor=${stateObj.bg}`;
+  }
   
   if (stateObj.hair === 'none') {
     url += `&hairProbability=0`;
@@ -461,6 +471,10 @@ function updateCustomAvatarFromVisualOptions() {
 }
 
 function highlightVisualCustomizer(stateObj) {
+  // Background
+  document.querySelectorAll('#swatches-bg .swatch-circle').forEach(el => {
+    el.classList.toggle('active', el.dataset.val === stateObj.bg);
+  });
   // Skin
   document.querySelectorAll('#swatches-skin .swatch-circle').forEach(el => {
     el.classList.toggle('active', el.dataset.val === stateObj.skin);
@@ -472,6 +486,10 @@ function highlightVisualCustomizer(stateObj) {
   // Hair style
   document.querySelectorAll('#chips-hair .choice-chip').forEach(el => {
     el.classList.toggle('active', el.dataset.val === stateObj.hair);
+  });
+  // Eyebrows
+  document.querySelectorAll('#chips-eyebrows .choice-chip').forEach(el => {
+    el.classList.toggle('active', el.dataset.val === stateObj.eyebrows);
   });
   // Eyes
   document.querySelectorAll('#chips-eyes .choice-chip').forEach(el => {
@@ -508,6 +526,30 @@ export function setupAvatarEventListeners() {
       });
     });
   });
+
+  // --- 1.2. HAIR STYLE FILTERING ---
+  const hairFilterBtns = document.querySelectorAll('#hair-filter-buttons button');
+  if (hairFilterBtns.length) {
+    hairFilterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Update active filter button state
+        hairFilterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const filter = btn.dataset.filter;
+        document.querySelectorAll('#chips-hair .choice-chip').forEach(chip => {
+          const val = chip.dataset.val;
+          if (filter === 'all' || val === 'none') {
+            chip.style.display = 'block';
+          } else if (filter === 'short') {
+            chip.style.display = val.startsWith('short') ? 'block' : 'none';
+          } else if (filter === 'long') {
+            chip.style.display = val.startsWith('long') ? 'block' : 'none';
+          }
+        });
+      });
+    });
+  }
 
   // --- 2. FILE UPLOADER (BASE64) ---
   const dropzone = document.getElementById('avatar-photo-dropzone');
@@ -610,18 +652,22 @@ export function setupAvatarEventListeners() {
   // --- 5. RANDOMIZER (🎲 VERRAS ME) ---
   if (btnRandom && previewImg && avatarInput) {
     btnRandom.addEventListener('click', () => {
+      const bgOptions = ['transparent', 'b6e3f4', 'd4ff00', '00f0ff', '0f1420'];
       const skinOptions = ['f2d3b1', 'ecad80', '9e5622', '763900'];
       const hairOptions = ['short01', 'long01', 'short05', 'long03', 'none'];
       const hairColorOptions = ['0e0e0e', '6a4e35', 'e5d7a3', 'ab2a18', 'afafaf'];
+      const eyebrowsOptions = ['variant01', 'variant05', 'variant09', 'variant10'];
       const eyesOptions = ['variant01', 'variant03', 'variant11', 'variant15'];
       const mouthOptions = ['variant01', 'variant05', 'variant10'];
       const featureOptions = ['none', 'glasses', 'mustache'];
 
       const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+      customizerState.bg = getRandom(bgOptions);
       customizerState.skin = getRandom(skinOptions);
       customizerState.hair = getRandom(hairOptions);
       customizerState.haircolor = getRandom(hairColorOptions);
+      customizerState.eyebrows = getRandom(eyebrowsOptions);
       customizerState.eyes = getRandom(eyesOptions);
       customizerState.mouth = getRandom(mouthOptions);
       customizerState.features = getRandom(featureOptions);
