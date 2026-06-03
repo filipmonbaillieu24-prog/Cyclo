@@ -40,6 +40,7 @@ import {
   renderPersonalRecords
 } from './activities.js';
 import { setupRealtimeSubscriptions } from './realtime.js';
+import { setupZwiftImporter } from './zwift-importer.js';
 
 let activeRealtimeChannel = null;
 
@@ -369,6 +370,12 @@ function setupEventListeners() {
   
   // Uploader config
   setupTcxUploader(loadDashboardData);
+
+  // Zwift auto-importer
+  setupZwiftImporter(
+    (file, cb) => { import('./activities.js').then(m => m.processTcxFile(file, cb)); },
+    loadDashboardData
+  );
 
   // Avatar live preview en presets initialiseren
   setupAvatarEventListeners();

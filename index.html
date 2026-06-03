@@ -269,6 +269,72 @@
               <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">TCX &bull; GPX &bull; FIT &bull; KML &mdash; of klik om te bladeren</p>
               <input type="file" id="tcx-file-input" accept=".tcx,.gpx,.fit,.kml">
             </div>
+          </div>
+
+          <!-- Zwift Auto-Import Panel -->
+          <div class="glass-panel mb-4 zwift-panel">
+            <div class="d-flex justify-between align-center mb-3">
+              <div class="d-flex align-center gap-10">
+                <div class="zwift-logo-badge">Z</div>
+                <div>
+                  <h2 class="widget-title" style="margin-bottom:0;">Zwift Import</h2>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:1px;">Automatisch FIT-bestanden importeren</div>
+                </div>
+              </div>
+              <span id="zwift-browser-warning" style="display:none;font-size:10px;color:#ff9800;background:rgba(255,152,0,0.1);border:1px solid rgba(255,152,0,0.3);border-radius:6px;padding:3px 8px;">
+                ⚠️ Alleen Chrome/Edge
+              </span>
+            </div>
+
+            <!-- Stap 1: Map selecteren -->
+            <div id="zwift-step-select">
+              <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;">
+                Selecteer je <code style="background:rgba(255,255,255,0.07);padding:1px 5px;border-radius:4px;">Documenten/Zwift/Activities</code> map.
+                De app scant lokaal &mdash; er wordt niks naar servers gestuurd.
+              </p>
+              <button class="btn btn-primary" id="btn-zwift-scan" style="width:100%;gap:8px;">
+                <i data-lucide="folder-open" style="width:15px;height:15px;"></i>
+                Selecteer Zwift Activities map
+              </button>
+            </div>
+
+            <!-- Stap 2: Scannen indicator -->
+            <div id="zwift-step-scanning" style="display:none;text-align:center;padding:16px 0;">
+              <div class="zwift-spinner"></div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:8px;" id="zwift-scan-status">Bestanden scannen...</div>
+            </div>
+
+            <!-- Stap 3: Resultaten -->
+            <div id="zwift-step-results" style="display:none;">
+              <div class="d-flex justify-between align-center mb-3">
+                <div style="font-size:12px;color:var(--text-secondary);" id="zwift-results-summary"></div>
+                <div class="d-flex gap-8">
+                  <button class="btn btn-secondary btn-sm" id="btn-zwift-rescan" style="font-size:10px;padding:3px 8px;">
+                    <i data-lucide="refresh-cw" style="width:10px;height:10px;"></i> Opnieuw
+                  </button>
+                  <button class="btn btn-primary btn-sm" id="btn-zwift-import-all" style="font-size:11px;">
+                    <i data-lucide="download" style="width:11px;height:11px;"></i>
+                    Alles importeren
+                  </button>
+                </div>
+              </div>
+
+              <!-- Voortgangsbalk (tijdens import) -->
+              <div id="zwift-progress-wrap" style="display:none;margin-bottom:12px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:4px;">
+                  <span id="zwift-progress-label">Importeren...</span>
+                  <span id="zwift-progress-pct">0%</span>
+                </div>
+                <div style="height:5px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden;">
+                  <div id="zwift-progress-bar" style="height:100%;background:var(--primary);border-radius:4px;width:0%;transition:width 0.3s ease;"></div>
+                </div>
+              </div>
+
+              <!-- Bestandenlijst -->
+              <div id="zwift-files-list" style="max-height:280px;overflow-y:auto;"></div>
+            </div>
+          </div>
+
 
             <!-- Upload Resultaat -->
             <div id="tcx-result-panel" style="display:none;margin-top:20px;border-top:1px solid var(--border-glass);padding-top:16px;">
