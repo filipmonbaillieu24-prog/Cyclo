@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Cyclo - Core Application Orchestrator (ES6 Module)
  * 
  * Beheert de centrale state, de event loops, de live/offline initialisatie,
@@ -45,6 +45,7 @@ import {
 import { setupRealtimeSubscriptions } from './realtime.js';
 import { setupZwiftImporter } from './zwift-importer.js';
 import { loadSocialFeed, renderFeedCard, searchUsers, followUser, unfollowUser, getFollowStatus, getFollowCounts } from './social.js';
+import { initProfileAvatarEditor } from './profile-avatar.js';
 
 let activeRealtimeChannel = null;
 
@@ -954,6 +955,9 @@ function loadProfilePage() {
       showToast('Avatar opgeslagen!', 'success');
     };
   }
+
+  // Volledige avatar customizer initialiseren
+  initProfileAvatarEditor();
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
