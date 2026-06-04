@@ -307,7 +307,7 @@
             <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px;">
               <span style="font-size:11px;color:var(--text-muted);">
                 <i data-lucide="info" style="width:11px;height:11px;display:inline;vertical-align:middle;margin-right:3px;"></i>
-                Klik dag(en) aan om te selecteren &middot; nogmaals klikken verwijdert dag uit selectie &middot; gebruik ZA+ZO voor weekenden
+                Klik dag(en) aan &bull; Shift + klik voor bereik &bull; ZA+ZO voor weekends &bull; selectie blijft groen
               </span>
               <div style="display:flex;gap:6px;">
                 <button class="btn btn-secondary btn-sm" id="btn-select-weekends" style="font-size:10px;padding:3px 8px;">ZA+ZO</button>
@@ -322,16 +322,29 @@
           </div>
 
           <!-- Bulk beschikbaarheid banner -->
-          <div class="bulk-availability-banner" id="bulk-availability-banner">
-            <i data-lucide="calendar-check" style="width:16px;height:16px;color:var(--primary);flex-shrink:0;"></i>
-            <span id="bulk-days-label" style="flex:1;font-weight:600;">0 dagen geselecteerd</span>
-            <select id="bulk-status-select" class="form-control" style="width:auto;padding:4px 10px;font-size:11px;">
-              <option value="available">✓ Kan Fietsen</option>
-              <option value="tentative">? Misschien</option>
-              <option value="unavailable">✗ Kan Niet</option>
-            </select>
-            <button class="btn btn-primary btn-sm" id="btn-save-bulk" style="font-size:11px;padding:5px 14px;">Opslaan voor alle dagen</button>
-            <button class="btn btn-secondary btn-sm" id="btn-cancel-bulk" style="font-size:11px;padding:5px 10px;">✕</button>
+          <div class="bulk-availability-banner" id="bulk-availability-banner" style="display:none; flex-wrap:wrap; gap:12px; align-items:center; background:linear-gradient(135deg, rgba(212,255,0,0.08), rgba(0,240,255,0.04)); border:1px solid rgba(212,255,0,0.25); border-radius:12px; padding:12px 16px; margin-bottom:16px;">
+            <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:180px;">
+              <i data-lucide="calendar-range" style="width:18px; height:18px; color:var(--primary); flex-shrink:0;"></i>
+              <div>
+                <div style="font-weight:700; color:var(--text-primary); font-size:13px;" id="bulk-days-count">0 dagen geselecteerd</div>
+                <div style="font-size:10px; color:var(--text-muted); max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" id="bulk-days-list">Dagen</div>
+              </div>
+            </div>
+            <div class="bulk-actions" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <button class="btn btn-sm btn-bulk-status" data-status="available" style="font-size:11px; padding:6px 12px; border-radius:8px; background:rgba(212,255,0,0.15); border:1px solid rgba(212,255,0,0.3); color:var(--primary); font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--status-available);"></span> Kan Fietsen
+              </button>
+              <button class="btn btn-sm btn-bulk-status" data-status="tentative" style="font-size:11px; padding:6px 12px; border-radius:8px; background:rgba(255,160,0,0.15); border:1px solid rgba(255,160,0,0.3); color:#ffa000; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--status-tentative);"></span> Misschien
+              </button>
+              <button class="btn btn-sm btn-bulk-status" data-status="unavailable" style="font-size:11px; padding:6px 12px; border-radius:8px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--status-unavailable);"></span> Kan Niet
+              </button>
+              <button class="btn btn-sm btn-bulk-status" data-status="clear" style="font-size:11px; padding:6px 12px; border-radius:8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:var(--text-muted); font-weight:700; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                🗑️ Wissen
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-cancel-bulk" style="font-size:11px; padding:6px 12px; border-radius:8px; font-weight:700;">✕ Annuleren</button>
+            </div>
           </div>
 
           <!-- Route Bouwer Panel -->

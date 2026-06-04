@@ -1,9 +1,10 @@
-﻿// Cyclo - Calendar & Availability Module
+// Cyclo - Calendar & Availability Module
 import { state, elements, config, showToast } from './state.js';
 import { fetchWeatherForDate, WMO_CODES } from './rides.js';
 
 // Multi-selectie state (lokaal in deze module)
 let selectedDates = []; // array van dateStr strings
+let lastClickedDateStr = null;
 
 export function changeMonth(direction, loadDashboardDataCallback) {
   state.currentDate.setMonth(state.currentDate.getMonth() + direction);
@@ -209,15 +210,34 @@ export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
     }).catch(() => {});
   }
 
-  // --- Klik: toggle dag in/uit multi-selectie ---
-  cell.addEventListener('click', () => {
+  // --- Klik: toggle dag in/uit multi-selectie met Shift-bereikselectie ---
+  cell.addEventListener('click', (e) => {
     if (isOtherMonth) return;
 
-    const idx = selectedDates.indexOf(dateStr);
-    if (idx === -1) {
-      selectedDates.push(dateStr);
+    if (e.shiftKey && lastClickedDateStr && selectedDates.includes(lastClickedDateStr)) {
+      // Shift + Klik range selectie
+      const d1 = new Date(lastClickedDateStr + 'T12:00:00');
+      const d2 = new Date(dateStr + 'T12:00:00');
+      const start = new Date(Math.min(d1, d2));
+      const end = new Date(Math.max(d1, d2));
+
+      let temp = new Date(start);
+      while (temp <= end) {
+        const curStr = localDateStr(temp);
+        if (!selectedDates.includes(curStr)) {
+          selectedDates.push(curStr);
+        }
+        temp.setDate(temp.getDate() + 1);
+      }
     } else {
-      selectedDates.splice(idx, 1);
+      // Normale klik: toggle dag
+      const idx = selectedDates.indexOf(dateStr);
+      if (idx === -1) {
+        selectedDates.push(dateStr);
+      } else {
+        selectedDates.splice(idx, 1);
+      }
+      lastClickedDateStr = dateStr;
     }
 
     refreshMultiSelectVisuals();
@@ -229,6 +249,7 @@ export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
     } else if (selectedDates.length === 0) {
       state.selectedDate = new Date();
       updateAvailabilityEditor();
+      lastClickedDateStr = null;
     }
   });
 
@@ -237,16 +258,15 @@ export function createCalendarDayCell(dayNumber, date, isOtherMonth) {
   if (grid) grid.appendChild(cell);
 }
 
-// ─── Visuele multi-selectie bijwerken ──────────────────
+// ─── Visuele multi-selectie bijwerken (geselecteerde dagen blijven groen) ───
 function refreshMultiSelectVisuals() {
   document.querySelectorAll('.calendar-day').forEach(cell => {
     const ds = cell.dataset.date;
     cell.classList.remove('selected', 'multi-selected');
     
     if (selectedDates.includes(ds)) {
-      if (selectedDates.length === 1) {
-        cell.classList.add('selected');
-      } else {
+      cell.classList.add('selected');
+      if (selectedDates.length > 1) {
         cell.classList.add('multi-selected');
       }
     }
@@ -256,16 +276,19 @@ function refreshMultiSelectVisuals() {
 // ─── Bulk banner tonen/verbergen ───────────────────────
 function updateBulkBanner() {
   const banner = document.getElementById('bulk-availability-banner');
-  const label  = document.getElementById('bulk-days-label');
+  const countEl = document.getElementById('bulk-days-count');
+  const listEl  = document.getElementById('bulk-days-list');
   if (!banner) return;
 
   if (selectedDates.length > 1) {
     banner.style.display = 'flex';
+    if (countEl) countEl.textContent = `${selectedDates.length} dagen geselecteerd`;
+    
     const dateLabels = selectedDates.map(ds => {
       const d = new Date(ds);
       return new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
     }).join(', ');
-    if (label) label.textContent = `${selectedDates.length} dagen: ${dateLabels}`;
+    if (listEl) listEl.textContent = dateLabels;
   } else {
     banner.style.display = 'none';
   }
@@ -293,15 +316,14 @@ export function selectWeekends() {
 // ─── Selectie wissen ────────────────────────────────────
 export function clearCalendarSelection() {
   selectedDates = [];
+  lastClickedDateStr = null;
   refreshMultiSelectVisuals();
   updateBulkBanner();
 }
 
-// --- Bulk beschikbaarheid opslaan ---
-export async function saveBulkAvailability(loadDashboardDataCallback) {
-  const statusEl = document.getElementById('bulk-status-select');
-  const status   = statusEl?.value || 'available';
-  const notes    = elements.availabilityNotes?.value || '';
+// --- Bulk beschikbaarheid opslaan (nu met flexibele status & wissen optie) ---
+export async function saveBulkAvailability(status, loadDashboardDataCallback) {
+  const notes = elements.availabilityNotes?.value || '';
 
   if (selectedDates.length === 0) {
     showToast('Selecteer eerst een of meer dagen.', 'error');
@@ -309,9 +331,46 @@ export async function saveBulkAvailability(loadDashboardDataCallback) {
   }
 
   const datesToSave = [...selectedDates];
-  console.log('[Bulk save] Opslaan voor', datesToSave.length, 'dagen:', datesToSave);
+  console.log('[Bulk save] Opslaan/Wissen voor', datesToSave.length, 'dagen:', datesToSave, 'status:', status);
 
-  // Demo mode
+  // ─── OPTIE: WISSEN (Verwijder beschikbaarheid voor geselecteerde dagen) ───
+  if (status === 'clear') {
+    if (config.isDemoMode) {
+      let savedAvails = JSON.parse(localStorage.getItem('cyclo_mock_availabilities') || '[]');
+      savedAvails = savedAvails.filter(a => !(a.user_id === state.user.id && datesToSave.includes(a.date)));
+      localStorage.setItem('cyclo_mock_availabilities', JSON.stringify(savedAvails));
+      state.availabilities = state.availabilities.filter(a => !(a.user_id === state.user.id && datesToSave.includes(a.date)));
+      
+      showToast('Beschikbaarheid gewist voor ' + datesToSave.length + ' dag(en)!', 'success');
+      clearCalendarSelection();
+      renderCalendar();
+      if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
+      return;
+    }
+
+    try {
+      const { error } = await config.supabaseClient
+        .from('availabilities')
+        .delete()
+        .eq('user_id', state.user.id)
+        .in('date', datesToSave);
+      
+      if (error) throw error;
+      state.availabilities = state.availabilities.filter(a => !(a.user_id === state.user.id && datesToSave.includes(a.date)));
+      
+      showToast('Beschikbaarheid gewist voor ' + datesToSave.length + ' dag(en)!', 'success');
+    } catch (err) {
+      console.error('[Bulk clear] Fout bij wissen:', err);
+      showToast('Fout bij wissen: ' + err.message, 'error');
+    }
+    
+    clearCalendarSelection();
+    renderCalendar();
+    if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
+    return;
+  }
+
+  // ─── OPTIE: OPSLAAN (available / tentative / unavailable) ───
   if (config.isDemoMode) {
     let savedAvails = JSON.parse(localStorage.getItem('cyclo_mock_availabilities') || '[]');
     for (const dateStr of datesToSave) {
@@ -336,7 +395,6 @@ export async function saveBulkAvailability(loadDashboardDataCallback) {
   let saved = 0, failed = 0;
   for (const dateStr of datesToSave) {
     try {
-      // Zoek bestaand record direct in DB (betrouwbaarder dan state)
       const { data: existingRows } = await config.supabaseClient
         .from('availabilities')
         .select('id')

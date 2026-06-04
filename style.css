@@ -1937,13 +1937,13 @@ select.form-control option {
 
 /* Multi-geselecteerde dag in de kalender */
 .calendar-day.multi-selected {
-  background: rgba(0,240,255,0.08) !important;
-  border-color: rgba(0,240,255,0.4) !important;
-  box-shadow: 0 0 0 1px rgba(0,240,255,0.2) inset;
+  background: rgba(212, 255, 0, 0.08) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 10px rgba(212, 255, 0, 0.05);
 }
 
 .calendar-day.multi-selected .day-number {
-  color: var(--secondary);
+  color: var(--primary);
   font-weight: 700;
 }
 

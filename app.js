@@ -402,8 +402,13 @@ function setupEventListeners() {
   const btnClearSel = document.getElementById('btn-clear-selection');
   if (btnClearSel) btnClearSel.addEventListener('click', () => clearCalendarSelection());
 
-  const btnSaveBulk = document.getElementById('btn-save-bulk');
-  if (btnSaveBulk) btnSaveBulk.addEventListener('click', () => saveBulkAvailability(loadDashboardData));
+  // Multi-dag bulk status knoppen direct opslaan of wissen
+  document.querySelectorAll('.btn-bulk-status').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const status = btn.dataset.status;
+      saveBulkAvailability(status, loadDashboardData);
+    });
+  });
 
   const btnCancelBulk = document.getElementById('btn-cancel-bulk');
   if (btnCancelBulk) btnCancelBulk.addEventListener('click', () => clearCalendarSelection());
