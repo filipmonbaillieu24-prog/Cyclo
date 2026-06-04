@@ -11630,11 +11630,10 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
 }
 
 },{}],9:[function(require,module,exports){
-// Entry point for browserify bundle - exposes FitParser as a global
+// Entry point for browserify --standalone bundle
+// module.exports must be the class so the UMD wrapper assigns it to window.FitParser
 var FitParser = require('fit-file-parser');
-// fit-file-parser exports the class as default
-var FitParserClass = FitParser.default || FitParser;
-window.FitParser = FitParserClass;
+module.exports = FitParser.default || FitParser;
 
 },{"fit-file-parser":4}]},{},[9])(9)
 });
