@@ -226,6 +226,33 @@ function renderElevationChart(container, coordinates) {
   });
 }
 
+// ─── Hulpfuncties voor details ────────────────────────────────────────────────
+function getDifficultyBadge(act) {
+  const dist = parseFloat(act.distance_km || 0);
+  const asc  = parseInt(act.ascent_m || 0);
+  const spd  = parseFloat(act.avg_speed_kmh || 0);
+  const score = (dist * 1.5) + (asc * 0.08) + (spd * 2);
+  if (score > 220)      return { label: 'EPISCH',    color: '#ff007f', bg: 'rgba(255,0,127,0.12)' };
+  if (score > 140)      return { label: 'ZWAAR',     color: '#ff6b00', bg: 'rgba(255,107,0,0.12)' };
+  if (score > 80)       return { label: 'GEMIDDELD', color: '#d4ff00', bg: 'rgba(212,255,0,0.10)' };
+  if (score > 30)       return { label: 'LICHT',     color: '#00f0ff', bg: 'rgba(0,240,255,0.10)' };
+  return                         { label: 'HERSTEL',  color: '#888',    bg: 'rgba(255,255,255,0.06)' };
+}
+
+function getRideTypeIcon(act) {
+  const name = (act.name || '').toLowerCase();
+  if (name.includes('race') || name.includes('wedstrijd'))   return { icon: '🏁', label: 'Race' };
+  if (name.includes('ftp') || name.includes('interval'))     return { icon: '⚡', label: 'Interval' };
+  if (name.includes('tempo'))                                return { icon: '🔥', label: 'Tempo' };
+  if (name.includes('herstel') || name.includes('easy'))     return { icon: '💚', label: 'Herstel' };
+  if (name.includes('gravel') || name.includes('mtb'))       return { icon: '🌲', label: 'Offroad' };
+  if (name.includes('virtual') || name.includes('zwift'))    return { icon: '🖥️', label: 'Indoor' };
+  const dist = parseFloat(act.distance_km || 0);
+  if (dist > 100) return { icon: '🚵', label: 'Gran Fondo' };
+  if (dist > 50)  return { icon: '🚴', label: 'Lange rit' };
+  return                  { icon: '🚲', label: 'Rit' };
+}
+
 // ─── Render Feed Card ─────────────────────────────────────────────────────────
 export function renderFeedCard(act, profileData) {
   const profile  = profileData || state.profiles.find(p => p.id === act.user_id) || {};
@@ -242,12 +269,23 @@ export function renderFeedCard(act, profileData) {
   const durSec = parseFloat(act.duration_secs || 0);
   const hours  = Math.floor(durSec / 3600);
   const mins   = Math.floor((durSec % 3600) / 60);
-  const dur    = hours > 0 ? `${hours}u ${mins}m` : `${mins}m`;
+  const secs   = Math.floor(durSec % 60);
+  const dur    = hours > 0 ? `${hours}u ${mins}m` : `${mins}m ${secs}s`;
 
-  const card = document.createElement('div');
-  card.className = 'feed-card';
-  card.dataset.activityId = act.id;
-  card.dataset.userId     = act.user_id;
+  // Extra metrics
+  const hr       = act.avg_heart_rate   ? Math.round(act.avg_heart_rate) : null;
+  const power    = act.avg_power_watts  ? Math.round(act.avg_power_watts) : null;
+  const weight   = state.userProfile?.weight_kg || state.profiles?.find(p => p.id === act.user_id)?.weight_kg || null;
+  const wkg      = (power && weight && weight > 0) ? (power / weight).toFixed(2) : null;
+  const calories = act.calories         ? Math.round(act.calories) : null;
+  const maxSpd   = act.max_speed_kmh    ? parseFloat(act.max_speed_kmh).toFixed(1) : null;
+  const avgCad   = act.avg_cadence      ? Math.round(act.avg_cadence) : null;
+
+  const diff     = getDifficultyBadge(act);
+  const rideType = getRideTypeIcon(act);
+
+  // Extra stats row - only show if at least one value exists
+  const hasExtra = hr || power || maxSpd || calories || avgCad;
 
   // Kudos teller uit demo-cache
   let kudosCount = 0;
@@ -258,6 +296,11 @@ export function renderFeedCard(act, profileData) {
     kudosCount = kArr.length;
     myKudo = kArr.includes(state.user?.id);
   }
+
+  const card = document.createElement('div');
+  card.className = 'feed-card';
+  card.dataset.activityId = act.id;
+  card.dataset.userId     = act.user_id;
 
   card.innerHTML = `
     <div class="feed-card-header">
@@ -271,8 +314,15 @@ export function renderFeedCard(act, profileData) {
       <div class="feed-score-pill">${score} pts</div>
     </div>
 
-    <div class="feed-activity-title">${act.name || 'Rit'}</div>
+    <div class="feed-title-row">
+      <div class="feed-activity-title">${act.name || 'Rit'}</div>
+      <div class="feed-badges">
+        <span class="feed-ridetype-badge">${rideType.icon} ${rideType.label}</span>
+        <span class="feed-difficulty-badge" style="color:${diff.color};background:${diff.bg};border-color:${diff.color}40;">${diff.label}</span>
+      </div>
+    </div>
 
+    <!-- Primaire stats: altijd zichtbaar -->
     <div class="feed-stats">
       <div class="feed-stat">
         <div class="feed-stat-val color-dist">${parseFloat(act.distance_km || 0).toFixed(1)}</div>
@@ -284,13 +334,23 @@ export function renderFeedCard(act, profileData) {
       </div>
       <div class="feed-stat">
         <div class="feed-stat-val color-ascent">${act.ascent_m || 0}m</div>
-        <div class="feed-stat-lbl">Hoogte</div>
+        <div class="feed-stat-lbl">Klimmeters</div>
       </div>
       <div class="feed-stat">
         <div class="feed-stat-val color-speed">${parseFloat(act.avg_speed_kmh || 0).toFixed(1)}</div>
-        <div class="feed-stat-lbl">km/u</div>
+        <div class="feed-stat-lbl">Gem. km/u</div>
       </div>
     </div>
+
+    <!-- Secundaire stats: extra info -->
+    ${hasExtra ? `
+    <div class="feed-stats-extra">
+      ${hr ? `<div class="feed-stat-chip feed-stat-chip--hr">❤️ <strong>${hr}</strong> <span>bpm</span></div>` : ''}
+      ${power ? `<div class="feed-stat-chip feed-stat-chip--power">⚡ <strong>${power}W</strong>${wkg ? ` <span>${wkg} W/kg</span>` : ''}</div>` : ''}
+      ${maxSpd ? `<div class="feed-stat-chip feed-stat-chip--speed">🚀 <strong>${maxSpd}</strong> <span>km/u max</span></div>` : ''}
+      ${avgCad ? `<div class="feed-stat-chip feed-stat-chip--cad">🔄 <strong>${avgCad}</strong> <span>rpm</span></div>` : ''}
+      ${calories ? `<div class="feed-stat-chip feed-stat-chip--cal">🔥 <strong>${calories}</strong> <span>kcal</span></div>` : ''}
+    </div>` : ''}
 
     ${renderZoneBar(act)}
 
