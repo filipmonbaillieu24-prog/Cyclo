@@ -316,11 +316,12 @@ function seedMockRides() {
 
 // 4. BIND EVENT LISTENERS
 function setupEventListeners() {
+  try {
   // Navigatie & Home
-  elements.logo.addEventListener('click', (e) => { e.preventDefault(); navigateTo(state.user ? 'feed' : 'home'); });
-  elements.linkHome.addEventListener('click', (e) => { e.preventDefault(); navigateTo(state.user ? 'feed' : 'home', loadFeedSection); });
-  elements.linkDashboard.addEventListener('click', (e) => { e.preventDefault(); navigateTo('dashboard', loadDashboardData); });
-  elements.heroBtnStart.addEventListener('click', () => {
+  if (elements.logo) elements.logo.addEventListener('click', (e) => { e.preventDefault(); navigateTo(state.user ? 'feed' : 'home'); });
+  if (elements.linkHome) elements.linkHome.addEventListener('click', (e) => { e.preventDefault(); navigateTo(state.user ? 'feed' : 'home', loadFeedSection); });
+  if (elements.linkDashboard) elements.linkDashboard.addEventListener('click', (e) => { e.preventDefault(); navigateTo('dashboard', loadDashboardData); });
+  if (elements.heroBtnStart) elements.heroBtnStart.addEventListener('click', () => {
     if (state.user) {
       navigateTo('feed', loadFeedSection);
     } else {
@@ -328,13 +329,13 @@ function setupEventListeners() {
     }
   });
   
-  elements.heroBtnDemo.addEventListener('click', () => {
+  if (elements.heroBtnDemo) elements.heroBtnDemo.addEventListener('click', () => {
     config.isDemoMode = true;
     loginMockUser('demo-user-id', loadDashboardData);
     showToast("Demo Modus geactiveerd!", "success");
   });
   
-  elements.navAuthItem.addEventListener('click', (e) => {
+  if (elements.navAuthItem) elements.navAuthItem.addEventListener('click', (e) => {
     if (e.target.id === 'btn-login-nav') {
       e.preventDefault();
       navigateTo('auth');
@@ -342,21 +343,21 @@ function setupEventListeners() {
   });
 
   // Auth Tabs
-  elements.tabLogin.addEventListener('click', () => {
-    elements.tabLogin.classList.add('active');
-    elements.tabRegister.classList.remove('active');
-    elements.formLogin.style.display = 'block';
-    elements.formRegister.style.display = 'none';
+  if (elements.tabLogin) elements.tabLogin.addEventListener('click', () => {
+    if (elements.tabLogin) elements.tabLogin.classList.add('active');
+    if (elements.tabRegister) elements.tabRegister.classList.remove('active');
+    if (elements.formLogin) elements.formLogin.style.display = 'block';
+    if (elements.formRegister) elements.formRegister.style.display = 'none';
   });
   
-  elements.tabRegister.addEventListener('click', () => {
-    elements.tabRegister.classList.add('active');
-    elements.tabLogin.classList.remove('active');
-    elements.formRegister.style.display = 'block';
-    elements.formLogin.style.display = 'none';
+  if (elements.tabRegister) elements.tabRegister.addEventListener('click', () => {
+    if (elements.tabRegister) elements.tabRegister.classList.add('active');
+    if (elements.tabLogin) elements.tabLogin.classList.remove('active');
+    if (elements.formRegister) elements.formRegister.style.display = 'block';
+    if (elements.formLogin) elements.formLogin.style.display = 'none';
   });
   
-  elements.authBypassLink.addEventListener('click', (e) => {
+  if (elements.authBypassLink) elements.authBypassLink.addEventListener('click', (e) => {
     e.preventDefault();
     config.isDemoMode = true;
     loginMockUser('demo-user-id', loadDashboardData);
@@ -364,22 +365,22 @@ function setupEventListeners() {
   });
   
   // Submit handlers voor Auth & logout
-  elements.formLogin.addEventListener('submit', (e) => handleLogin(e, loadDashboardData));
-  elements.formRegister.addEventListener('submit', (e) => handleRegister(e, loadDashboardData));
-  elements.btnLogout.addEventListener('click', () => handleLogout(loadDashboardData));
+  if (elements.formLogin) elements.formLogin.addEventListener('submit', (e) => handleLogin(e, loadDashboardData));
+  if (elements.formRegister) elements.formRegister.addEventListener('submit', (e) => handleRegister(e, loadDashboardData));
+  if (elements.btnLogout) elements.btnLogout.addEventListener('click', () => handleLogout(loadDashboardData));
   
   // Profile settings modal handlers
-  elements.btnEditProfile.addEventListener('click', openEditProfileModal);
-  elements.btnCloseProfileModal.addEventListener('click', closeEditProfileModal);
-  elements.profileModal.addEventListener('click', (e) => {
+  if (elements.btnEditProfile) elements.btnEditProfile.addEventListener('click', openEditProfileModal);
+  if (elements.btnCloseProfileModal) elements.btnCloseProfileModal.addEventListener('click', closeEditProfileModal);
+  if (elements.profileModal) elements.profileModal.addEventListener('click', (e) => {
     if (e.target === elements.profileModal) closeEditProfileModal();
   });
-  elements.formEditProfile.addEventListener('submit', (e) => saveProfileUpdate(e, loadDashboardData));
+  if (elements.formEditProfile) elements.formEditProfile.addEventListener('submit', (e) => saveProfileUpdate(e, loadDashboardData));
 
   // Kalender navigatie
-  elements.btnPrevMonth.addEventListener('click', () => changeMonth(-1, loadDashboardData));
-  elements.btnNextMonth.addEventListener('click', () => changeMonth(1, loadDashboardData));
-  elements.btnToday.addEventListener('click', () => {
+  if (elements.btnPrevMonth) elements.btnPrevMonth.addEventListener('click', () => changeMonth(-1, loadDashboardData));
+  if (elements.btnNextMonth) elements.btnNextMonth.addEventListener('click', () => changeMonth(1, loadDashboardData));
+  if (elements.btnToday) elements.btnToday.addEventListener('click', () => {
     state.currentDate = new Date();
     state.selectedDate = new Date();
     renderCalendar();
@@ -388,7 +389,7 @@ function setupEventListeners() {
   });
   
   // Status knoppen beschikbaarheidswidget
-  const statusBtns = [elements.statusBtnAvail, elements.statusBtnTent, elements.statusBtnUnavail];
+  const statusBtns = [elements.statusBtnAvail, elements.statusBtnTent, elements.statusBtnUnavail].filter(Boolean);
   statusBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       statusBtns.forEach(b => b.classList.remove('active'));
@@ -397,7 +398,7 @@ function setupEventListeners() {
     });
   });
   
-  elements.btnSaveAvailability.addEventListener('click', () => saveAvailability(loadDashboardData));
+  if (elements.btnSaveAvailability) elements.btnSaveAvailability.addEventListener('click', () => saveAvailability(loadDashboardData));
 
   // Multi-dag selectie knoppen
   const btnWeekends = document.getElementById('btn-select-weekends');
@@ -418,12 +419,12 @@ function setupEventListeners() {
   if (btnCancelBulk) btnCancelBulk.addEventListener('click', () => clearCalendarSelection());
   
   // Plannen groepsritten
-  elements.btnPlanRide.addEventListener('click', openPlanRideModal);
-  elements.btnCloseModal.addEventListener('click', closePlanRideModal);
-  elements.rideModal.addEventListener('click', (e) => {
+  if (elements.btnPlanRide) elements.btnPlanRide.addEventListener('click', openPlanRideModal);
+  if (elements.btnCloseModal) elements.btnCloseModal.addEventListener('click', closePlanRideModal);
+  if (elements.rideModal) elements.rideModal.addEventListener('click', (e) => {
     if (e.target === elements.rideModal) closePlanRideModal();
   });
-  elements.formPlanRide.addEventListener('submit', (e) => savePlannedRide(e, loadDashboardData));
+  if (elements.formPlanRide) elements.formPlanRide.addEventListener('submit', (e) => savePlannedRide(e, loadDashboardData));
   
   // Uploader config
   setupTcxUploader(loadDashboardData);
@@ -747,10 +748,13 @@ function setupEventListeners() {
     });
   });
 
-  // \"Naar Planner\" knop op Mijn Ritten pagina
+  // "Naar Planner" knop op Mijn Ritten pagina
   const btnGoPlanner = document.getElementById('btn-go-planner');
   if (btnGoPlanner) {
     btnGoPlanner.addEventListener('click', () => navigateTo('dashboard', loadDashboardData));
+  }
+  } catch (err) {
+    console.error('[App] Fout in setupEventListeners:', err);
   }
 }
 
