@@ -333,7 +333,16 @@ function startGpsSimulation() {
 function onGpsSuccess(position) {
   if (isPaused) return;
 
-  const { latitude, longitude, speed, altitude } = position.coords;
+  const { latitude, longitude, speed, altitude, accuracy } = position.coords;
+  
+  // Ignore low-accuracy points (e.g., cell tower triangulation with accuracy > 30m)
+  // but only if we already have at least one coordinate locked. This ensures the app centers
+  // near the user initially, but filters out jittery jumps once tracking starts.
+  if (lastCoord && accuracy !== undefined && accuracy !== null && accuracy > 30) {
+    console.log(`[GPS] Negeer lage nauwkeurigheid coördinaat (${accuracy}m afwijking)`);
+    return;
+  }
+
   const currentSpeedKmh = speed ? (speed * 3.6) : 0;
   
   // Update Speed display
@@ -341,12 +350,23 @@ function onGpsSuccess(position) {
   if (speedEl) speedEl.textContent = currentSpeedKmh.toFixed(1);
 
   const alt = altitude !== undefined && altitude !== null ? altitude : null;
-  const newCoord = { lat: latitude, lng: longitude, alt };
+  
+  let smoothedLat = latitude;
+  let smoothedLng = longitude;
+
+  // Apply Exponential Moving Average (alpha = 0.5) to smooth out path jitter
+  if (lastCoord) {
+    const alpha = 0.5;
+    smoothedLat = alpha * latitude + (1 - alpha) * lastCoord.lat;
+    smoothedLng = alpha * longitude + (1 - alpha) * lastCoord.lng;
+  }
+
+  const newCoord = { lat: smoothedLat, lng: smoothedLng, alt };
 
   if (lastCoord) {
     const dist = calculateHaversineDistance(lastCoord.lat, lastCoord.lng, newCoord.lat, newCoord.lng);
-    // Ignore extreme jumps (> 200m in one update) to filter GPS spikes
-    if (dist < 0.2) {
+    // Ignore extreme jumps (> 150m in one single update) to filter GPS telemetry spikes
+    if (dist < 0.15) {
       distanceKm += dist;
     }
   }
