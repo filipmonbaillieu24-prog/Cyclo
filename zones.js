@@ -707,3 +707,23 @@ export function analyzeTrainingStructure(activity) {
     isEstimate: true, // Altijd schatting zonder second-by-second data
   };
 }
+
+// ─── HRV Readiness ─────────────────────────────────────────────────────────
+
+export function calculateReadinessScore(hrv, restingHR, history) {
+  let hrvScore = 50;
+  if (hrv > 60) hrvScore = 100;
+  else if (hrv > 40) hrvScore = 75;
+  else if (hrv > 20) hrvScore = 40;
+  else hrvScore = 20;
+
+  let rhrScore = 50;
+  if (restingHR < 50) rhrScore = 100;
+  else if (restingHR < 60) rhrScore = 75;
+  else if (restingHR < 75) rhrScore = 40;
+  else rhrScore = 20;
+
+  // Combine them (60% HRV, 40% RHR)
+  let score = (hrvScore * 0.6) + (rhrScore * 0.4);
+  return Math.round(score);
+}

@@ -86,7 +86,7 @@ export async function initStravaSync() {
       btn.disabled = false;
     });
   }
-
+}
 
 async function updateStravaUI() {
   const btn = document.getElementById('btn-connect-strava');
