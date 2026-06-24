@@ -49,6 +49,8 @@ import { initProfileAvatarEditor } from './profile-avatar.js';
 import { updateFitnessBaseline, calculateFitnessMetrics, calculatePRs, buildHeatmapData, comparePeriods, calculateMMP, estimateVO2max, compareSeasons, calculateBadges, analyzeTrainingStructure } from './zones.js';
 import { renderEquipmentSection, openEquipmentModal } from './equipment.js';
 import { checkOnboarding, initHelpButton, renderEmptyState, triggerPageTourIfNew, setCurrentPage } from './onboarding.js';
+import { initDesktopView } from './desktop-view.js';
+import { initMobileView } from './mobile-view.js';
 
 let activeRealtimeChannel = null;
 
@@ -1118,6 +1120,24 @@ function updateSeasonHeader() {
 }
 // 5. APPLICATIE INITIALISATIE RUN
 document.addEventListener('DOMContentLoaded', () => {
+  // Device routing
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+  if (isMobile) {
+    initMobileView();
+  } else {
+    initDesktopView();
+  }
+
+  // Handle window resize dynamically
+  window.addEventListener('resize', () => {
+    const isMobileNow = window.innerWidth <= 768;
+    if (isMobileNow) {
+      initMobileView();
+    } else {
+      initDesktopView();
+    }
+  });
+
   lucide.createIcons();
   setupEventListeners();
   checkUserSession(loadDashboardData);
