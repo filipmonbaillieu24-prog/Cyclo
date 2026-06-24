@@ -1,63 +1,92 @@
 // Cyclo - Strava Sync Management Module
-import { state, config, showToast } from './state.js';
+import { state, config, showToast, navigateTo } from './state.js';
+
+// Track if the OAuth callback has already been handled to prevent duplicate toasts
+let _stravaCallbackHandled = false;
+// Track if the click handler is already bound to prevent duplicate handlers
+let _stravaListenerBound = false;
 
 export async function initStravaSync() {
   const btn = document.getElementById('btn-connect-strava');
   const lbl = document.getElementById('strava-status-lbl');
   if (!btn || !lbl) return;
 
-  // 1. Check URL parameters for redirection callback success
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('strava') === 'connected') {
-    showToast("Strava succesvol gekoppeld!", "success");
-    // Clean up URL
-    const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-    window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+  // 1. Check URL parameters for redirection callback success (only handle once)
+  if (!_stravaCallbackHandled) {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('strava') === 'connected') {
+      _stravaCallbackHandled = true;
+      showToast("Strava succesvol gekoppeld! Bekijk je profiel.", "success");
+      // Clean up URL
+      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+      // After Strava connect, navigate to profile so user sees connection status
+      // Wait for user session to be set before navigating
+      setTimeout(() => {
+        if (state.user && window._loadProfilePage) {
+          window._loadProfilePage();
+        }
+      }, 1500);
+    }
+    if (params.get('garmin') === 'connected') {
+      _stravaCallbackHandled = true;
+      showToast("Garmin Connect succesvol gekoppeld! Bekijk je profiel.", "success");
+      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+      setTimeout(() => {
+        if (state.user && window._loadProfilePage) {
+          window._loadProfilePage();
+        }
+      }, 1500);
+    }
   }
 
   // 2. Initial state sync
   await updateStravaUI();
 
-  // 3. Bind click handler
-  btn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    if (!state.user) {
-      showToast("Meld u eerst aan om een account te koppelen.", "error");
-      return;
-    }
-
-    btn.disabled = true;
-    const isConnected = btn.textContent === 'Ontkoppelen';
-
-    if (isConnected) {
-      // Disconnect Strava
-      const success = await disconnectStrava();
-      if (success) {
-        showToast("Strava ontkoppeld.", "info");
+  // 3. Bind click handler (only once)
+  if (!_stravaListenerBound) {
+    _stravaListenerBound = true;
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (!state.user) {
+        showToast("Meld u eerst aan om een account te koppelen.", "error");
+        return;
       }
-    } else {
-      // Connect Strava
-      if (config.isDemoMode) {
-        // Simulate OAuth redirection and connection
-        showToast("Koppelen met Strava (Mock)...", "info");
-        btn.textContent = "Koppelen...";
-        setTimeout(() => {
-          const mockData = getMockIntegrations();
-          mockData.strava_connected = true;
-          mockData.strava_athlete_id = 'athlete_mock_filip';
-          saveMockIntegrations(mockData);
-          updateStravaUI();
-          showToast("Strava succesvol gekoppeld (Demo)!", "success");
-        }, 1200);
+
+      btn.disabled = true;
+      const isConnected = btn.textContent === 'Ontkoppelen';
+
+      if (isConnected) {
+        // Disconnect Strava
+        const success = await disconnectStrava();
+        if (success) {
+          showToast("Strava ontkoppeld.", "info");
+        }
       } else {
-        // Redirect to Vercel OAuth endpoint
-        showToast("Omleiden naar Strava...", "info");
-        window.location.href = `/api/auth/strava?userId=${state.user.id}`;
+        // Connect Strava
+        if (config.isDemoMode) {
+          // Simulate OAuth redirection and connection
+          showToast("Koppelen met Strava (Mock)...", "info");
+          btn.textContent = "Koppelen...";
+          setTimeout(() => {
+            const mockData = getMockIntegrations();
+            mockData.strava_connected = true;
+            mockData.strava_athlete_id = 'athlete_mock_filip';
+            saveMockIntegrations(mockData);
+            updateStravaUI();
+            showToast("Strava succesvol gekoppeld (Demo)!", "success");
+          }, 1200);
+        } else {
+          // Redirect to Vercel OAuth endpoint
+          showToast("Omleiden naar Strava...", "info");
+          window.location.href = `/api/auth/strava?userId=${state.user.id}`;
+        }
       }
-    }
-    btn.disabled = false;
-  });
-}
+      btn.disabled = false;
+    });
+  }
+
 
 async function updateStravaUI() {
   const btn = document.getElementById('btn-connect-strava');

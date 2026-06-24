@@ -813,6 +813,11 @@ function openSensorDialog() {
         <button style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer;" id="btn-bc-close-sensors">✕</button>
       </div>
       <p>Verbind uw BLE hartslagmeter of vermogensmeter met Cyclo.</p>
+      ${!hasBle ? '<p style="color:#ef4444;font-size:12px;margin-bottom:10px;">⚠️ Web Bluetooth wordt niet ondersteund door uw browser. Gebruik Chrome op Android.</p>' : ''}
+      <div style="background:rgba(var(--primary-rgb, 99,102,241),0.1);border:1px solid rgba(var(--primary-rgb, 99,102,241),0.3);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:11px;color:var(--text-muted);line-height:1.5;">
+        💡 <strong>Tip:</strong> Zorg dat uw sensor <strong>aanstaat</strong> en in <strong>koppelmodus</strong> staat vóór u klikt.
+        Polar-horloges: tik op het horloge → koppelmodus activeren. Na het klikken verschijnt een browservenster — selecteer hier uw sensor.
+      </div>
 
       <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
         <div class="bc-sensor-option" id="opt-bc-hr">
@@ -832,6 +837,7 @@ function openSensorDialog() {
       <button class="btn btn-secondary w-full" id="btn-bc-close-sensors-btn">Sluiten</button>
     </div>
   `;
+
 
   document.body.appendChild(modal);
 

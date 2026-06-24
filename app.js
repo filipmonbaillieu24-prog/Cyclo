@@ -629,8 +629,8 @@ function setupEventListeners() {
 
   // Mobiele navigatie
   const mobLinks = [
-    ['mob-link-home',    () => navigateTo(state.user ? 'feed' : 'home', loadFeedSection)],
-    ['mob-link-planner', () => navigateTo('dashboard', loadDashboardData)],
+    ['mob-link-home',    () => state.user ? navigateTo('feed', loadFeedSection) : navigateTo('home')],
+    ['mob-link-planner', () => state.user ? navigateTo('dashboard', loadDashboardData) : (showToast('Log eerst in om de planner te gebruiken.', 'error'), navigateTo('auth'))],
     ['mob-link-rides',   () => navigateTo('rides', loadDashboardData)],
     ['mob-link-profile', () => navigateTo('profile', loadProfilePage)],
   ];
@@ -1095,6 +1095,10 @@ function loadProfilePage() {
   // Ochtend biometrie & readiness score laden
   updateReadinessUI();
 
+  // Strava & Garmin koppeling initialiseren (enkel éénmalig)
+  initStravaSync();
+  initGarminSync();
+
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -1162,8 +1166,9 @@ document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
   setupEventListeners();
   checkUserSession(loadDashboardData);
-  // Expose voor ride delete callbacks
+  // Expose voor ride delete callbacks en OAuth redirects
   window._loadDashboardData = loadDashboardData;
+  window._loadProfilePage = () => navigateTo('profile', loadProfilePage);
 
   // ── Supabase auth state watcher ──────────────────────────────────────
   // Luistert naar sessie-wijzigingen (inloggen, uitloggen, email-bevestiging,

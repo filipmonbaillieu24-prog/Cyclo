@@ -32,8 +32,18 @@ export async function connectHeartRate() {
 
   try {
     updateStatus("HR: Koppelen...", false);
+    showToast("Selecteer uw hartslagsensor in het popup-venster…", "info");
+
     hrDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ services: ['heart_rate'] }]
+      filters: [
+        { services: ['heart_rate'] },
+        { namePrefix: 'Polar' },
+        { namePrefix: 'Garmin' },
+        { namePrefix: 'Wahoo' },
+        { namePrefix: 'CooSpo' },
+        { namePrefix: 'Scosche' }
+      ],
+      optionalServices: ['heart_rate', 'battery_service', 'device_information']
     });
 
     hrDevice.addEventListener('gattserverdisconnected', onHeartRateDisconnected);
@@ -46,13 +56,19 @@ export async function connectHeartRate() {
     hrCharacteristic.addEventListener('characteristicvaluechanged', handleHeartRateValueChanged);
 
     updateStatus("HR: Gekoppeld", true);
-    showToast("Hartslagsensor succesvol gekoppeld!", "success");
+    showToast(`Hartslagsensor "${hrDevice.name || 'onbekend'}" succesvol gekoppeld!`, "success");
     return true;
 
   } catch (err) {
     console.error("HR BLE error:", err);
-    updateStatus("HR: Verbinding mislukt", false);
-    showToast("HR koppelen mislukt: " + err.message, "error");
+    // Distinguish between user cancellation and actual errors
+    if (err.name === 'NotFoundError' || err.message?.includes('cancelled') || err.message?.includes('User cancelled')) {
+      updateStatus("HR: Niet gekoppeld", false);
+      showToast("Koppeling geannuleerd. Zorg dat uw sensor aanstaat en selecteerbaar is.", "error");
+    } else {
+      updateStatus("HR: Verbinding mislukt", false);
+      showToast("HR koppelen mislukt: " + err.message, "error");
+    }
     return false;
   }
 }

@@ -258,6 +258,34 @@
 .mobile-nav-item.active { color: var(--primary); }
 .mobile-nav-item.active i { stroke: var(--primary); }
 
+/* ─── Start Rit Knop (midden van bottom nav) ──────────────── */
+.mobile-start-ride-btn {
+  position: relative;
+  top: -10px; /* lift above nav bar */
+}
+.mobile-start-ride-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary, #6366f1), var(--secondary, #8b5cf6));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5);
+  border: 3px solid rgba(10, 14, 25, 0.9);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.mobile-start-ride-btn:hover .mobile-start-ride-circle,
+.mobile-start-ride-btn:active .mobile-start-ride-circle {
+  transform: scale(1.1);
+  box-shadow: 0 6px 28px rgba(99, 102, 241, 0.7);
+}
+.mobile-start-ride-btn .nav-label {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+
 @media (max-width: 768px) {
   /* Toon mobiele bottom nav */
   .mobile-bottom-nav { display: flex; }
