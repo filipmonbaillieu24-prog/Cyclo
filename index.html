@@ -1214,6 +1214,43 @@
         <button class="eq-add-btn" id="btn-add-equipment">+ Fiets toevoegen</button>
       </div>
 
+      <!-- ─── API Koppelingen (Strava & Garmin) ───────────────── -->
+      <div class="glass-panel mt-3" id="api-connections-panel">
+        <div class="d-flex align-center gap-8 mb-3">
+          <i data-lucide="refresh-cw" style="width:16px;height:16px;color:var(--primary);"></i>
+          <span style="font-size:13px;font-weight:700;">Automatische Synchronisatie</span>
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);line-height:1.4;margin-bottom:14px;">
+          Koppel je Strava- of Garmin Connect-account om je fietseritten automatisch en direct in Cyclo te laten verschijnen.
+        </p>
+        
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <!-- Strava Connection Card -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.02);border:1px solid var(--border-glass);border-radius:var(--radius-sm);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:36px;height:36px;background:#fc4c02;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px;">S</div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#fff;">Strava</div>
+                <div style="font-size:10px;color:var(--text-muted);" id="strava-status-lbl">Niet gekoppeld</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-connect-strava" style="font-size:11px;padding:6px 14px;">Koppelen</button>
+          </div>
+          
+          <!-- Garmin Connection Card -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.02);border:1px solid var(--border-glass);border-radius:var(--radius-sm);">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:36px;height:36px;background:#007cc3;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px;">G</div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#fff;">Garmin Connect</div>
+                <div style="font-size:10px;color:var(--text-muted);" id="garmin-status-lbl">Niet gekoppeld</div>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-connect-garmin" style="font-size:11px;padding:6px 14px;">Koppelen</button>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /profile-page-container -->
 
 

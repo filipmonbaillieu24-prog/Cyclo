@@ -2107,6 +2107,43 @@
   .profile-hero-content > div[style*="margin-left:auto"] button {
     width: 100% !important;
   }
+
+  /* Prevent calendar grid overflow */
+  .calendar-grid, .calendar-grid-header {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+  }
+  .calendar-day {
+    padding: 4px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+  .cal-ride-pill {
+    font-size: 8px !important;
+    padding: 1px 3px !important;
+    min-width: 0 !important;
+  }
+  .cal-ride-pill span {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  /* General horizontal overflow prevention */
+  body, html {
+    overflow-x: hidden !important;
+    width: 100% !important;
+  }
+  main {
+    overflow-x: hidden !important;
+    width: 100% !important;
+  }
+  .app-section {
+    padding: 12px 8px !important;
+    overflow-x: hidden !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
 }
 
 /* ─── Tour Menu (? context dropdown) ────────────────────────────── */

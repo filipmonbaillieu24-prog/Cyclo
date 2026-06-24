@@ -51,6 +51,8 @@ import { renderEquipmentSection, openEquipmentModal } from './equipment.js';
 import { checkOnboarding, initHelpButton, renderEmptyState, triggerPageTourIfNew, setCurrentPage } from './onboarding.js';
 import { initDesktopView } from './desktop-view.js';
 import { initMobileView } from './mobile-view.js';
+import { initStravaSync } from './strava-sync.js';
+import { initGarminSync } from './garmin-sync.js';
 
 let activeRealtimeChannel = null;
 
@@ -1205,6 +1207,14 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(reg => console.log('[PWA] Service Worker geregistreerd:', reg.scope))
         .catch(err => console.error('[PWA] Service Worker registratie mislukt:', err));
     });
+  }
+
+  // Initialize API Synchronizations
+  try {
+    initStravaSync();
+    initGarminSync();
+  } catch (e) {
+    console.warn('[Sync] Failed to initialize synchronization modules:', e);
   }
 });
 

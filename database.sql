@@ -230,3 +230,36 @@ ALTER TABLE public.rides
   ADD COLUMN IF NOT EXISTS activity_id UUID REFERENCES public.activities(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS expected_distance_km NUMERIC(6,1),
   ADD COLUMN IF NOT EXISTS expected_speed_kmh NUMERIC(4,1);
+
+-- 9. Create a table for API Integrations (Strava & Garmin)
+CREATE TABLE IF NOT EXISTS public.user_integrations (
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL PRIMARY KEY,
+  strava_connected BOOLEAN DEFAULT false NOT NULL,
+  strava_access_token TEXT,
+  strava_refresh_token TEXT,
+  strava_expires_at TIMESTAMP WITH TIME ZONE,
+  strava_athlete_id TEXT,
+  
+  garmin_connected BOOLEAN DEFAULT false NOT NULL,
+  garmin_access_token TEXT,
+  garmin_refresh_token TEXT,
+  garmin_expires_at TIMESTAMP WITH TIME ZONE,
+  garmin_user_id TEXT,
+
+  wahoo_connected BOOLEAN DEFAULT false NOT NULL,
+  wahoo_access_token TEXT,
+  wahoo_refresh_token TEXT,
+  wahoo_expires_at TIMESTAMP WITH TIME ZONE,
+  wahoo_user_id TEXT,
+  
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE public.user_integrations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow users to read their own integrations" ON public.user_integrations
+  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow users to upsert their own integrations" ON public.user_integrations
+  FOR ALL TO authenticated USING (auth.uid() = user_id);

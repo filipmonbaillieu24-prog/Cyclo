@@ -351,3 +351,12 @@
   background-color: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.2);
 }
+
+@media (max-width: 768px) {
+  .bug-reporter-trigger {
+    bottom: 84px !important;
+    right: 16px !important;
+    width: 44px !important;
+    height: 44px !important;
+  }
+}
