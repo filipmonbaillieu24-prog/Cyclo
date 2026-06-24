@@ -33,7 +33,13 @@ export async function followUser(userId) {
   try {
     const { error } = await config.supabaseClient
       .from('follows').insert({ follower_id: state.user.id, following_id: userId });
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505' || (error.message && (error.message.includes('unique_constraint') || error.message.includes('duplicate key')))) {
+        showToast('Je volgt deze gebruiker al!', 'info');
+        return true;
+      }
+      throw error;
+    }
     showToast('Je volgt nu deze gebruiker!', 'success');
     return true;
   } catch (err) { showToast('Kon niet volgen: ' + err.message, 'error'); return false; }

@@ -630,25 +630,55 @@ function setupEventListeners() {
       if (q.length < 2) { searchResults.style.display = 'none'; return; }
       searchTimer = setTimeout(async () => {
         const users = await searchUsers(q);
+        
+        // Laad welke gebruikers al gevolgd worden om de juiste knop-staat te tonen
+        const searchFollows = new Set();
+        if (!config.isDemoMode && state.user) {
+          try {
+            const { data: myFollows } = await config.supabaseClient
+              .from('follows').select('following_id').eq('follower_id', state.user.id);
+            (myFollows || []).forEach(f => searchFollows.add(f.following_id));
+          } catch (_) {}
+        }
+
         searchResults.style.display = 'block';
         searchResults.innerHTML = users.length === 0
           ? '<div style="font-size:12px;color:var(--text-muted);padding:8px;">Geen renners gevonden.</div>'
-          : users.map(u => `
-            <div class="user-search-result" data-user-id="${u.id}">
-              <img src="${u.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.id}" alt="${u.full_name}">
-              <div>
-                <div class="user-search-result-name">${u.full_name}</div>
-                <div class="user-search-result-username">@${u.username} &middot; ${u.rider_score || 0} pts</div>
-              </div>
-              <button class="btn-follow" data-user-id="${u.id}" style="margin-left:auto;">Volgen</button>
-            </div>`).join('');
+          : users.map(u => {
+              const isFollowing = searchFollows.has(u.id);
+              return `
+              <div class="user-search-result" data-user-id="${u.id}">
+                <img src="${u.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + u.id}" alt="${u.full_name}">
+                <div>
+                  <div class="user-search-result-name">${u.full_name}</div>
+                  <div class="user-search-result-username">@${u.username} &middot; ${u.rider_score || 0} pts</div>
+                </div>
+                <button class="btn-follow ${isFollowing ? 'following' : ''}" data-user-id="${u.id}" style="margin-left:auto;">
+                  ${isFollowing ? '✓ Volgend' : 'Volgen'}
+                </button>
+              </div>`;
+            }).join('');
         // Bind follow buttons
         searchResults.querySelectorAll('.btn-follow').forEach(btn => {
           btn.addEventListener('click', async (ev) => {
             ev.stopPropagation();
-            await followUser(btn.dataset.userId);
-            btn.textContent = '✓ Volgend';
-            btn.classList.add('following');
+            const uid = btn.dataset.userId;
+            const isFollowing = btn.classList.contains('following');
+            btn.disabled = true;
+            if (isFollowing) {
+              const ok = await unfollowUser(uid);
+              if (ok) {
+                btn.textContent = 'Volgen';
+                btn.classList.remove('following');
+              }
+            } else {
+              const ok = await followUser(uid);
+              if (ok) {
+                btn.textContent = '✓ Volgend';
+                btn.classList.add('following');
+              }
+            }
+            btn.disabled = false;
           });
         });
       }, 350);
@@ -785,6 +815,16 @@ export async function loadFeedSection(followingOnly = false) {
   // Update nav avatar
   updateNavProfile();
 
+  // Laad welke gebruikers al gevolgd worden (voor correcte knop-staat)
+  const followedIds = new Set();
+  if (!config.isDemoMode && state.user) {
+    try {
+      const { data: myFollows } = await config.supabaseClient
+        .from('follows').select('following_id').eq('follower_id', state.user.id);
+      (myFollows || []).forEach(f => followedIds.add(f.following_id));
+    } catch (_) {}
+  }
+
   // Feed mini-stats
   if (state.user) {
     const feedPanel = document.getElementById('feed-my-stats-panel');
@@ -820,20 +860,42 @@ export async function loadFeedSection(followingOnly = false) {
   const suggList = document.getElementById('feed-suggestions-list');
   if (suggList && state.profiles) {
     const others = state.profiles.filter(p => p.id !== state.user?.id).slice(0, 8);
-    suggList.innerHTML = others.map(p => `
+    suggList.innerHTML = others.map(p => {
+      const isFollowing = followedIds.has(p.id);
+      return `
       <div class="feed-suggestion-row">
         <img src="${p.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + p.id}" alt="${p.full_name}">
         <div>
           <div class="feed-suggestion-name">${p.full_name}</div>
           <div class="feed-suggestion-score">${p.rider_score || 0} pts</div>
         </div>
-        <button class="btn-follow btn-sm" data-user-id="${p.id}" style="font-size:10px;padding:3px 10px;">Volgen</button>
-      </div>`).join('');
+        <button class="btn-follow btn-sm ${isFollowing ? 'following' : ''}" data-user-id="${p.id}" style="font-size:10px;padding:3px 10px;">
+          ${isFollowing ? '✓' : 'Volgen'}
+        </button>
+      </div>`;
+    }).join('');
     // Volg knoppen binden
     suggList.querySelectorAll('.btn-follow').forEach(btn => {
       btn.addEventListener('click', async () => {
-        await followUser(btn.dataset.userId);
-        btn.textContent = '✓'; btn.classList.add('following');
+        const uid = btn.dataset.userId;
+        const isFollowing = btn.classList.contains('following');
+        btn.disabled = true;
+        if (isFollowing) {
+          const ok = await unfollowUser(uid);
+          if (ok) {
+            followedIds.delete(uid);
+            btn.textContent = 'Volgen';
+            btn.classList.remove('following');
+          }
+        } else {
+          const ok = await followUser(uid);
+          if (ok) {
+            followedIds.add(uid);
+            btn.textContent = '✓';
+            btn.classList.add('following');
+          }
+        }
+        btn.disabled = false;
       });
     });
   }
@@ -889,16 +951,6 @@ export async function loadFeedSection(followingOnly = false) {
   }
 
   feedList.innerHTML = '';
-
-  // Laad welke gebruikers al gevolgd worden (voor correcte knop-staat)
-  let followedIds = new Set();
-  if (!config.isDemoMode && state.user) {
-    try {
-      const { data: myFollows } = await config.supabaseClient
-        .from('follows').select('following_id').eq('follower_id', state.user.id);
-      (myFollows || []).forEach(f => followedIds.add(f.following_id));
-    } catch (_) {}
-  }
 
   for (const act of activities.slice(0, 30)) {
     const profileData = act.profiles || state.profiles?.find(p => p.id === act.user_id);
