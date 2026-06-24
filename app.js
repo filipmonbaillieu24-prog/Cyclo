@@ -1197,6 +1197,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Register PWA Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(reg => console.log('[PWA] Service Worker geregistreerd:', reg.scope))
+        .catch(err => console.error('[PWA] Service Worker registratie mislukt:', err));
+    });
+  }
 });
 
 // ════════════════════════════════════════════════════════════════════════════

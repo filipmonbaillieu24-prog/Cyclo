@@ -2051,6 +2051,62 @@
 
   /* Profile panels full width */
   .glass-panel { border-radius: 12px !important; }
+
+  /* Compact Mobile Header (Hide Desktop nav links) */
+  header {
+    height: 52px !important;
+    padding: 0 12px !important;
+  }
+  header .nav-container {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    height: 100% !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+  header nav {
+    display: none !important;
+  }
+
+  /* Responsive Season Stats Totals Banner */
+  #rides-season-header {
+    padding: 10px 12px !important;
+  }
+  #rides-season-header > div {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 6px !important;
+  }
+  #rides-season-header > div > div {
+    border-right: none !important;
+    padding: 6px 12px !important;
+    flex: none !important;
+    width: calc(50% - 10px) !important;
+    min-width: 70px !important;
+  }
+  #rides-season-header > div > div:last-child {
+    width: 100% !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    margin-top: 6px;
+    padding-top: 10px !important;
+  }
+
+  /* Profile Logout & Hero actions Stacking */
+  .profile-hero-content {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 16px !important;
+    align-items: center !important;
+  }
+  .profile-hero-content > div[style*="margin-left:auto"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+    margin-top: 8px;
+  }
+  .profile-hero-content > div[style*="margin-left:auto"] button {
+    width: 100% !important;
+  }
 }
 
 /* ─── Tour Menu (? context dropdown) ────────────────────────────── */

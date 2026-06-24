@@ -9,7 +9,9 @@ import {
   startSimulator,
   stopSimulator,
   disconnectAll,
-  isSimulatorActive
+  isSimulatorActive,
+  isHeartRateConnected,
+  isCyclingPowerConnected
 } from './ble-sensors.js';
 
 // Live Tracking State
@@ -249,39 +251,65 @@ function startGpsWatch() {
     return;
   }
 
-  gpsWatchId = navigator.geolocation.watchPosition(
-    (position) => {
-      if (isPaused) return;
+  const onGpsSuccess = (position) => {
+    if (isPaused) return;
 
-      const { latitude, longitude, speed, altitude } = position.coords;
-      const currentSpeedKmh = speed ? (speed * 3.6) : 0;
+    const { latitude, longitude, speed, altitude } = position.coords;
+    const currentSpeedKmh = speed ? (speed * 3.6) : 0;
+    
+    // Update Speed display
+    const speedEl = document.getElementById('bc-speed');
+    if (speedEl) speedEl.textContent = currentSpeedKmh.toFixed(1);
+
+    const alt = altitude !== undefined && altitude !== null ? altitude : null;
+    const newCoord = { lat: latitude, lng: longitude, alt };
+
+    if (lastCoord) {
+      // Haversine distance
+      const dist = calculateHaversineDistance(lastCoord.lat, lastCoord.lng, newCoord.lat, newCoord.lng);
+      distanceKm += dist;
+    }
+
+    lastCoord = newCoord;
+    coordsArray.push(newCoord);
+
+    // Update distance UI
+    const distEl = document.getElementById('bc-distance');
+    if (distEl) distEl.textContent = distanceKm.toFixed(2);
+
+    // Update Leaflet marker and path
+    updateMapPosition(newCoord);
+  };
+
+  const onGpsError = (err) => {
+    console.warn("GPS Geolocation error (high accuracy):", err.message);
+    if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+      showToast("Wachten op GPS signaal...", "info");
       
-      // Update Speed display
-      const speedEl = document.getElementById('bc-speed');
-      if (speedEl) speedEl.textContent = currentSpeedKmh.toFixed(1);
-
-      const alt = altitude !== undefined && altitude !== null ? altitude : null;
-      const newCoord = { lat: latitude, lng: longitude, alt };
-
-      if (lastCoord) {
-        // Haversine distance
-        const dist = calculateHaversineDistance(lastCoord.lat, lastCoord.lng, newCoord.lat, newCoord.lng);
-        distanceKm += dist;
+      // Clear active watch and restart with lower accuracy fallback
+      if (gpsWatchId !== null) {
+        navigator.geolocation.clearWatch(gpsWatchId);
       }
+      gpsWatchId = navigator.geolocation.watchPosition(
+        onGpsSuccess,
+        (err2) => {
+          console.error("GPS Geolocation fallback error:", err2.message);
+          showToast("GPS fout: " + err2.message, "error");
+        },
+        {
+          enableHighAccuracy: false,
+          maximumAge: 5000,
+          timeout: 15000
+        }
+      );
+    } else {
+      showToast("GPS fout: " + err.message, "error");
+    }
+  };
 
-      lastCoord = newCoord;
-      coordsArray.push(newCoord);
-
-      // Update distance UI
-      const distEl = document.getElementById('bc-distance');
-      if (distEl) distEl.textContent = distanceKm.toFixed(2);
-
-      // Update Leaflet marker and path
-      updateMapPosition(newCoord);
-    },
-    (err) => {
-      console.warn("GPS Geolocation error:", err.message);
-    },
+  gpsWatchId = navigator.geolocation.watchPosition(
+    onGpsSuccess,
+    onGpsError,
     {
       enableHighAccuracy: true,
       maximumAge: 1000,
@@ -330,6 +358,26 @@ function initNavigationMap() {
     }).addTo(bcMap);
 
     bcMap.fitBounds(routePolyline.getBounds(), { padding: [15, 15] });
+  } else {
+    // Get current position immediately to center the map
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const latLng = [pos.coords.latitude, pos.coords.longitude];
+          if (bcMap && !selectedRouteCoords && !lastCoord) {
+            bcMap.setView(latLng, 15);
+          }
+        },
+        (err) => {
+          console.warn("Initial position check failed:", err.message);
+        },
+        {
+          enableHighAccuracy: false,
+          maximumAge: 10000,
+          timeout: 5000
+        }
+      );
+    }
   }
 
   // Path polyline for the currently recorded path
@@ -648,6 +696,19 @@ function openSensorDialog() {
   if (isSimulatorActive) {
     simLabel.textContent = "Actief";
     simOpt.classList.add('active');
+    hrLabel.textContent = "Gesimuleerd";
+    powerLabel.textContent = "Gesimuleerd";
+    hrOpt.classList.add('active');
+    pwrOpt.classList.add('active');
+  } else {
+    if (isHeartRateConnected()) {
+      hrLabel.textContent = "Gekoppeld";
+      hrOpt.classList.add('active');
+    }
+    if (isCyclingPowerConnected()) {
+      powerLabel.textContent = "Gekoppeld";
+      pwrOpt.classList.add('active');
+    }
   }
 
   // Bind BLE Clicks

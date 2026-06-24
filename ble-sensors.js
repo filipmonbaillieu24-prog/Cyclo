@@ -194,4 +194,10 @@ export function disconnectAll() {
 
   updateStatus("Ontkoppeld", false);
 }
+export function isHeartRateConnected() {
+  return !!(hrDevice && hrDevice.gatt && hrDevice.gatt.connected);
+}
+export function isCyclingPowerConnected() {
+  return !!(powerDevice && powerDevice.gatt && powerDevice.gatt.connected);
+}
 export { isSimulatorActive };
