@@ -303,6 +303,14 @@ export async function saveActivity(parsedRide, fileName, loadDashboardDataCallba
     // Update persoonlijke records
     await updatePersonalRecords([...mockActivities]);
 
+    // Update component wear
+    try {
+      const { updateEquipmentWearForRide } = await import('./equipment.js');
+      await updateEquipmentWearForRide(activityData.distance_km, activityData.date);
+    } catch (err) {
+      console.warn('Kon component wear niet bijwerken:', err);
+    }
+
     if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
     return;
   }
@@ -322,6 +330,14 @@ export async function saveActivity(parsedRide, fileName, loadDashboardDataCallba
     // Update persoonlijke records na opslaan
     const allActivities = await loadActivitiesRaw();
     await updatePersonalRecords(allActivities);
+
+    // Update component wear
+    try {
+      const { updateEquipmentWearForRide } = await import('./equipment.js');
+      await updateEquipmentWearForRide(activityData.distance_km, activityData.date);
+    } catch (err) {
+      console.warn('Kon component wear niet bijwerken:', err);
+    }
 
     if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
   } catch (err) {

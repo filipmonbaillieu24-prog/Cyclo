@@ -263,3 +263,68 @@ CREATE POLICY "Allow users to read their own integrations" ON public.user_integr
 
 CREATE POLICY "Allow users to upsert their own integrations" ON public.user_integrations
   FOR ALL TO authenticated USING (auth.uid() = user_id);
+
+
+-- 10. Table for Daily Biometrics (HRV, resting heart rate)
+CREATE TABLE IF NOT EXISTS public.daily_biometrics (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  date DATE NOT NULL,
+  hrv_rmssd INTEGER NOT NULL,
+  resting_heart_rate INTEGER NOT NULL,
+  readiness_score INTEGER NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  
+  CONSTRAINT unique_user_biometric_date UNIQUE (user_id, date)
+);
+
+-- Enable RLS for Daily Biometrics
+ALTER TABLE public.daily_biometrics ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow users to read their own biometrics" ON public.daily_biometrics
+  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow users to insert their own biometrics" ON public.daily_biometrics
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow users to update their own biometrics" ON public.daily_biometrics
+  FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow users to delete their own biometrics" ON public.daily_biometrics
+  FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+
+-- 11. Table for Equipment and Component Wear Tracking
+CREATE TABLE IF NOT EXISTS public.equipment (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT DEFAULT 'road' NOT NULL,
+  service_interval_km NUMERIC DEFAULT 5000 NOT NULL,
+  purchase_date DATE,
+  notes TEXT,
+  is_active BOOLEAN DEFAULT true NOT NULL,
+  is_default BOOLEAN DEFAULT false NOT NULL,
+  total_km NUMERIC DEFAULT 0 NOT NULL,
+  last_service_km NUMERIC DEFAULT 0 NOT NULL,
+  chain_wear_km NUMERIC DEFAULT 0 NOT NULL,
+  brakepads_wear_km NUMERIC DEFAULT 0 NOT NULL,
+  sealant_last_replaced DATE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE public.equipment ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow authenticated users to read all equipment" ON public.equipment
+  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Allow users to insert their own equipment" ON public.equipment
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Allow users to update their own equipment" ON public.equipment
+  FOR UPDATE TO authenticated USING (auth.uid() = user_id);
+
+CREATE POLICY "Allow users to delete their own equipment" ON public.equipment
+  FOR DELETE TO authenticated USING (auth.uid() = user_id);

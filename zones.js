@@ -1,23 +1,26 @@
-﻿// Cyclo — Analytics & Zones Module
+// Cyclo — Analytics & Zones Module
 // FTP/MaxHR auto-schatting, training zones, CTL/ATL/TSB, PR tracker, heatmap prep
 import { state } from './state.js';
 
 // ─── Zone definities ──────────────────────────────────────────────────────────
 export const HR_ZONES = [
-  { n: 1, name: 'Recovery',   color: '#4ade80', hrPct: [0,    0.60] },
-  { n: 2, name: 'Endurance',  color: '#a3e635', hrPct: [0.60, 0.70] },
-  { n: 3, name: 'Tempo',      color: '#facc15', hrPct: [0.70, 0.80] },
-  { n: 4, name: 'Drempel',    color: '#fb923c', hrPct: [0.80, 0.90] },
-  { n: 5, name: 'VO₂Max',     color: '#f87171', hrPct: [0.90, 1.10] },
+  { n: 1, name: 'Recovery',        color: '#4ade80', hrPct: [0,    0.60] },
+  { n: 2, name: 'Endurance',       color: '#a3e635', hrPct: [0.60, 0.70] },
+  { n: 3, name: 'Tempo',           color: '#facc15', hrPct: [0.70, 0.80] },
+  { n: 4, name: 'Drempel',         color: '#fb923c', hrPct: [0.80, 0.90] },
+  { n: 5, name: 'VO₂Max',          color: '#f87171', hrPct: [0.90, 1.00] },
+  { n: 6, name: 'Anaeroob',        color: '#c084fc', hrPct: [1.00, 1.10] },
+  { n: 7, name: 'Neuromusculair',  color: '#ec4899', hrPct: [1.10, 99.0] }
 ];
 
 export const PWR_ZONES = [
-  { n: 1, name: 'Recovery',   color: '#4ade80', ftpPct: [0,    0.55] },
-  { n: 2, name: 'Endurance',  color: '#a3e635', ftpPct: [0.55, 0.75] },
-  { n: 3, name: 'Tempo',      color: '#facc15', ftpPct: [0.75, 0.90] },
-  { n: 4, name: 'Drempel',    color: '#fb923c', ftpPct: [0.90, 1.05] },
-  { n: 5, name: 'VO₂Max',     color: '#f87171', ftpPct: [1.05, 1.20] },
-  { n: 6, name: 'Anaeroob',   color: '#c084fc', ftpPct: [1.20, 99]   },
+  { n: 1, name: 'Recovery',        color: '#4ade80', ftpPct: [0,    0.55] },
+  { n: 2, name: 'Endurance',       color: '#a3e635', ftpPct: [0.55, 0.75] },
+  { n: 3, name: 'Tempo',           color: '#facc15', ftpPct: [0.75, 0.90] },
+  { n: 4, name: 'Drempel',         color: '#fb923c', ftpPct: [0.90, 1.05] },
+  { n: 5, name: 'VO₂Max',          color: '#f87171', ftpPct: [1.05, 1.20] },
+  { n: 6, name: 'Anaeroob',        color: '#c084fc', ftpPct: [1.20, 1.50] },
+  { n: 7, name: 'Neuromusculair',  color: '#ec4899', ftpPct: [1.50, 99.0] }
 ];
 
 // ─── FTP & Max HR schatting ───────────────────────────────────────────────────
@@ -50,7 +53,7 @@ export function estimateFTP(activities) {
 
 /**
  * Schat Max HR op basis van leeftijd + gecorrigeerd op basis van observaties.
- * Formule: 220 - leeftijd, maar als hogere HR gezien is → aanpassen.
+ * Formule: Gulati formula (206 - 0.88 * age) voor vrouwen, Tanaka formula (208 - 0.7 * age) voor mannen/anderen.
  */
 export function estimateMaxHR(profile, activities) {
   let maxHR = 190; // fallback zonder geboortedatum
@@ -58,7 +61,11 @@ export function estimateMaxHR(profile, activities) {
   if (profile && profile.birthdate) {
     const birth = new Date(profile.birthdate);
     const age = new Date().getFullYear() - birth.getFullYear();
-    maxHR = 220 - age;
+    if (profile.gender === 'Female') {
+      maxHR = Math.round(206 - 0.88 * age);
+    } else {
+      maxHR = Math.round(208 - 0.7 * age);
+    }
   }
 
   // Als we hogere HR hebben gezien in activiteiten, pas max aan
@@ -304,6 +311,25 @@ export function calculateMMP(activities) {
 
   const FTP_DURATION = 3600; // 60 minuten als referentie voor FTP
 
+  // Personaliseer Riegel exponent op basis van biologische eigenschappen
+  let exponent = 0.07;
+  const profile = state.user;
+  if (profile) {
+    if (profile.gender === 'Female') {
+      exponent -= 0.005;
+    }
+    if (profile.birthdate) {
+      const birth = new Date(profile.birthdate);
+      const age = new Date().getFullYear() - birth.getFullYear();
+      exponent += (age - 30) * 0.0003;
+    }
+    if (profile.height) {
+      exponent += (profile.height - 180) * 0.0001;
+    }
+  }
+  // Clamp exponent
+  exponent = Math.max(0.05, Math.min(0.10, exponent));
+
   return MMP_DURATIONS.map((dur, i) => {
     // Theoretisch model: activiteiten die minstens zo lang duren
     const candidates = withPower.filter(a => a.duration_secs >= dur);
@@ -313,12 +339,12 @@ export function calculateMMP(activities) {
       // Schaal avg power naar de korter tijdsduur via power-duration model
       bestPower = Math.max(...candidates.map(a => {
         const t  = Math.min(a.duration_secs, dur);
-        const scale = Math.pow(FTP_DURATION / t, 0.07);
+        const scale = Math.pow(FTP_DURATION / t, exponent);
         return Math.round(a.avg_power_watts * scale);
       }));
     } else {
       // Alleen model-curve gebruiken als geen data
-      const scale = Math.pow(FTP_DURATION / dur, 0.07);
+      const scale = Math.pow(FTP_DURATION / dur, exponent);
       bestPower = Math.round(ftp * scale);
     }
 
@@ -352,45 +378,64 @@ const VO2_CATEGORIES = [
 
 export function estimateVO2max(activities, profile) {
   const weight  = profile?.weight || 70;
+  const height  = profile?.height || 175;
   const ftp     = state.user?.ftp;
   const maxHR   = state.user?.maxHR || 190;
-  let vo2max    = null;
+  let performanceVO2 = null;
   let method    = '';
+
+  // Bereken klinische Wasserman baseline
+  let age = 30;
+  if (profile && profile.birthdate) {
+    const birth = new Date(profile.birthdate);
+    age = new Date().getFullYear() - birth.getFullYear();
+  }
+  let clinicalVO2 = 45; // default clinical baseline
+  if (profile?.gender === 'Female') {
+    clinicalVO2 = (height * (14.81 - 0.11 * age)) / weight;
+  } else {
+    clinicalVO2 = ((0.79 * height - 60.7) * (50.72 - 0.372 * age)) / weight;
+  }
 
   // Methode 1: Beste 20-min power (FTP ≈ 95% van 20-min power)
   if (ftp && weight) {
-    const p20 = ftp / 0.95; // FTP = 20min power × 0.95 → terug naar 20min power
-    vo2max = (p20 * 10.8) / weight + 7;
-    method = 'Vermogen + gewicht';
+    const p20 = ftp / 0.95;
+    performanceVO2 = (p20 * 10.8) / weight + 7;
+    method = 'Vermogen (Wasserman baseline averaged)';
   }
 
   // Methode 2: Hartslag (als geen vermogen)
-  if (!vo2max) {
+  if (!performanceVO2) {
     const hrRest = activities.length > 0
       ? Math.min(...activities.filter(a => a.avg_heart_rate > 0).map(a => a.avg_heart_rate))
       : 60;
     if (maxHR && hrRest < maxHR) {
-      vo2max = 15 * (maxHR / hrRest);
-      method = 'Hartslag (Uth)';
+      performanceVO2 = 15 * (maxHR / hrRest);
+      method = 'Hartslag (Wasserman baseline averaged)';
     }
   }
 
   // Methode 3: Gemiddelde snelheid (fallback)
-  if (!vo2max && activities.length > 0) {
+  if (!performanceVO2 && activities.length > 0) {
     const speeds = activities.map(a => parseFloat(a.avg_speed_kmh || 0)).filter(s => s > 0);
     if (speeds.length > 0) {
       const bestSpeed = Math.max(...speeds);
-      vo2max = bestSpeed * 3.5;
-      method = 'Snelheid (schatting)';
+      performanceVO2 = bestSpeed * 3.5;
+      method = 'Snelheid (Wasserman baseline averaged)';
     }
   }
 
-  if (!vo2max) return null;
+  let finalVO2 = clinicalVO2;
+  if (performanceVO2) {
+    finalVO2 = (performanceVO2 + clinicalVO2) / 2;
+  } else {
+    method = 'Klinisch baseline (Wasserman)';
+  }
 
-  vo2max = Math.round(vo2max * 10) / 10;
-  const cat = VO2_CATEGORIES.find(c => vo2max >= c.min && vo2max < c.max) || VO2_CATEGORIES[0];
+  finalVO2 = Math.round(finalVO2 * 10) / 10;
+  const cat = VO2_CATEGORIES.find(c => finalVO2 >= c.min && finalVO2 < c.max) || VO2_CATEGORIES[0];
 
-  return { vo2max, category: cat.label, color: cat.color, method };
+  return { vo2max: finalVO2, category: cat.label, color: cat.color, method };
 }
 
 // ─── Seizoensvergelijking (week per week) ────────────────────────────────────
@@ -554,7 +599,7 @@ export function analyzeTrainingStructure(activity) {
   const power  = activity.avg_power_watts || 0;
   const hr     = activity.avg_heart_rate  || 0;
 
-  // Bepaal dominante zone
+  // Bepaal dominante zone (7-zone model)
   let zone = 2; // Standaard endurance
   if (power && ftp) {
     const pct = power / ftp;
@@ -563,25 +608,28 @@ export function analyzeTrainingStructure(activity) {
     else if (pct < 0.90) zone = 3;
     else if (pct < 1.05) zone = 4;
     else if (pct < 1.20) zone = 5;
-    else zone = 6;
+    else if (pct < 1.50) zone = 6;
+    else zone = 7;
   } else if (hr && maxHR) {
     const pct = hr / maxHR;
     if (pct < 0.60) zone = 1;
     else if (pct < 0.70) zone = 2;
     else if (pct < 0.80) zone = 3;
     else if (pct < 0.90) zone = 4;
-    else zone = 5;
+    else if (pct < 1.00) zone = 5;
+    else if (pct < 1.10) zone = 6;
+    else zone = 7;
   }
 
   // Modelleer trainingsstructuur op basis van zone + duur
   // Blokken = hoge-intensiteitsperiodes, warmup/cooldown = Z1-2
   const zoneColors = {
     1: '#4ade80', 2: '#a3e635', 3: '#facc15',
-    4: '#fb923c', 5: '#f87171', 6: '#c084fc'
+    4: '#fb923c', 5: '#f87171', 6: '#c084fc', 7: '#ec4899'
   };
   const zoneNames = {
     1: 'Recovery', 2: 'Endurance', 3: 'Tempo',
-    4: 'Drempel', 5: 'VO₂Max', 6: 'Anaeroob'
+    4: 'Drempel', 5: 'VO₂Max', 6: 'Anaeroob', 7: 'Neuromusculair'
   };
 
   // Standaard structuur: warmup (10%) + kern + cooldown (8%)
@@ -603,7 +651,7 @@ export function analyzeTrainingStructure(activity) {
   // Hoofdblok(ken)
   if (zone >= 4 && durMin > 30) {
     // Intervallen: afwisseling hoofdzone ↔ herstel
-    const blockCount  = zone === 6 ? 6 : zone === 5 ? 4 : 3;
+    const blockCount  = zone === 7 ? 8 : zone === 6 ? 6 : zone === 5 ? 4 : 3;
     const blockPct    = mainPct / (blockCount * 2 - 1);
     for (let i = 0; i < blockCount; i++) {
       segments.push({

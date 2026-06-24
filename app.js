@@ -46,7 +46,7 @@ import { setupRealtimeSubscriptions } from './realtime.js';
 import { setupZwiftImporter } from './zwift-importer.js';
 import { loadSocialFeed, renderFeedCard, searchUsers, followUser, unfollowUser, getFollowStatus, getFollowCounts } from './social.js';
 import { initProfileAvatarEditor } from './profile-avatar.js';
-import { updateFitnessBaseline, calculateFitnessMetrics, calculatePRs, buildHeatmapData, comparePeriods, calculateMMP, estimateVO2max, compareSeasons, calculateBadges, analyzeTrainingStructure } from './zones.js';
+import { updateFitnessBaseline, calculateFitnessMetrics, calculatePRs, buildHeatmapData, comparePeriods, calculateMMP, estimateVO2max, compareSeasons, calculateBadges, analyzeTrainingStructure, calculateReadinessScore } from './zones.js';
 import { renderEquipmentSection, openEquipmentModal } from './equipment.js';
 import { checkOnboarding, initHelpButton, renderEmptyState, triggerPageTourIfNew, setCurrentPage } from './onboarding.js';
 import { initDesktopView } from './desktop-view.js';
@@ -611,6 +611,22 @@ function setupEventListeners() {
     });
   }
 
+  // Ochtend biometrie formulier op profielpagina
+  const formBiometrics = document.getElementById('form-daily-biometrics');
+  if (formBiometrics) {
+    formBiometrics.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const hrv = parseInt(document.getElementById('biometrics-hrv').value);
+      const restingHR = parseInt(document.getElementById('biometrics-resting-hr').value);
+      const btn = document.getElementById('btn-save-biometrics');
+      
+      if (btn) btn.disabled = true;
+      await saveDailyBiometrics(hrv, restingHR);
+      await updateReadinessUI();
+      if (btn) btn.disabled = false;
+    });
+  }
+
   // Mobiele navigatie
   const mobLinks = [
     ['mob-link-home',    () => navigateTo(state.user ? 'feed' : 'home', loadFeedSection)],
@@ -1075,6 +1091,9 @@ function loadProfilePage() {
 
   // Volledige avatar customizer initialiseren
   initProfileAvatarEditor();
+
+  // Ochtend biometrie & readiness score laden
+  updateReadinessUI();
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
@@ -1661,4 +1680,102 @@ export function renderIntervalTimeline(container, activity) {
   });
 
   container.appendChild(wrap);
+}
+
+// ─── Dagelijkse Ochtend Biometrie & HRV Readiness ──────────────────────────────
+
+async function loadDailyBiometrics() {
+  if (!state.user) return [];
+  if (config.isDemoMode) {
+    return JSON.parse(localStorage.getItem('cyclo_daily_biometrics') || '[]');
+  }
+  try {
+    const { data, error } = await config.supabaseClient
+      .from('daily_biometrics')
+      .select('*')
+      .eq('user_id', state.user.id)
+      .order('date', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.warn('Biometrie laden mislukt:', err);
+    return [];
+  }
+}
+
+async function saveDailyBiometrics(hrv, restingHR) {
+  if (!state.user) return;
+  const today = new Date().toISOString().split('T')[0];
+  
+  // 1. Laad geschiedenis voor baselines
+  const history = await loadDailyBiometrics();
+  
+  // 2. Bereken readiness score
+  const readiness = calculateReadinessScore(hrv, restingHR, history);
+
+  const record = {
+    user_id: state.user.id,
+    date: today,
+    hrv_rmssd: hrv,
+    resting_heart_rate: restingHR,
+    readiness_score: readiness.score,
+  };
+
+  if (config.isDemoMode) {
+    let list = JSON.parse(localStorage.getItem('cyclo_daily_biometrics') || '[]');
+    list = list.filter(b => b.date !== today);
+    list.unshift({ ...record, id: `db-${Date.now()}` });
+    localStorage.setItem('cyclo_daily_biometrics', JSON.stringify(list));
+    showToast('Biometrie succesvol opgeslagen!', 'success');
+    return list;
+  }
+
+  try {
+    const { error } = await config.supabaseClient
+      .from('daily_biometrics')
+      .upsert(record, { onConflict: 'user_id,date' });
+    if (error) throw error;
+    showToast('Biometrie succesvol opgeslagen!', 'success');
+  } catch (err) {
+    showToast('Kon biometrie niet opslaan: ' + err.message, 'error');
+  }
+}
+
+async function updateReadinessUI() {
+  const container = document.getElementById('readiness-score-container');
+  const valEl = document.getElementById('readiness-score-value');
+  const recEl = document.getElementById('readiness-recommendation');
+  const baseEl = document.getElementById('readiness-baselines');
+  const hrvInput = document.getElementById('biometrics-hrv');
+  const restingInput = document.getElementById('biometrics-resting-hr');
+  
+  if (!container) return;
+
+  const history = await loadDailyBiometrics();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayRecord = history.find(b => b.date === todayStr);
+
+  if (todayRecord) {
+    if (hrvInput) hrvInput.value = todayRecord.hrv_rmssd;
+    if (restingInput) restingInput.value = todayRecord.resting_heart_rate;
+    
+    // Bereken readiness t.o.v. geschiedenis (vandaag uitgesloten voor baseline)
+    const readiness = calculateReadinessScore(
+      todayRecord.hrv_rmssd, 
+      todayRecord.resting_heart_rate, 
+      history.filter(b => b.date !== todayStr)
+    );
+    
+    container.style.display = 'block';
+    if (valEl) {
+      valEl.textContent = `${readiness.score}%`;
+      valEl.style.color = readiness.color;
+    }
+    if (recEl) recEl.textContent = readiness.recommendation;
+    if (baseEl) {
+      baseEl.textContent = `Baselines: ${readiness.baselineRMSSD} ms HRV · ${readiness.baselineHR} bpm HR`;
+    }
+  } else {
+    container.style.display = 'none';
+  }
 }
