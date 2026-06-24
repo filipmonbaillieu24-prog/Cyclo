@@ -9,7 +9,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { id, timestamp, user_input, system_metadata, status, assigned_to } = req.body;
+    const { id, timestamp, user_input, system_metadata, status, assigned_to, image_data, image_filename } = req.body;
 
     // Validate required fields
     if (!id || !user_input || !system_metadata) {
@@ -24,6 +24,38 @@ module.exports = async (req, res) => {
         error: 'GITHUB_TOKEN_MISSING',
         message: 'GitHub token is not configured on Vercel project settings.'
       });
+    }
+
+    // 2b. If image attachment is present, upload it to GitHub contents first
+    let attachmentMarkdown = '';
+    if (image_data && image_filename) {
+      try {
+        const uploadUrl = `https://api.github.com/repos/filipmonbaillieu24-prog/Cyclo/contents/bug-reports/images/${id}_${image_filename}`;
+        const uploadResponse = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Cyclo-Bug-Reporter-Vercel-Proxy'
+          },
+          body: JSON.stringify({
+            message: `Upload bug screenshot for ticket ${id}`,
+            content: image_data,
+            branch: 'main'
+          })
+        });
+
+        if (uploadResponse.ok) {
+          const rawUrl = `https://raw.githubusercontent.com/filipmonbaillieu24-prog/Cyclo/main/bug-reports/images/${id}_${image_filename}`;
+          attachmentMarkdown = `\n\n## Attachment\n![Screenshot](${rawUrl})`;
+        } else {
+          const errText = await uploadResponse.text();
+          console.warn("GitHub content upload failed:", errText);
+        }
+      } catch (uploadErr) {
+        console.warn("Error during screenshot upload:", uploadErr.message);
+      }
     }
 
     // 3. Format GitHub Issue body in Markdown
@@ -56,7 +88,7 @@ ${JSON.stringify(system_metadata.app_state_snapshot, null, 2)}
 ${system_metadata.console_logs && system_metadata.console_logs.length > 0 
   ? system_metadata.console_logs.join('\n') 
   : 'Geen console logs geregistreerd.'}
-\`\`\`
+\`\`\`${attachmentMarkdown}
     `.trim();
 
     // 4. Send request to GitHub API

@@ -232,6 +232,11 @@ function renderBugForm() {
       </div>
       
       <div class="form-group">
+        <label for="bug-image">Schermafbeelding toevoegen (optioneel)</label>
+        <input type="file" id="bug-image" class="form-control" accept="image/*" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); padding: 8px; color: var(--text-secondary);">
+      </div>
+
+      <div class="form-group">
         <label for="bug-priority">Prioriteit</label>
         <select id="bug-priority" class="form-control" required style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass);">
           <option value="Laag">Laag</option>
@@ -283,6 +288,28 @@ async function handleBugSubmit(e) {
   // Show Loading Spinner
   renderLoading();
 
+  // Read image file as base64 (if provided)
+  const fileInput = document.getElementById('bug-image');
+  let base64Image = null;
+  let imageFileName = null;
+  if (fileInput && fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    imageFileName = file.name;
+    try {
+      base64Image = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+      });
+    } catch (err) {
+      console.warn("Kon afbeelding niet inlezen:", err);
+    }
+  }
+
   // Aggregate Metadata
   const metadata = collectSystemMetadata();
 
@@ -309,6 +336,11 @@ async function handleBugSubmit(e) {
     status: 'open',
     assigned_to: 'google-antigravity'
   };
+
+  if (base64Image) {
+    payload.image_data = base64Image;
+    payload.image_filename = imageFileName;
+  }
 
   try {
     const response = await fetch('/api/report-bug', {
