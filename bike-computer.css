@@ -241,55 +241,16 @@
   box-shadow: 0 4px 15px rgba(212, 255, 0, 0.3);
 }
 
-/* Stop/Save button with long-press indicator */
-.bc-btn-stop-wrapper {
-  position: relative;
-  width: 80px;
-  height: 80px;
-}
-
-.bc-btn-stop {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
+/* Paused state control buttons */
+.bc-btn-discard {
   background: #ef4444;
-  border: none;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
-  z-index: 2;
-  cursor: pointer;
   box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-  transition: transform 0.2s ease;
 }
 
-.bc-btn-stop:active {
-  transform: scale(0.95);
-}
-
-/* Long press progress ring */
-.bc-progress-ring {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 80px;
-  height: 80px;
-  transform: rotate(-90deg);
-  z-index: 1;
-  pointer-events: none;
-}
-
-.bc-progress-ring-circle {
-  stroke: var(--primary);
-  stroke-dasharray: 226; /* Circumference of circle with r=36 is 2*PI*36 = 226.19 */
-  stroke-dashoffset: 226;
-  transition: stroke-dashoffset 0.1s linear;
+.bc-btn-save {
+  background: var(--secondary);
+  color: var(--text-on-primary);
+  box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
 }
 
 /* Floating bottom nav play button */

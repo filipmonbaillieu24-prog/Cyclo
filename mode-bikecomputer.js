@@ -40,10 +40,9 @@ let locatorMarker = null;
 let routePolyline = null;
 let selectedRouteCoords = null;
 
-// Long Press Save Button
-let longPressTimer = null;
-let longPressStart = null;
-const LONG_PRESS_DURATION = 3000; // 3 seconds
+// Simulator GPS Interval
+let simGpsInterval = null;
+
 
 // ─── 1. ENTRY POINT: Start Bike Computer Mode ─────────────────────────────
 export function startBikeComputerMode() {
@@ -176,21 +175,26 @@ function startRideTracking(routeName) {
 
     <!-- Controls -->
     <div class="bc-controls">
-      <!-- Pause/Resume Button -->
+      <!-- Active state: Pause button only -->
       <button class="bc-btn bc-btn-pause" id="btn-bc-pause" title="Pauzeer">
         <i data-lucide="pause"></i>
       </button>
-      <button class="bc-btn bc-btn-resume" id="btn-bc-resume" title="Hervat" style="display: none;">
-        <i data-lucide="play"></i>
-      </button>
 
-      <!-- Stop/Save (Long press 3s) -->
-      <div class="bc-btn-stop-wrapper">
-        <svg class="bc-progress-ring" width="80" height="80">
-          <circle class="bc-progress-ring-circle" stroke-width="4" fill="transparent" r="36" cx="40" cy="40"/>
-        </svg>
-        <button class="bc-btn-stop" id="btn-bc-stop" title="Stop & Sla op">
-          <i data-lucide="square" style="width:20px;height:20px;fill:#fff;"></i>
+      <!-- Paused state: Discard, Resume, Save buttons -->
+      <div id="bc-paused-controls" style="display: none; width: 100%; justify-content: center; gap: 20px; align-items: center;">
+        <!-- Discard Button -->
+        <button class="bc-btn bc-btn-discard" id="btn-bc-discard" title="Rit annuleren/verwerpen">
+          <i data-lucide="trash-2"></i>
+        </button>
+
+        <!-- Resume Button -->
+        <button class="bc-btn bc-btn-resume" id="btn-bc-resume" title="Hervat">
+          <i data-lucide="play"></i>
+        </button>
+
+        <!-- Save Button -->
+        <button class="bc-btn bc-btn-save" id="btn-bc-save" title="Rit opslaan">
+          <i data-lucide="check"></i>
         </button>
       </div>
     </div>
@@ -221,16 +225,34 @@ function startRideTracking(routeName) {
         lbl.textContent = isSim ? "Simulator" : text;
         badge.classList.toggle('connected', connected);
       }
+
+      // Dynamic GPS watch switcher: Switch between hardware watch and simulator depending on sensor sim status
+      if (isRunning && !isPaused) {
+        if (isSim) {
+          if (!simGpsInterval) {
+            if (gpsWatchId !== null) {
+              navigator.geolocation.clearWatch(gpsWatchId);
+              gpsWatchId = null;
+            }
+            startGpsSimulation();
+          }
+        } else {
+          if (simGpsInterval) {
+            clearInterval(simGpsInterval);
+            simGpsInterval = null;
+            startGpsWatch();
+          }
+        }
+      }
     }
   });
 
   // Bind Buttons
   document.getElementById('btn-bc-sensors').addEventListener('click', openSensorDialog);
   document.getElementById('btn-bc-pause').addEventListener('click', pauseRideTracking);
-  document.getElementById('btn-bc-resume').addEventListener('click', resumeRideTracking);
 
-  // Setup Long-Press Save Buttons
-  setupLongPressSave();
+  // Setup Paused Controls (Discard, Resume, Save)
+  setupPausedControls();
 
   // Initialize Map
   initNavigationMap();
@@ -244,66 +266,126 @@ function startRideTracking(routeName) {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// ─── 4. GPS & GEOLOCATION WATCH ──────────────────────────────────────────
+// ─── 4. GPS & GEOLOCATION WATCH & SIMULATOR ─────────────────────────────────
+function startGpsSimulation() {
+  if (simGpsInterval) clearInterval(simGpsInterval);
+
+  let simLat = lastCoord ? lastCoord.lat : (bcMap ? bcMap.getCenter().lat : 51.0504);
+  let simLng = lastCoord ? lastCoord.lng : (bcMap ? bcMap.getCenter().lng : 3.7378);
+  let simAlt = lastCoord ? lastCoord.alt : 15;
+  let bearing = Math.random() * 2 * Math.PI;
+
+  let routeIdx = 0;
+  if (selectedRouteCoords && selectedRouteCoords.length > 0) {
+    simLat = selectedRouteCoords[0].lat;
+    simLng = selectedRouteCoords[0].lng;
+    simAlt = selectedRouteCoords[0].alt || 15;
+  }
+
+  simGpsInterval = setInterval(() => {
+    if (isPaused || !isRunning) return;
+
+    let nextLat = simLat;
+    let nextLng = simLng;
+    let nextAlt = simAlt;
+    let currentSpeed = 7 + Math.random() * 4; // m/s (~25-40 km/h)
+
+    if (selectedRouteCoords && selectedRouteCoords.length > 0) {
+      routeIdx = (routeIdx + 1) % selectedRouteCoords.length;
+      const target = selectedRouteCoords[routeIdx];
+      nextLat = target.lat;
+      nextLng = target.lng;
+      nextAlt = target.alt || 15;
+
+      if (lastCoord) {
+        const dist = calculateHaversineDistance(lastCoord.lat, lastCoord.lng, nextLat, nextLng);
+        currentSpeed = (dist * 1000) / 2; // 2s interval
+      }
+    } else {
+      bearing += (Math.random() - 0.5) * 0.4;
+      const distStep = (currentSpeed * 2) / 1000; // km in 2s
+      const dLat = (distStep * Math.cos(bearing)) / 111.1;
+      const dLng = (distStep * Math.sin(bearing)) / (111.1 * Math.cos(simLat * Math.PI / 180));
+
+      nextLat = simLat + dLat;
+      nextLng = simLng + dLng;
+      nextAlt = simAlt + (Math.random() - 0.5) * 1.5;
+    }
+
+    simLat = nextLat;
+    simLng = nextLng;
+    simAlt = nextAlt;
+
+    const mockPosition = {
+      coords: {
+        latitude: simLat,
+        longitude: simLng,
+        speed: currentSpeed,
+        altitude: simAlt
+      },
+      timestamp: Date.now()
+    };
+
+    onGpsSuccess(mockPosition);
+  }, 2000);
+}
+
+function onGpsSuccess(position) {
+  if (isPaused) return;
+
+  const { latitude, longitude, speed, altitude } = position.coords;
+  const currentSpeedKmh = speed ? (speed * 3.6) : 0;
+  
+  // Update Speed display
+  const speedEl = document.getElementById('bc-speed');
+  if (speedEl) speedEl.textContent = currentSpeedKmh.toFixed(1);
+
+  const alt = altitude !== undefined && altitude !== null ? altitude : null;
+  const newCoord = { lat: latitude, lng: longitude, alt };
+
+  if (lastCoord) {
+    const dist = calculateHaversineDistance(lastCoord.lat, lastCoord.lng, newCoord.lat, newCoord.lng);
+    // Ignore extreme jumps (> 200m in one update) to filter GPS spikes
+    if (dist < 0.2) {
+      distanceKm += dist;
+    }
+  }
+
+  lastCoord = newCoord;
+  coordsArray.push(newCoord);
+
+  // Update distance UI
+  const distEl = document.getElementById('bc-distance');
+  if (distEl) distEl.textContent = distanceKm.toFixed(2);
+
+  // Update Leaflet marker and path
+  updateMapPosition(newCoord);
+}
+
 function startGpsWatch() {
+  if (isSimulatorActive) {
+    startGpsSimulation();
+    return;
+  }
+
+  if (simGpsInterval) {
+    clearInterval(simGpsInterval);
+    simGpsInterval = null;
+  }
+
   if (!navigator.geolocation) {
     showToast("GPS Geolocation is niet ondersteund door dit apparaat.", "error");
     return;
   }
 
-  const onGpsSuccess = (position) => {
-    if (isPaused) return;
-
-    const { latitude, longitude, speed, altitude } = position.coords;
-    const currentSpeedKmh = speed ? (speed * 3.6) : 0;
-    
-    // Update Speed display
-    const speedEl = document.getElementById('bc-speed');
-    if (speedEl) speedEl.textContent = currentSpeedKmh.toFixed(1);
-
-    const alt = altitude !== undefined && altitude !== null ? altitude : null;
-    const newCoord = { lat: latitude, lng: longitude, alt };
-
-    if (lastCoord) {
-      // Haversine distance
-      const dist = calculateHaversineDistance(lastCoord.lat, lastCoord.lng, newCoord.lat, newCoord.lng);
-      distanceKm += dist;
-    }
-
-    lastCoord = newCoord;
-    coordsArray.push(newCoord);
-
-    // Update distance UI
-    const distEl = document.getElementById('bc-distance');
-    if (distEl) distEl.textContent = distanceKm.toFixed(2);
-
-    // Update Leaflet marker and path
-    updateMapPosition(newCoord);
-  };
-
   const onGpsError = (err) => {
-    console.warn("GPS Geolocation error (high accuracy):", err.message);
-    if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
-      showToast("Wachten op GPS signaal...", "info");
-      
-      // Clear active watch and restart with lower accuracy fallback
-      if (gpsWatchId !== null) {
-        navigator.geolocation.clearWatch(gpsWatchId);
-      }
-      gpsWatchId = navigator.geolocation.watchPosition(
-        onGpsSuccess,
-        (err2) => {
-          console.error("GPS Geolocation fallback error:", err2.message);
-          showToast("GPS fout: " + err2.message, "error");
-        },
-        {
-          enableHighAccuracy: false,
-          maximumAge: 5000,
-          timeout: 15000
-        }
-      );
+    console.warn("GPS Geolocation watch error:", err.message);
+    if (err.code === err.PERMISSION_DENIED) {
+      showToast("GPS toegang geweigerd. Schakel locatievoorzieningen in.", "error");
+    } else if (err.code === err.TIMEOUT) {
+      console.log("GPS watch timeout - device still acquiring lock...");
     } else {
-      showToast("GPS fout: " + err.message, "error");
+      console.log("GPS error: " + err.message);
     }
   };
 
@@ -312,8 +394,8 @@ function startGpsWatch() {
     onGpsError,
     {
       enableHighAccuracy: true,
-      maximumAge: 1000,
-      timeout: 8000
+      maximumAge: 0,
+      timeout: 30000
     }
   );
 }
@@ -337,11 +419,23 @@ function initNavigationMap() {
     return;
   }
 
+  // Fallback to user's last recorded ride location if available, or default to Ghent
+  let defaultLat = 51.0504;
+  let defaultLng = 3.7378;
+
+  if (state.activities && state.activities.length > 0) {
+    const lastAct = state.activities.find(a => a.coordinates && a.coordinates.length > 0);
+    if (lastAct) {
+      defaultLat = lastAct.coordinates[0].lat;
+      defaultLng = lastAct.coordinates[0].lng;
+    }
+  }
+
   // Create Leaflet Map Instance
   bcMap = L.map('bike-computer-map', {
     zoomControl: false,
     attributionControl: false
-  }).setView([51.0504, 3.7378], 14); // Default to Ghent, Belgium
+  }).setView([defaultLat, defaultLng], 14);
 
   // Add dark maps layer
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -359,7 +453,19 @@ function initNavigationMap() {
 
     bcMap.fitBounds(routePolyline.getBounds(), { padding: [15, 15] });
   } else {
-    // Get current position immediately to center the map
+    // 1. Try IP Geolocation immediately for fast centering
+    fetch('https://ipapi.co/json/')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.latitude && data.longitude) {
+          if (bcMap && !selectedRouteCoords && !lastCoord) {
+            bcMap.setView([data.latitude, data.longitude], 14);
+          }
+        }
+      })
+      .catch(err => console.warn("IP Geolocation lookup failed:", err));
+
+    // 2. Try actual browser position as well
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -374,7 +480,7 @@ function initNavigationMap() {
         {
           enableHighAccuracy: false,
           maximumAge: 10000,
-          timeout: 5000
+          timeout: 4000
         }
       );
     }
@@ -448,10 +554,14 @@ function pauseRideTracking() {
     navigator.geolocation.clearWatch(gpsWatchId);
     gpsWatchId = null;
   }
+  if (simGpsInterval) {
+    clearInterval(simGpsInterval);
+    simGpsInterval = null;
+  }
 
   // Toggle buttons
   document.getElementById('btn-bc-pause').style.display = 'none';
-  document.getElementById('btn-bc-resume').style.display = 'flex';
+  document.getElementById('bc-paused-controls').style.display = 'flex';
   
   showToast("Rit gepauzeerd", "info");
 }
@@ -466,60 +576,84 @@ function resumeRideTracking() {
   startGpsWatch();
 
   // Toggle buttons
-  document.getElementById('btn-bc-resume').style.display = 'none';
+  document.getElementById('bc-paused-controls').style.display = 'none';
   document.getElementById('btn-bc-pause').style.display = 'flex';
 
   showToast("Rit hervat", "success");
 }
 
-// ─── 7. LONG PRESS STOP/SAVE LOGIC ─────────────────────────────────────────
-function setupLongPressSave() {
-  const stopBtn = document.getElementById('btn-bc-stop');
-  const circle = document.querySelector('.bc-progress-ring-circle');
-  if (!stopBtn || !circle) return;
+// ─── 7. PAUSED STATE CONTROLS (Discard, Resume, Save) ───────────────────────
+function setupPausedControls() {
+  const discardBtn = document.getElementById('btn-bc-discard');
+  const resumeBtn = document.getElementById('btn-bc-resume');
+  const saveBtn = document.getElementById('btn-bc-save');
 
-  const startPress = (e) => {
-    e.preventDefault();
-    if (!isRunning) return;
-
-    longPressStart = Date.now();
-    circle.style.transition = `stroke-dashoffset ${LONG_PRESS_DURATION}ms linear`;
-    circle.style.strokeDashoffset = '0'; // Fill path
-
-    longPressTimer = setTimeout(() => {
-      // Completed 3 seconds! Save ride
-      saveAndEndRide();
-    }, LONG_PRESS_DURATION);
-  };
-
-  const cancelPress = () => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-    circle.style.transition = 'stroke-dashoffset 0.15s ease';
-    circle.style.strokeDashoffset = '226'; // Reset path
-    longPressStart = null;
-  };
-
-  // Touch Events (mobile first)
-  stopBtn.addEventListener('touchstart', startPress);
-  stopBtn.addEventListener('touchend', cancelPress);
-  stopBtn.addEventListener('touchcancel', cancelPress);
-  
-  // Mouse Events fallback
-  stopBtn.addEventListener('mousedown', startPress);
-  stopBtn.addEventListener('mouseup', cancelPress);
-  stopBtn.addEventListener('mouseleave', cancelPress);
+  if (discardBtn) {
+    discardBtn.addEventListener('click', discardRideTracking);
+  }
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', resumeRideTracking);
+  }
+  if (saveBtn) {
+    saveBtn.addEventListener('click', saveAndEndRide);
+  }
 }
 
-async function saveAndEndRide() {
+function discardRideTracking() {
+  if (!confirm("Wilt u deze rit annuleren? Alle opgenomen gegevens worden verwijderd.")) {
+    return;
+  }
+  
   isRunning = false;
+  isPaused = false;
   
   // Stop watch and timers
   if (gpsWatchId !== null) {
     navigator.geolocation.clearWatch(gpsWatchId);
     gpsWatchId = null;
+  }
+  if (simGpsInterval) {
+    clearInterval(simGpsInterval);
+    simGpsInterval = null;
+  }
+  if (durationInterval) {
+    clearInterval(durationInterval);
+    durationInterval = null;
+  }
+
+  // Release Wake Lock
+  releaseScreenWakeLock();
+
+  // Disconnect BLE
+  disconnectAll();
+
+  // Reset Leaflet Map
+  if (bcMap) {
+    bcMap.remove();
+    bcMap = null;
+    bikePathPolyline = null;
+    locatorMarker = null;
+    routePolyline = null;
+  }
+
+  showToast("Rit geannuleerd", "info");
+  exitBikeComputerMode();
+}
+
+
+
+async function saveAndEndRide() {
+  isRunning = false;
+  isPaused = false;
+  
+  // Stop watch and timers
+  if (gpsWatchId !== null) {
+    navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId = null;
+  }
+  if (simGpsInterval) {
+    clearInterval(simGpsInterval);
+    simGpsInterval = null;
   }
   if (durationInterval) {
     clearInterval(durationInterval);
