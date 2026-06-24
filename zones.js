@@ -61,10 +61,12 @@ export function estimateMaxHR(profile, activities) {
   if (profile && profile.birthdate) {
     const birth = new Date(profile.birthdate);
     const age = new Date().getFullYear() - birth.getFullYear();
-    if (profile.gender === 'Female') {
-      maxHR = Math.round(206 - 0.88 * age);
-    } else {
-      maxHR = Math.round(208 - 0.7 * age);
+    if (!isNaN(age)) {
+      if (profile.gender === 'Female') {
+        maxHR = Math.round(206 - 0.88 * age);
+      } else {
+        maxHR = Math.round(208 - 0.7 * age);
+      }
     }
   }
 
@@ -321,9 +323,11 @@ export function calculateMMP(activities) {
     if (profile.birthdate) {
       const birth = new Date(profile.birthdate);
       const age = new Date().getFullYear() - birth.getFullYear();
-      exponent += (age - 30) * 0.0003;
+      if (!isNaN(age)) {
+        exponent += (age - 30) * 0.0003;
+      }
     }
-    if (profile.height) {
+    if (profile.height && !isNaN(profile.height)) {
       exponent += (profile.height - 180) * 0.0001;
     }
   }
@@ -377,8 +381,8 @@ const VO2_CATEGORIES = [
 ];
 
 export function estimateVO2max(activities, profile) {
-  const weight  = profile?.weight || 70;
-  const height  = profile?.height || 175;
+  const weight  = (profile?.weight && !isNaN(profile.weight)) ? parseFloat(profile.weight) : 70;
+  const height  = (profile?.height && !isNaN(profile.height)) ? parseFloat(profile.height) : 175;
   const ftp     = state.user?.ftp;
   const maxHR   = state.user?.maxHR || 190;
   let performanceVO2 = null;
@@ -388,7 +392,10 @@ export function estimateVO2max(activities, profile) {
   let age = 30;
   if (profile && profile.birthdate) {
     const birth = new Date(profile.birthdate);
-    age = new Date().getFullYear() - birth.getFullYear();
+    const parsedAge = new Date().getFullYear() - birth.getFullYear();
+    if (!isNaN(parsedAge)) {
+      age = parsedAge;
+    }
   }
   let clinicalVO2 = 45; // default clinical baseline
   if (profile?.gender === 'Female') {

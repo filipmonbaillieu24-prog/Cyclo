@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
     let attachmentMarkdown = '';
     if (image_data && image_filename) {
       try {
-        const uploadUrl = `https://api.github.com/repos/filipmonbaillieu24-prog/Cyclo/contents/bug-reports/images/${id}_${image_filename}`;
+        const uploadUrl = `https://api.github.com/repos/filipmonbaillieu24-prog/Cyclo/contents/bug-reports/images/${id}_${encodeURIComponent(image_filename)}`;
         const uploadResponse = await fetch(uploadUrl, {
           method: 'PUT',
           headers: {
@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
         });
 
         if (uploadResponse.ok) {
-          const rawUrl = `https://raw.githubusercontent.com/filipmonbaillieu24-prog/Cyclo/main/bug-reports/images/${id}_${image_filename}`;
+          const rawUrl = `https://raw.githubusercontent.com/filipmonbaillieu24-prog/Cyclo/main/bug-reports/images/${id}_${encodeURIComponent(image_filename)}`;
           attachmentMarkdown = `\n\n## Attachment\n![Screenshot](${rawUrl})`;
         } else {
           const errText = await uploadResponse.text();

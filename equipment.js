@@ -178,6 +178,7 @@ export function checkMaintenanceWarnings(equipment) {
     let daysElapsed = 120;
     if (item.sealant_last_replaced) {
       daysElapsed = Math.floor((new Date() - new Date(item.sealant_last_replaced)) / (1000 * 60 * 60 * 24));
+      if (isNaN(daysElapsed)) daysElapsed = 120;
     }
     const sealantPct = daysElapsed / 120;
     if (sealantPct >= 0.9) {
@@ -241,6 +242,7 @@ export async function renderEquipmentSection() {
     let daysElapsed = 120;
     if (item.sealant_last_replaced) {
       daysElapsed = Math.floor((new Date() - new Date(item.sealant_last_replaced)) / (1000 * 60 * 60 * 24));
+      if (isNaN(daysElapsed)) daysElapsed = 120;
     }
     const sealantPct = Math.min(1, daysElapsed / 120);
     const sealantColor = sealantPct >= 0.9 ? '#f87171' : sealantPct >= 0.8 ? '#fb923c' : 'var(--primary)';

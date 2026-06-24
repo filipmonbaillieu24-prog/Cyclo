@@ -39,9 +39,13 @@ function updatePhysicalWidget(profile) {
     let age = now.getFullYear() - birth.getFullYear();
     const m = now.getMonth() - birth.getMonth();
     if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-    ageEl.textContent = `${age} jaar`;
-    ageEl.style.display = 'inline';
-    hasAny = true;
+    if (!isNaN(age)) {
+      ageEl.textContent = `${age} jaar`;
+      ageEl.style.display = 'inline';
+      hasAny = true;
+    } else {
+      ageEl.style.display = 'none';
+    }
   } else {
     ageEl.style.display = 'none';
   }
