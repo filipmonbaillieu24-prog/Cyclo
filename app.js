@@ -88,6 +88,7 @@ export async function loadDashboardData() {
     state.profiles = profiles;
     
     // B. Profiel van huidige ingelogde gebruiker bijwerken in state/UI
+    if (!state.user) return; // Veiligheidscheck: stop als er geen ingelogde gebruiker is
     const currentProfile = profiles.find(p => p.id === state.user.id);
     if (currentProfile) {
       state.user = currentProfile;
@@ -536,7 +537,24 @@ function setupEventListeners() {
       const rb = await import('./route-builder.js').catch(() => null);
       if (rb?.toggleRouteViewMode) rb.toggleRouteViewMode();
     });
-    
+
+    // Automatische Route Generator
+    document.getElementById('btn-generate-route')?.addEventListener('click', async () => {
+      const distInput = document.getElementById('auto-route-distance');
+      const surfSelect = document.getElementById('auto-route-surface');
+      const distKm = parseFloat(distInput?.value) || 60;
+      const surface = surfSelect?.value || 'asphalt';
+      if (distKm < 5 || distKm > 300) {
+        showToast('Voer een afstand in tussen 5 en 300 km', 'error');
+        return;
+      }
+      const generateBtn = document.getElementById('btn-generate-route');
+      if (generateBtn) { generateBtn.disabled = true; generateBtn.textContent = '⏳ Bezig...'; }
+      const rb = await import('./route-builder.js').catch(() => null);
+      if (rb?.generateRandomLoop) await rb.generateRandomLoop(distKm, surface);
+      if (generateBtn) { generateBtn.disabled = false; generateBtn.innerHTML = '<i data-lucide="shuffle" style="width:13px;height:13px;"></i> Genereer'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
+    });
+
     // Import GPX knoppen
     const importGpxBtn = document.getElementById('btn-import-gpx');
     const gpxUploadInput = document.getElementById('route-gpx-upload');

@@ -373,6 +373,20 @@
               </div>
             </div>
             <div id="route-builder-content" style="margin-top:14px;">
+              <!-- Automatische Route Generator -->
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;padding:10px 12px;background:rgba(212,255,0,0.06);border:1px solid rgba(212,255,0,0.2);border-radius:10px;">
+                <i data-lucide="shuffle" style="width:14px;height:14px;color:var(--primary);flex-shrink:0;"></i>
+                <span style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;">Auto Rondje</span>
+                <input type="number" id="auto-route-distance" class="form-control" placeholder="km" min="5" max="300" value="60"
+                  style="width:72px;flex-shrink:0;padding:6px 8px;font-size:13px;">
+                <select id="auto-route-surface" class="form-control" style="flex:1;min-width:100px;padding:6px 8px;font-size:13px;">
+                  <option value="asphalt">🛣️ Asfalt</option>
+                  <option value="gravel">🪨 Gravel</option>
+                </select>
+                <button class="btn btn-primary btn-sm" id="btn-generate-route" style="white-space:nowrap;flex-shrink:0;">
+                  <i data-lucide="shuffle" style="width:13px;height:13px;"></i> Genereer
+                </button>
+              </div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
                 <input type="text" id="route-name-input" class="form-control" placeholder="Naam van de route..." style="flex:1;min-width:140px;">
                 <button class="btn btn-secondary btn-sm" id="btn-undo-waypoint" disabled>
@@ -392,6 +406,7 @@
                 </button>
                 <input type="file" id="route-gpx-upload" accept=".gpx" style="display:none;">
               </div>
+
               <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
                 <div class="route-stat-badge">
                   <span class="val" id="route-distance">—</span>

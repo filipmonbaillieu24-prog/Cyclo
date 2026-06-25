@@ -2,6 +2,8 @@
 import { state, config, showToast } from './state.js';
 import { saveActivity } from './activities.js';
 import { loadDashboardData } from './app.js';
+import { nutritionEngine } from './nutrition-engine.js';
+import { getSuggestedWorkoutForToday } from './training-engine.js';
 import {
   registerCallbacks,
   connectHeartRate,
@@ -70,9 +72,21 @@ function renderSetupPanel() {
   
   // Verzamel routes
   const myActivities = (state.activities || []).filter(a => a.user_id === state.user?.id && a.coordinates && a.coordinates.length > 0);
-  const plannedRides = (state.rides || []).filter(r => r.coordinates && r.coordinates.length > 0); // hypothetical GPX routes linked to rides
+  const plannedRides = (state.rides || []).filter(r => r.coordinates && r.coordinates.length > 0);
 
-  // Combineer routes
+  // Geplande ritten waaraan de gebruiker deelneemt (voor companion kamer)
+  const myUserId = state.user?.id;
+  const joinedRides = (state.rides || []).filter(r => {
+    if (!myUserId) return false;
+    const today = new Date().toISOString().split('T')[0];
+    if (r.date < today) return false; // Alleen huidige of toekomstige ritten
+    const participants = r.ride_participants
+      ? r.ride_participants.map(p => p.user_id)
+      : (r.participants || []);
+    return participants.includes(myUserId);
+  });
+
+  // Combineer navigatie-routes
   const routesList = [];
   myActivities.forEach(a => routesList.push({ id: a.id, name: `Rit: ${a.name}`, coords: a.coordinates, isRide: false }));
   plannedRides.forEach(r => routesList.push({ id: r.id, name: `Geplande rit: ${r.title}`, coords: r.coordinates, isRide: true }));
@@ -101,7 +115,39 @@ function renderSetupPanel() {
         ${routesList.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
       </select>
 
-      <button class="btn btn-primary" id="btn-bc-start-ride" style="width: 100%; max-width: 320px; padding: 14px; border-radius: var(--radius-lg); font-size: 15px; font-weight: 700;">
+      ${joinedRides.length > 0 ? `
+      <label style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 16px; margin-bottom: 8px;">Rij mee met Geplande Rit</label>
+      <select id="bc-group-ride-select" class="form-control bc-select-control">
+        <option value="">-- Vrije Rit (Geen groep) --</option>
+        ${joinedRides.map(r => {
+          const dateStr = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(r.date));
+          const participants = r.ride_participants ? r.ride_participants.length : (r.participants?.length || 0);
+          return `<option value="${r.id}">${r.title} (${dateStr}) · ${participants} deelnemers</option>`;
+        }).join('')}
+      </select>
+      <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px; margin-bottom: 4px;">👥 Iedereen die dezelfde rit selecteert, ziet jou live op de kaart</div>
+      ` : ''}
+
+      <label style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 16px; margin-bottom: 8px;">Voeding & Hydratatie</label>
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 320px; margin-bottom: 16px; background: rgba(255,255,255,0.05); padding: 10px 14px; border-radius: 10px;">
+        <div>
+          <div style="font-size: 13px; font-weight: 600; color: #fff;">Voedings- & Hydratatie Alerts</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Herinnering elke 15–45 min</div>
+        </div>
+        <label class="switch" style="flex-shrink:0;">
+          <input type="checkbox" id="bc-nutrition-toggle" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+
+      <label style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 16px; margin-bottom: 8px;">Koppel Training (Optioneel)</label>
+      <select id="bc-training-select" class="form-control bc-select-control">
+        <option value="">-- Geen Training --</option>
+        ${getSuggestedWorkoutForToday() ? `<option value="suggested">Voorgesteld: ${getSuggestedWorkoutForToday()}</option>` : ''}
+      </select>
+
+      <button class="btn btn-primary" id="btn-bc-start-ride" style="width: 100%; max-width: 320px; padding: 14px; border-radius: var(--radius-lg); font-size: 15px; font-weight: 700; margin-top: 20px;">
         <i data-lucide="play" style="width: 16px; height: 16px; fill: var(--text-on-primary);"></i> Start Training
       </button>
       
@@ -118,10 +164,34 @@ function renderSetupPanel() {
     const selectedRoute = routesList.find(r => r.id === selectedId);
     selectedRouteCoords = selectedRoute ? selectedRoute.coords : null;
     activeRouteCueSheet = selectedRoute ? selectedRoute.cueSheet : null;
-    activeRideId = (selectedRoute && selectedRoute.isRide) ? selectedRoute.id : 'free-ride';
+
+    // Companion kamer: gebruik geplande rit ID als WebSocket kamer (zodat deelnemers elkaar zien)
+    const groupSelect = document.getElementById('bc-group-ride-select');
+    const selectedGroupRideId = groupSelect ? groupSelect.value : '';
+    if (selectedGroupRideId) {
+      activeRideId = selectedGroupRideId;
+    } else if (selectedRoute && selectedRoute.isRide) {
+      activeRideId = selectedRoute.id;
+    } else {
+      activeRideId = 'free-ride';
+    }
+
     const routeName = selectedRoute 
       ? (selectedRoute.id === 'active-builder' ? selectedRoute.name : (selectedRoute.isRide ? selectedRoute.name.substring(14) : selectedRoute.name.substring(5)))
-      : "Vrije Rit";
+      : (selectedGroupRideId ? (joinedRides.find(r => r.id === selectedGroupRideId)?.title || 'Groepsrit') : "Vrije Rit");
+    
+    // Check nutrition toggle
+    const nutritionToggle = document.getElementById('bc-nutrition-toggle');
+    nutritionEngine.isAlertingEnabled = nutritionToggle ? nutritionToggle.checked : true;
+    nutritionEngine.start(state.weather?.temperature || 20);
+
+    // Save selected training session
+    const trainingSelect = document.getElementById('bc-training-select');
+    if (trainingSelect && trainingSelect.value === 'suggested') {
+       state.activeTrainingSession = getSuggestedWorkoutForToday();
+    } else {
+       state.activeTrainingSession = null;
+    }
     
     startRideTracking(routeName);
   });
@@ -228,6 +298,28 @@ function startRideTracking(routeName) {
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Companion Riders Side Panel -->
+    <div id="bc-companion-panel" style="
+      position: absolute;
+      top: 64px;
+      right: 10px;
+      width: 160px;
+      max-height: 50vh;
+      overflow-y: auto;
+      background: rgba(10, 15, 28, 0.82);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 8px;
+      color: #fff;
+      font-size: 11px;
+      display: none;
+      z-index: 800;
+    ">
+      <div style="font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.05em;">Rijders nabij</div>
+      <div id="bc-companion-list"></div>
     </div>
   `;
 
@@ -490,6 +582,42 @@ function handleIncomingTelemetry(data) {
     // Update tooltip
     marker.setTooltipContent(tooltipContent);
   }
+
+  // Update companion side panel
+  updateCompanionPanel(data);
+}
+
+// Track companion data for side panel
+const companionData = {};
+function updateCompanionPanel(data) {
+  companionData[data.user_id] = data;
+
+  const panel = document.getElementById('bc-companion-panel');
+  const list = document.getElementById('bc-companion-list');
+  if (!panel || !list) return;
+
+  const entries = Object.values(companionData);
+  if (entries.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+  list.innerHTML = entries.map(c => `
+    <div style="display:flex; align-items:center; gap:6px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+      <img src="${c.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + c.user_id}"
+           style="width:22px; height:22px; border-radius:50%; object-fit:cover; flex-shrink:0;"
+           onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${c.user_id}'"/>
+      <div style="flex:1; min-width:0;">
+        <div style="font-weight:700; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.full_name || ('@' + c.username)}</div>
+        <div style="display:flex; gap:5px; color:#94a3b8; font-size:9px; margin-top:1px;">
+          <span style="color:#ef4444;">❤️${c.hr || 0}</span>
+          <span style="color:#d4ff00;">⚡${c.watts || 0}W</span>
+          <span style="color:#00b4d8;">🚴${c.speed || 0}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
 }
 
 function animateCompanionMarker(marker, startLatLng, endLatLng, duration) {
@@ -666,11 +794,11 @@ function updateMapPosition(newCoord) {
       iconAnchor: [9, 9]
     });
     locatorMarker = L.marker(latLng, { icon: locatorIcon }).addTo(bcMap);
-    bcMap.setView(latLng, 16);
+    bcMap.setView(latLng, 17); // Zoom 17: straatniveau, goed leesbaar
   } else {
     locatorMarker.setLatLng(latLng);
-    // Smoothly pan map to follow cyclist
-    bcMap.panTo(latLng);
+    // Pan kaart mee met gebruiker — gebruik flyTo voor vloeiende animatie
+    bcMap.flyTo(latLng, bcMap.getZoom(), { animate: true, duration: 0.8 });
   }
 }
 
@@ -692,6 +820,19 @@ function startDurationTimer() {
       const sDisplay = seconds < 10 ? `0${seconds}` : `${seconds}`;
       
       durEl.textContent = `${hDisplay}${mDisplay}${sDisplay}`;
+    }
+
+    // Nutrition Engine Update
+    const nutritionAlert = nutritionEngine.update(currentHr, currentPower);
+    if (nutritionAlert) {
+      if (nutritionAlert.type === 'drink') {
+        showToast(nutritionAlert.message, 'info');
+        // Play sound if possible
+      } else if (nutritionAlert.type === 'eat') {
+        showToast(nutritionAlert.message, 'success');
+      } else if (nutritionAlert.type === 'alert') {
+        showToast(nutritionAlert.message, 'error');
+      }
     }
   }, 1000);
 }

@@ -1273,3 +1273,69 @@ export function toggleRouteViewMode() {
     drawRoutePolylines(lastCalculatedGeoCoords, lastCalculatedPointSurfaces, lastCalculatedWindClasses);
   }
 }
+
+// ─── Automatische Ronde Generator ────────────────────────────────────────────
+/**
+ * Genereert automatisch een willekeurig rondje op basis van een gewenste afstand (km)
+ * en een voorkeur voor wegdektype (asphalt | gravel).
+ * 
+ * Algoritme:
+ *  1. Bereken straal r = distance / (2π × 0.75) — de 0.75 factor corrigeert voor niet-rechte wegen
+ *  2. Genereer 4 willekeurige waypoints op een cirkel rondom het kaartcentrum
+ *  3. Voeg startpunt toe als eindpunt om de lus te sluiten
+ *  4. Route via OSRM (fiets) — bij gravel wordt een extra willekeurige offset gebruikt
+ *     zodat OSRM meer onverharde paden selecteert
+ */
+export async function generateRandomLoop(distanceKm, surfaceType = 'asphalt') {
+  if (!builderMap) return;
+
+  // Startpunt = huidige kaartcentrum
+  const center = builderMap.getCenter();
+  const startLat = center.lat;
+  const startLng = center.lng;
+
+  // Bereken straal in graden (1° lat ≈ 111 km)
+  const radiusKm = distanceKm / (2 * Math.PI * 0.75);
+  const radiusDeg = radiusKm / 111;
+
+  // Aantal tussenpunten
+  const numPoints = 4;
+  const newWaypoints = [];
+
+  // Willekeurige rotatie zodat de lus elke keer anders is
+  const baseAngle = Math.random() * 360;
+
+  for (let i = 0; i < numPoints; i++) {
+    const angleDeg = baseAngle + (360 / numPoints) * i;
+    const angleRad = (angleDeg * Math.PI) / 180;
+
+    // Bij gravel: voeg extra willekeurige offset toe (zoekt meer onverharde paden)
+    const jitter = surfaceType === 'gravel' ? (Math.random() - 0.5) * radiusDeg * 0.6 : 0;
+
+    const lat = startLat + radiusDeg * Math.cos(angleRad) + jitter;
+    const lng = startLng + (radiusDeg * Math.sin(angleRad)) / Math.cos(startLat * Math.PI / 180) + jitter;
+
+    newWaypoints.push(L.latLng(lat, lng));
+  }
+
+  // Lus sluiten: voeg startpunt toe als eindpunt
+  newWaypoints.push(L.latLng(startLat, startLng));
+
+  // Reset bestaande route
+  waypoints = [];
+  waypointMarkers.forEach(m => m.remove());
+  waypointMarkers = [];
+  if (routeLayer) routeLayer.clearLayers();
+  currentRoute = null;
+
+  // Voeg alle waypoints toe (zonder individuele routing tussenin — calculateRoute doet dit na de laatste)
+  for (const wp of newWaypoints) {
+    addWaypoint(wp);
+  }
+
+  // Toon feedback
+  import('./state.js').then(st => {
+    st.showToast(`🔄 Rondje van ~${distanceKm} km gegenereerd (${surfaceType === 'gravel' ? 'Gravel' : 'Asfalt'})`, 'success');
+  });
+}
+

@@ -18,38 +18,58 @@ export async function fetchWeatherData(lat, lng) {
           temp: data.main.temp,
           windSpeedKmh: data.wind.speed * 3.6, // m/s naar km/h
           windDirection: data.wind.deg,
-          rainProb: data.clouds ? data.clouds.all : 0, // schatting op basis van bewolking
+          rainProb: data.clouds ? data.clouds.all : 0,
           condition: data.weather[0]?.main || 'Helder',
           isMock: false
         };
       }
     } catch (e) {
-      console.warn('OpenWeatherMap API request mislukt, fallback naar simulator:', e);
+      console.warn('OpenWeatherMap API request mislukt, fallback naar Open-Meteo:', e);
     }
   }
   
-  // Realistische mock weather fallback op basis van coördinaten (deterministisch maar natuurlijk)
-  const seed = Math.sin(lat * 12.9898 + lng * 78.233) * 43758.5453;
-  const rand = seed - Math.floor(seed);
+  // Gratis Open-Meteo fallback (geen API key vereist, altijd actuele data)
+  if (navigator.onLine) {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,windspeed_10m,winddirection_10m,precipitation_probability,weathercode&timezone=auto`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        const c = json.current;
+        const wmoConditions = {
+          0: 'Helder', 1: 'Helder', 2: 'Bewolkt', 3: 'Bewolkt',
+          45: 'Mist', 48: 'Mist',
+          51: 'Drizzle', 53: 'Drizzle', 55: 'Rain',
+          61: 'Rain', 63: 'Rain', 65: 'Rain',
+          71: 'Snow', 73: 'Snow', 75: 'Snow',
+          80: 'Rain', 81: 'Rain', 82: 'Rain',
+          95: 'Thunderstorm', 99: 'Thunderstorm'
+        };
+        return {
+          temp: c.temperature_2m,
+          windSpeedKmh: c.windspeed_10m,
+          windDirection: c.winddirection_10m,
+          rainProb: c.precipitation_probability || 0,
+          condition: wmoConditions[c.weathercode] || 'Helder',
+          isMock: false
+        };
+      }
+    } catch (e) {
+      console.warn('Open-Meteo request mislukt, gebruik vaste fallback:', e);
+    }
+  }
   
-  const temp = Math.round(13 + rand * 13); // 13°C tot 26°C
-  const windSpeedKmh = Math.round(4 + rand * 26); // 4 tot 30 km/h
-  const windDirection = Math.round(rand * 360); // 0 tot 360 graden
-  const rainProb = Math.round(rand * 70); // 0 tot 70% neerslag
-  
-  let condition = 'Helder';
-  if (rainProb > 45) condition = 'Regenachtig';
-  else if (rainProb > 20) condition = 'Bewolkt';
-  
+  // Laatste noodoplossing: vaste Belgische gemiddelden (offline of beide API's falen)
   return {
-    temp,
-    windSpeedKmh,
-    windDirection,
-    rainProb,
-    condition,
+    temp: 14,
+    windSpeedKmh: 15,
+    windDirection: 225,
+    rainProb: 30,
+    condition: 'Bewolkt',
     isMock: true
   };
 }
+
 
 
 // ─── 2. GEVOELSTEMPERATUUR & KLEDINGMATRIX ─────────

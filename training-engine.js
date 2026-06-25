@@ -269,3 +269,55 @@ export async function evaluateAndAdaptPlan(userId) {
   
   return planRecord;
 }
+
+// ─── 4. DAILY WORKOUT SUGGESTION ───────────────────
+
+export function getSuggestedWorkoutForToday() {
+  if (!state.user) return null;
+
+  // Determine current day of week in Dutch
+  const days = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
+  const todayName = days[new Date().getDay()];
+
+  let workout = null;
+
+  // Find workout in active plan
+  if (state.activeTrainingPlan && state.activeTrainingPlan.training_blocks) {
+    workout = state.activeTrainingPlan.training_blocks.find(b => b.day === todayName);
+  }
+
+  // Fallback if no specific workout today
+  if (!workout) {
+    // If it's a weekend, suggest endurance
+    if (todayName === 'Zaterdag' || todayName === 'Zondag') {
+      workout = { type: 'Duur', target: 'Endurance Ride', durationMin: 120, targetPower: '60-70% FTP' };
+    } else {
+      return null; // Rest day
+    }
+  }
+
+  // If user has no power meter (no FTP), convert power targets to HR/RPE
+  let intensityTarget = workout.targetPower;
+  if (!state.user.ftp) {
+    if (intensityTarget.includes('50%')) intensityTarget = 'Zone 1 HR (RPE 2-3)';
+    else if (intensityTarget.includes('75%')) intensityTarget = 'Zone 2 HR (RPE 4-5)';
+    else if (intensityTarget.includes('90%')) intensityTarget = 'Zone 3 HR (RPE 6-7)';
+    else if (intensityTarget.includes('105%')) intensityTarget = 'Zone 4 HR (RPE 8)';
+    else intensityTarget = 'Zone 2 HR (RPE 4-5)';
+  }
+
+  // Periodization string
+  let periodization = 'Base';
+  if (state.user.target_event_date) {
+    const eventDate = new Date(state.user.target_event_date);
+    const weeksToEvent = Math.floor((eventDate - new Date()) / (7 * 24 * 60 * 60 * 1000));
+    
+    if (weeksToEvent < 0) periodization = 'Post-Event Herstel';
+    else if (weeksToEvent <= 2) periodization = 'Taper';
+    else if (weeksToEvent <= 6) periodization = 'Peak';
+    else if (weeksToEvent <= 12) periodization = 'Build';
+    else periodization = 'Base';
+  }
+
+  return `[${periodization}] ${workout.durationMin}m ${workout.type} · Doel: ${intensityTarget}`;
+}

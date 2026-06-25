@@ -550,3 +550,47 @@
   box-shadow: 0 0 6px var(--accent);
   animation: bc-pulse-dot 1s infinite alternate;
 }
+
+/* ─── Toggle Switch for Nutrition Alerts ─────────────────────────── */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #334155;
+  transition: 0.3s;
+}
+.slider.round {
+  border-radius: 24px;
+}
+.slider.round::before {
+  border-radius: 50%;
+}
+.slider::before {
+  position: absolute;
+  content: '';
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #94a3b8;
+  transition: 0.3s;
+}
+input:checked + .slider {
+  background-color: var(--primary, #d4ff00);
+}
+input:checked + .slider::before {
+  transform: translateX(20px);
+  background-color: #0f172a;
+}
+
