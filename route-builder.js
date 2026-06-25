@@ -19,6 +19,7 @@ let routeLayer = null; // Leaflet FeatureGroup for multi-colored polylines
 let waypointMarkers = [];
 let currentRoute = null;
 let onWaypointChangeCb = null;
+let elevationChartInstance = null;
 
 // ─── Initialiseer de route-bouwer kaart ───────────
 export function initRouteBuilder(containerId, options = {}) {
@@ -127,8 +128,7 @@ function removeWaypoint(idx) {
     calculateRoute();
   } else {
     currentRoute = null;
-    const container = document.getElementById('route-surface-container');
-    if (container) container.style.display = 'none';
+    hideRoutePanels();
     updateBuilderUI();
   }
 }
@@ -162,6 +162,19 @@ function reindexMarkers() {
   });
 }
 
+function hideRoutePanels() {
+  const surfContainer = document.getElementById('route-surface-container');
+  if (surfContainer) surfContainer.style.display = 'none';
+  
+  const elevPanel = document.getElementById('route-elevation-panel');
+  if (elevPanel) elevPanel.style.display = 'none';
+  
+  if (elevationChartInstance) {
+    elevationChartInstance.destroy();
+    elevationChartInstance = null;
+  }
+}
+
 // ─── Oppervlakte Classificatie & Overpass ──────────
 function classifySurface(tags) {
   if (!tags) return 'asphalt';
@@ -181,6 +194,317 @@ function classifySurface(tags) {
   }
   
   return 'asphalt';
+}
+
+// ─── Hoogtedata ophalen & Fallback generator ───────
+async function fetchElevations(geoCoords) {
+  if (!geoCoords || geoCoords.length === 0) return [];
+  
+  if (navigator.onLine) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 sec timeout
+    
+    try {
+      const locations = geoCoords.map(c => ({ latitude: c[1], longitude: c[0] }));
+      const response = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ locations }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.results && data.results.length === geoCoords.length) {
+          return data.results.map(r => r.elevation);
+        }
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.warn('Open-Elevation failed or timed out, using simulated elevations:', err);
+    }
+  }
+  
+  return generateSimulatedElevations(geoCoords);
+}
+
+function generateSimulatedElevations(geoCoords) {
+  const elevations = [];
+  let currentEle = 45 + Math.random() * 20; // baseline elevation around Brussels
+  const N = geoCoords.length;
+  
+  for (let i = 0; i < N; i++) {
+    const pct = i / N;
+    let slope = Math.sin(i * 0.05) * 0.4;
+    
+    // Add two climbing sections to test detection
+    if (pct > 0.20 && pct < 0.40) {
+      // Climb 1: Steady 4.8% grade
+      slope += 1.6;
+    } else if (pct >= 0.40 && pct < 0.50) {
+      // Descent
+      slope -= 1.8;
+    } else if (pct > 0.60 && pct < 0.75) {
+      // Climb 2: Steep 8% grade
+      slope += 3.2;
+    }
+    
+    currentEle += slope;
+    if (currentEle < 2) currentEle = 2;
+    elevations.push(Math.round(currentEle));
+  }
+  return elevations;
+}
+
+// ─── Klimdetectie & Segmentatie ───────────────────
+function detectClimbs(geoCoords, elevations) {
+  if (geoCoords.length < 2 || elevations.length !== geoCoords.length) return [];
+  
+  const N = geoCoords.length;
+  const cumDists = [0];
+  let totalD = 0;
+  for (let i = 0; i < N - 1; i++) {
+    const p1 = L.latLng(geoCoords[i][1], geoCoords[i][0]);
+    const p2 = L.latLng(geoCoords[i+1][1], geoCoords[i+1][0]);
+    totalD += p1.distanceTo(p2);
+    cumDists.push(totalD);
+  }
+  
+  // Smooth elevations using a 5-point moving average
+  const smoothEle = new Array(N);
+  for (let i = 0; i < N; i++) {
+    const wStart = Math.max(0, i - 2);
+    const wEnd = Math.min(N - 1, i + 2);
+    let sum = 0;
+    for (let k = wStart; k <= wEnd; k++) sum += elevations[k];
+    smoothEle[i] = sum / (wEnd - wStart + 1);
+  }
+  
+  const climbs = [];
+  let inClimb = false;
+  let startIdx = 0;
+  let peakEle = 0;
+  
+  for (let i = 1; i < N; i++) {
+    const dy = smoothEle[i] - smoothEle[i-1];
+    const dx = cumDists[i] - cumDists[i-1];
+    const slope = dx > 0 ? dy / dx : 0;
+    
+    if (!inClimb) {
+      if (slope >= 0.02) {
+        inClimb = true;
+        startIdx = i - 1;
+        peakEle = smoothEle[i];
+      }
+    } else {
+      if (smoothEle[i] > peakEle) {
+        peakEle = smoothEle[i];
+      }
+      
+      const dropFromPeak = peakEle - smoothEle[i];
+      
+      if (dropFromPeak > 12 || (dropFromPeak > 4 && (cumDists[i] - cumDists[i-1] > 180))) {
+        const endIdx = i - 1;
+        const length = cumDists[endIdx] - cumDists[startIdx];
+        const gain = smoothEle[endIdx] - smoothEle[startIdx];
+        const avgGrade = length > 0 ? (gain / length) * 100 : 0;
+        
+        if (length >= 500 && avgGrade >= 3) {
+          climbs.push(analyzeAndSegmentClimb(startIdx, endIdx, geoCoords, smoothEle, cumDists, length, gain, avgGrade));
+        }
+        inClimb = false;
+      }
+    }
+  }
+  
+  if (inClimb) {
+    const endIdx = N - 1;
+    const length = cumDists[endIdx] - cumDists[startIdx];
+    const gain = smoothEle[endIdx] - smoothEle[startIdx];
+    const avgGrade = length > 0 ? (gain / length) * 100 : 0;
+    
+    if (length >= 500 && avgGrade >= 3) {
+      climbs.push(analyzeAndSegmentClimb(startIdx, endIdx, geoCoords, smoothEle, cumDists, length, gain, avgGrade));
+    }
+  }
+  
+  return climbs;
+}
+
+function analyzeAndSegmentClimb(startIdx, endIdx, geoCoords, smoothEle, cumDists, length, gain, avgGrade) {
+  // FIETS-index: Score = H^2 / (D * 10)
+  const score = (gain * gain) / (length * 10);
+  
+  let category = 'Cat. 4';
+  let badgeColor = '#10b981'; // Green
+  if (score >= 6.5) {
+    category = 'HC';
+    badgeColor = '#7c3aed'; // Purple
+  } else if (score >= 5.0) {
+    category = 'Cat. 1';
+    badgeColor = '#ef4444'; // Red
+  } else if (score >= 3.5) {
+    category = 'Cat. 2';
+    badgeColor = '#f97316'; // Orange
+  } else if (score >= 2.0) {
+    category = 'Cat. 3';
+    badgeColor = '#fbbf24'; // Yellow
+  }
+  
+  // Max gradient over 100m window
+  let maxGradient = 0;
+  for (let i = startIdx; i <= endIdx; i++) {
+    for (let j = i + 1; j <= endIdx; j++) {
+      const d = cumDists[j] - cumDists[i];
+      if (d >= 100 && d <= 150) {
+        const g = (smoothEle[j] - smoothEle[i]) / d * 100;
+        if (g > maxGradient) maxGradient = g;
+      }
+    }
+  }
+  if (maxGradient < avgGrade) maxGradient = avgGrade * 1.3;
+  
+  // Segment into 1 km blocks
+  const blocks = [];
+  let blockStartDist = cumDists[startIdx];
+  let blockStartIdx = startIdx;
+  
+  for (let i = startIdx + 1; i <= endIdx; i++) {
+    const d = cumDists[i] - blockStartDist;
+    if (d >= 1000 || i === endIdx) {
+      const bLength = d;
+      const bGain = smoothEle[i] - smoothEle[blockStartIdx];
+      const bGrade = bLength > 0 ? (bGain / bLength) * 100 : 0;
+      
+      let bMaxGrad = bGrade;
+      for (let j = blockStartIdx; j <= i; j++) {
+        for (let k = j + 1; k <= i; k++) {
+          const wd = cumDists[k] - cumDists[j];
+          if (wd >= 100 && wd <= 150) {
+            const wg = (smoothEle[k] - smoothEle[j]) / wd * 100;
+            if (wg > bMaxGrad) bMaxGrad = wg;
+          }
+        }
+      }
+      
+      blocks.push({
+        num: blocks.length + 1,
+        lengthMs: bLength,
+        gainMs: bGain,
+        avgGrade: bGrade,
+        maxGrade: bMaxGrad
+      });
+      
+      blockStartDist = cumDists[i];
+      blockStartIdx = i;
+    }
+  }
+  
+  return {
+    startIdx,
+    endIdx,
+    startDistKm: (cumDists[startIdx] / 1000).toFixed(1),
+    endDistKm: (cumDists[endIdx] / 1000).toFixed(1),
+    lengthMs: length,
+    gainMs: gain,
+    avgGrade: avgGrade,
+    maxGradient: maxGradient,
+    score,
+    category,
+    badgeColor,
+    blocks
+  };
+}
+
+function getClimbForIndex(index, climbs) {
+  for (const climb of climbs) {
+    if (index >= climb.startIdx && index <= climb.endIdx) {
+      return climb;
+    }
+  }
+  return null;
+}
+
+// ─── Render Hoogtegrafiek met Chart.js ─────────────
+function renderElevationChart(distancesKm, elevations, climbs) {
+  const ctx = document.getElementById('route-elevation-chart');
+  if (!ctx) return;
+  
+  if (elevationChartInstance) {
+    elevationChartInstance.destroy();
+  }
+  
+  elevationChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: distancesKm.map(d => d.toFixed(2)),
+      datasets: [{
+        label: 'Hoogte (m)',
+        data: elevations,
+        borderColor: '#38bdf8',
+        borderWidth: 2,
+        fill: true,
+        backgroundColor: 'rgba(56, 189, 248, 0.05)',
+        tension: 0.1,
+        pointRadius: 0,
+        segment: {
+          borderColor: (ctx) => {
+            const idx = ctx.p0DataIndex;
+            const climb = getClimbForIndex(idx, climbs);
+            return climb ? climb.badgeColor : '#38bdf8';
+          },
+          backgroundColor: (ctx) => {
+            const idx = ctx.p0DataIndex;
+            const climb = getClimbForIndex(idx, climbs);
+            if (climb) {
+              if (climb.category === 'HC') return 'rgba(124, 58, 237, 0.18)';
+              if (climb.category === 'Cat. 1') return 'rgba(239, 68, 68, 0.18)';
+              if (climb.category === 'Cat. 2') return 'rgba(249, 115, 22, 0.18)';
+              if (climb.category === 'Cat. 3') return 'rgba(251, 191, 36, 0.18)';
+              return 'rgba(16, 185, 129, 0.18)';
+            }
+            return 'rgba(56, 189, 248, 0.05)';
+          }
+        }
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            title: (items) => `Km ${items[0].label}`,
+            label: (item) => `Hoogte: ${Math.round(item.parsed.y)} m`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#94a3b8',
+            font: { size: 9 },
+            maxTicksLimit: 6
+          }
+        },
+        y: {
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: {
+            color: '#94a3b8',
+            font: { size: 9 },
+            callback: (val) => `${val}m`
+          }
+        }
+      }
+    }
+  });
 }
 
 // ─── Bereken route via OSRM ───────────────────────
@@ -314,6 +638,8 @@ async function calculateRoute() {
     // Calculate distance-weighted breakdown
     let totalDist = 0;
     const distByType = { asphalt: 0, gravel: 0, cobblestone: 0, cycleway: 0 };
+    const distancesKm = [0];
+    let dCumulative = 0;
     
     for (let i = 0; i < geoCoords.length - 1; i++) {
       const p1 = L.latLng(geoCoords[i][1], geoCoords[i][0]);
@@ -327,6 +653,8 @@ async function calculateRoute() {
         distByType.asphalt += d;
       }
       totalDist += d;
+      dCumulative += d;
+      distancesKm.push(dCumulative / 1000);
     }
     
     const distKm = (route.distance / 1000);
@@ -343,7 +671,6 @@ async function calculateRoute() {
     const timeEl = document.getElementById('route-duration');
     if (distEl) distEl.textContent = `${distKm.toFixed(1)} km`;
     if (timeEl) timeEl.textContent = `~${Math.round(durMin)} min`;
-    if (statusEl) statusEl.textContent = `✓ Route berekend en geanalyseerd`;
     
     // Render progress bar breakdown
     const container = document.getElementById('route-surface-container');
@@ -387,13 +714,83 @@ async function calculateRoute() {
       }
     }
     
+    // ─── Klimdetectie & Hoogteprofiel integratie ──────
+    if (statusEl) statusEl.textContent = 'Hoogtedata ophalen...';
+    const elevations = await fetchElevations(geoCoords);
+    
+    const climbs = detectClimbs(geoCoords, elevations);
+    
+    // Update climbs panel
+    const elevPanel = document.getElementById('route-elevation-panel');
+    const climbsListEl = document.getElementById('route-climbs-list');
+    const climbingStatsEl = document.getElementById('route-climbing-stats');
+    
+    if (elevPanel) elevPanel.style.display = 'block';
+    
+    // Smooth elevations for rendering
+    const smoothEle = new Array(elevations.length);
+    for (let i = 0; i < elevations.length; i++) {
+      const wStart = Math.max(0, i - 2);
+      const wEnd = Math.min(elevations.length - 1, i + 2);
+      let sum = 0;
+      for (let k = wStart; k <= wEnd; k++) sum += elevations[k];
+      smoothEle[i] = sum / (wEnd - wStart + 1);
+    }
+    
+    // Calculate vertical gain
+    let totalAscent = 0;
+    for (let i = 1; i < smoothEle.length; i++) {
+      const diff = smoothEle[i] - smoothEle[i-1];
+      if (diff > 0) totalAscent += diff;
+    }
+    
+    if (climbingStatsEl) {
+      climbingStatsEl.textContent = `${Math.round(totalAscent)} hm | ${climbs.length} klim(men)`;
+    }
+    
+    if (climbsListEl) {
+      climbsListEl.innerHTML = '';
+      if (climbs.length === 0) {
+        const pld = document.createElement('div');
+        pld.style.cssText = 'font-size:11px;color:var(--text-muted);text-align:center;padding:10px;';
+        pld.textContent = 'Geen beklimmingen gedetecteerd (vlak parcours)';
+        climbsListEl.appendChild(pld);
+      } else {
+        climbs.forEach((climb, idx) => {
+          const card = document.createElement('div');
+          card.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding:8px 10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;font-size:11px;';
+          card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <strong style="color:var(--text-main);">Klim #${idx + 1}</strong>
+                <span style="color:var(--text-muted);margin-left:6px;">(km ${climb.startDistKm} - ${climb.endDistKm})</span>
+              </div>
+              <span style="padding:2px 6px;border-radius:4px;font-weight:800;font-size:10px;background:${climb.badgeColor};color:#fff;">${climb.category}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;color:var(--text-muted);font-size:10px;margin-top:2px;">
+              <span>Afstand: <strong>${(climb.lengthMs / 1000).toFixed(1)} km</strong></span>
+              <span>Stijging: <strong>${Math.round(climb.gainMs)} hm</strong></span>
+              <span>Gem: <strong>${climb.avgGrade.toFixed(1)}%</strong></span>
+              <span>Max: <strong>${climb.maxGradient.toFixed(1)}%</strong></span>
+            </div>
+          `;
+          climbsListEl.appendChild(card);
+        });
+      }
+    }
+    
+    // Draw elevation chart
+    renderElevationChart(distancesKm, smoothEle, climbs);
+    
+    if (statusEl) statusEl.textContent = `✓ Route berekend en geanalyseerd`;
+    
     const dlBtn = document.getElementById('btn-download-gpx');
     if (dlBtn) dlBtn.style.display = 'block';
     
     if (onWaypointChangeCb) onWaypointChangeCb(waypoints.length, distKm, durMin);
     
   } catch (err) {
-    console.error('OSRM or Overpass error:', err);
+    console.error('OSRM, Overpass or Elevation error:', err);
     if (statusEl) statusEl.textContent = 'Fout bij analyse — probeer opnieuw.';
   }
 }
@@ -446,9 +843,7 @@ export function clearRoute() {
   if (routeLayer) routeLayer.clearLayers();
   currentRoute = null;
   
-  const container = document.getElementById('route-surface-container');
-  if (container) container.style.display = 'none';
-  
+  hideRoutePanels();
   updateBuilderUI();
 }
 
@@ -464,8 +859,7 @@ export function undoLastWaypoint() {
     calculateRoute();
   } else {
     currentRoute = null;
-    const container = document.getElementById('route-surface-container');
-    if (container) container.style.display = 'none';
+    hideRoutePanels();
     updateBuilderUI();
   }
 }

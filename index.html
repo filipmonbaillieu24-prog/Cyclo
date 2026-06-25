@@ -407,6 +407,19 @@
                 <div id="route-surface-bar" style="height:6px;width:100%;background:rgba(255,255,255,0.08);border-radius:3px;display:flex;overflow:hidden;"></div>
               </div>
               <div id="route-builder-map" class="route-builder-map"></div>
+              <!-- Route Hoogteprofiel en Klimmen -->
+              <div id="route-elevation-panel" style="display:none;margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <h4 style="font-size:12px;font-weight:600;color:var(--primary);margin:0;display:flex;align-items:center;gap:4px;">
+                    <i data-lucide="mountain" style="width:14px;height:14px;"></i> Hoogteprofiel &amp; Klimmen
+                  </h4>
+                  <span id="route-climbing-stats" style="font-size:11px;color:var(--text-muted);">0 hm</span>
+                </div>
+                <div style="height:120px;position:relative;margin-bottom:10px;">
+                  <canvas id="route-elevation-chart"></canvas>
+                </div>
+                <div id="route-climbs-list" style="display:flex;flex-direction:column;gap:6px;max-height:150px;overflow-y:auto;padding-right:2px;"></div>
+              </div>
               <button class="btn btn-primary w-full" id="btn-download-gpx" style="display:none;margin-top:12px;">
                 <i data-lucide="download" style="width:14px;height:14px;"></i>
                 Download GPX voor fietscomputer
