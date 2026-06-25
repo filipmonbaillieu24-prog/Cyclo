@@ -329,6 +329,8 @@ function seedMockRides() {
     id: 'r-demo-1',
     created_by: 'demo-user-id',
     date: dateStr1,
+    start_time: '10:00:00',
+    start_location: 'Kerkplein, Brussel',
     title: 'Cyclo Opening Ride',
     description: 'Gezamenlijke rit om de app te vieren! Tempo ~28km/u. Iedereen welkom.',
     route_link: 'https://www.komoot.com',

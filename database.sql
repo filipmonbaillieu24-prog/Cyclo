@@ -92,6 +92,8 @@ CREATE TABLE IF NOT EXISTS public.rides (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   created_by UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   date DATE NOT NULL,
+  start_time TIME,
+  start_location TEXT,
   title TEXT NOT NULL,
   description TEXT,
   route_link TEXT,
@@ -229,7 +231,9 @@ ALTER TABLE public.profiles
 ALTER TABLE public.rides
   ADD COLUMN IF NOT EXISTS activity_id UUID REFERENCES public.activities(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS expected_distance_km NUMERIC(6,1),
-  ADD COLUMN IF NOT EXISTS expected_speed_kmh NUMERIC(4,1);
+  ADD COLUMN IF NOT EXISTS expected_speed_kmh NUMERIC(4,1),
+  ADD COLUMN IF NOT EXISTS start_time TIME,
+  ADD COLUMN IF NOT EXISTS start_location TEXT;
 
 -- 9. Create a table for API Integrations (Strava & Garmin)
 CREATE TABLE IF NOT EXISTS public.user_integrations (

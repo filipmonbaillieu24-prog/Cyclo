@@ -207,7 +207,9 @@ export async function renderRidesList() {
     // Meta badges + difficulty
     const diffBadge = getDifficultyBadge(ride.expected_distance_km, null);
     let metaBadgesHtml = '';
-    if (ride.expected_distance_km) metaBadgesHtml += `<span class="ride-meta-badge"><i data-lucide="map-pin" style="width:10px;height:10px;display:inline;vertical-align:middle;margin-right:2px;"></i>${ride.expected_distance_km} km</span>`;
+    if (ride.start_time) metaBadgesHtml += `<span class="ride-meta-badge" style="color:var(--secondary);border-color:rgba(0,240,255,0.3);"><i data-lucide="clock" style="width:10px;height:10px;display:inline;vertical-align:middle;margin-right:2px;"></i>${ride.start_time.slice(0,5)}</span>`;
+    if (ride.start_location) metaBadgesHtml += `<span class="ride-meta-badge" title="${ride.start_location}" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--primary);border-color:rgba(212,255,0,0.3);"><i data-lucide="map-pin" style="width:10px;height:10px;display:inline;vertical-align:middle;margin-right:2px;"></i>${ride.start_location}</span>`;
+    if (ride.expected_distance_km) metaBadgesHtml += `<span class="ride-meta-badge"><i data-lucide="navigation" style="width:10px;height:10px;display:inline;vertical-align:middle;margin-right:2px;"></i>${ride.expected_distance_km} km</span>`;
     if (ride.expected_speed_kmh) metaBadgesHtml += `<span class="ride-meta-badge"><i data-lucide="zap" style="width:10px;height:10px;display:inline;vertical-align:middle;margin-right:2px;"></i>~${ride.expected_speed_kmh} km/u</span>`;
     if (diffBadge) metaBadgesHtml += diffBadge;
 
@@ -540,6 +542,12 @@ export function openPlanRideModal(rideToEdit = null) {
   if (distInput) distInput.value = rideToEdit ? (rideToEdit.expected_distance_km || '') : '';
   if (speedInput) speedInput.value = rideToEdit ? (rideToEdit.expected_speed_kmh || '') : '';
 
+  // Starttijd en Startlocatie
+  const startTimeInput = document.getElementById('ride-modal-start-time');
+  const startLocationInput = document.getElementById('ride-modal-start-location');
+  if (startTimeInput) startTimeInput.value = rideToEdit ? (rideToEdit.start_time || '') : '';
+  if (startLocationInput) startLocationInput.value = rideToEdit ? (rideToEdit.start_location || '') : '';
+
   // Titelbalk aanpassen
   const modalTitle = document.getElementById('ride-modal-title-header');
   if (modalTitle) modalTitle.textContent = rideToEdit ? 'Groepsrit Bewerken' : 'Groepsrit Plannen';
@@ -548,6 +556,83 @@ export function openPlanRideModal(rideToEdit = null) {
   updateRouteDropdown();
   if (rideToEdit && rideToEdit.activity_id) {
     elements.rideModalActivity.value = rideToEdit.activity_id;
+  }
+
+  // Bind change listener voor automatische route/locatie invulling
+  if (elements.rideModalActivity && !elements.rideModalActivity.dataset.listenerBound) {
+    elements.rideModalActivity.dataset.listenerBound = 'true';
+    elements.rideModalActivity.addEventListener('change', async () => {
+      const activityId = elements.rideModalActivity.value;
+      if (!activityId) return;
+
+      // Zoek de geselecteerde activiteit
+      let act = (state.activities || []).find(a => a.id === activityId);
+      if (!act && !config.isDemoMode) {
+        try {
+          const { data, error } = await config.supabaseClient
+            .from('activities')
+            .select('*')
+            .eq('id', activityId)
+            .single();
+          if (!error && data) {
+            act = data;
+          }
+        } catch (err) {
+          console.warn("Fout bij ophalen van activiteit:", err);
+        }
+      }
+
+      if (act) {
+        // Vul verwachte afstand en snelheid in
+        if (distInput && act.distance_km) {
+          distInput.value = parseFloat(act.distance_km).toFixed(1);
+        }
+        if (speedInput && act.avg_speed_kmh) {
+          speedInput.value = parseFloat(act.avg_speed_kmh).toFixed(1);
+        }
+
+        // Probeer startlocatie op te halen via reverse geocoding
+        if (startLocationInput && act.coordinates && act.coordinates.length > 0) {
+          const firstPoint = act.coordinates[0];
+          startLocationInput.value = 'Locatie ophalen...';
+          try {
+            const url = `https://nominatim.openstreetmap.org/reverse?lat=${firstPoint.lat}&lon=${firstPoint.lng}&format=json`;
+            const response = await fetch(url, {
+              headers: {
+                'User-Agent': 'Cyclo-GroupRidePlanner/1.0'
+              }
+            });
+            if (response.ok) {
+              const data = await response.json();
+              if (data && data.display_name) {
+                const addr = data.address;
+                if (addr) {
+                  const road = addr.road || addr.pedestrian || addr.cycleway || addr.footway || addr.path || addr.suburb || '';
+                  const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
+                  if (road && city) {
+                    const houseNumber = addr.house_number ? ' ' + addr.house_number : '';
+                    startLocationInput.value = `${road}${houseNumber}, ${city}`;
+                  } else if (city) {
+                    startLocationInput.value = city;
+                  } else {
+                    startLocationInput.value = data.display_name;
+                  }
+                } else {
+                  startLocationInput.value = data.display_name;
+                }
+              } else {
+                startLocationInput.value = `${firstPoint.lat.toFixed(5)}, ${firstPoint.lng.toFixed(5)}`;
+              }
+            } else {
+              startLocationInput.value = `${firstPoint.lat.toFixed(5)}, ${firstPoint.lng.toFixed(5)}`;
+            }
+          } catch (err) {
+            console.warn("Geocoding mislukt:", err);
+            startLocationInput.value = `${firstPoint.lat.toFixed(5)}, ${firstPoint.lng.toFixed(5)}`;
+          }
+        }
+      }
+    });
   }
   
   elements.rideModal.classList.add('active');
@@ -569,6 +654,8 @@ export async function savePlannedRide(e, loadDashboardDataCallback) {
   const activityId = elements.rideModalActivity.value || null;
   const expectedDist = parseFloat(document.getElementById('ride-modal-expected-distance')?.value) || null;
   const expectedSpeed = parseFloat(document.getElementById('ride-modal-expected-speed')?.value) || null;
+  const startTime = document.getElementById('ride-modal-start-time')?.value || null;
+  const startLocation = document.getElementById('ride-modal-start-location')?.value.trim() || null;
 
   if (config.isDemoMode) {
     let savedRides = JSON.parse(localStorage.getItem('cyclo_mock_rides') || '[]');
@@ -583,7 +670,9 @@ export async function savePlannedRide(e, loadDashboardDataCallback) {
           route_link: routeLink,
           activity_id: activityId,
           expected_distance_km: expectedDist,
-          expected_speed_kmh: expectedSpeed
+          expected_speed_kmh: expectedSpeed,
+          start_time: startTime,
+          start_location: startLocation
         };
       }
       showToast("Groepsrit bijgewerkt!", "success");
@@ -597,6 +686,8 @@ export async function savePlannedRide(e, loadDashboardDataCallback) {
         activity_id: activityId,
         expected_distance_km: expectedDist,
         expected_speed_kmh: expectedSpeed,
+        start_time: startTime,
+        start_location: startLocation,
         participants: [state.user.id]
       };
       savedRides.push(newRide);
@@ -615,7 +706,9 @@ export async function savePlannedRide(e, loadDashboardDataCallback) {
       route_link: routeLink,
       activity_id: activityId,
       expected_distance_km: expectedDist,
-      expected_speed_kmh: expectedSpeed
+      expected_speed_kmh: expectedSpeed,
+      start_time: startTime,
+      start_location: startLocation
     };
 
     if (editingRideId) {

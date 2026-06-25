@@ -150,6 +150,11 @@ function startRideTracking(routeName) {
 
   const container = document.getElementById('bike-computer-container');
   container.innerHTML = `
+    <!-- Navigatiekaart -->
+    <div class="bc-map-wrap">
+      <div id="bike-computer-map"></div>
+    </div>
+
     <!-- Header -->
     <div class="bc-header">
       <div class="bc-route-title">${routeName}</div>
@@ -160,7 +165,7 @@ function startRideTracking(routeName) {
     </div>
 
     <!-- Live Turn-by-Turn Navigatie Banner -->
-    <div id="bc-nav-banner" style="display:none; margin: 10px 15px; padding: 10px 14px; background: rgba(18, 26, 42, 0.85); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px; align-items: center; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+    <div id="bc-nav-banner" style="display:none; margin: 0; padding: 10px 14px; background: rgba(18, 26, 42, 0.85); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px; align-items: center; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
       <div id="bc-nav-icon" style="font-size:24px;">🗺️</div>
       <div style="display:flex; flex-direction:column; flex:1;">
         <span id="bc-nav-instruction" style="font-size:12px; font-weight:700; color:#fff; text-align:left;">Rechtdoor op de route</span>
@@ -168,60 +173,60 @@ function startRideTracking(routeName) {
       </div>
     </div>
 
-    <!-- Speed Display -->
-    <div class="bc-speed-box">
-      <div class="bc-speed-val" id="bc-speed">0.0</div>
-      <div class="bc-speed-lbl">km/h</div>
-    </div>
+    <!-- Bottom Dashboard Overlay -->
+    <div class="bc-bottom-dashboard">
+      <div class="bc-dashboard-row">
+        <!-- Speed Display (Left) -->
+        <div class="bc-speed-column">
+          <div class="bc-speed-val" id="bc-speed">0.0</div>
+          <div class="bc-speed-lbl">km/h</div>
+        </div>
 
-    <!-- Grid -->
-    <div class="bc-metrics-grid">
-      <div class="bc-metric-card" id="bc-hr-card">
-        <div class="bc-metric-val color-pink" id="bc-hr">—</div>
-        <div class="bc-metric-lbl">Hartslag (bpm)</div>
+        <!-- Metrics Grid (Right) -->
+        <div class="bc-metrics-grid-compact">
+          <div class="bc-metric-card-compact" id="bc-hr-card">
+            <span class="bc-metric-val-compact color-pink" id="bc-hr">—</span>
+            <span class="bc-metric-lbl-compact">Hartslag</span>
+          </div>
+          <div class="bc-metric-card-compact">
+            <span class="bc-metric-val-compact color-volt" id="bc-power">—</span>
+            <span class="bc-metric-lbl-compact">Vermogen</span>
+          </div>
+          <div class="bc-metric-card-compact">
+            <span class="bc-metric-val-compact color-cyan" id="bc-distance">0.00</span>
+            <span class="bc-metric-lbl-compact">Afstand (km)</span>
+          </div>
+          <div class="bc-metric-card-compact">
+            <span class="bc-metric-val-compact" id="bc-duration">00:00</span>
+            <span class="bc-metric-lbl-compact">Tijd</span>
+          </div>
+        </div>
       </div>
-      <div class="bc-metric-card">
-        <div class="bc-metric-val color-volt" id="bc-power">—</div>
-        <div class="bc-metric-lbl">Vermogen (W)</div>
-      </div>
-      <div class="bc-metric-card">
-        <div class="bc-metric-val color-cyan" id="bc-distance">0.00</div>
-        <div class="bc-metric-lbl">Afstand (km)</div>
-      </div>
-      <div class="bc-metric-card">
-        <div class="bc-metric-val" id="bc-duration">00:00</div>
-        <div class="bc-metric-lbl">Tijd</div>
-      </div>
-    </div>
 
-    <!-- Navigatiekaart -->
-    <div class="bc-map-wrap">
-      <div id="bike-computer-map"></div>
-    </div>
-
-    <!-- Controls -->
-    <div class="bc-controls">
-      <!-- Active state: Pause button only -->
-      <button class="bc-btn bc-btn-pause" id="btn-bc-pause" title="Pauzeer">
-        <i data-lucide="pause"></i>
-      </button>
-
-      <!-- Paused state: Discard, Resume, Save buttons -->
-      <div id="bc-paused-controls" style="display: none; width: 100%; justify-content: center; gap: 20px; align-items: center;">
-        <!-- Discard Button -->
-        <button class="bc-btn bc-btn-discard" id="btn-bc-discard" title="Rit annuleren/verwerpen">
-          <i data-lucide="trash-2"></i>
+      <!-- Controls -->
+      <div class="bc-controls">
+        <!-- Active state: Pause button only -->
+        <button class="bc-btn bc-btn-pause" id="btn-bc-pause" title="Pauzeer">
+          <i data-lucide="pause"></i>
         </button>
 
-        <!-- Resume Button -->
-        <button class="bc-btn bc-btn-resume" id="btn-bc-resume" title="Hervat">
-          <i data-lucide="play"></i>
-        </button>
+        <!-- Paused state: Discard, Resume, Save buttons -->
+        <div id="bc-paused-controls" style="display: none; width: 100%; justify-content: center; gap: 20px; align-items: center;">
+          <!-- Discard Button -->
+          <button class="bc-btn bc-btn-discard" id="btn-bc-discard" title="Rit annuleren/verwerpen">
+            <i data-lucide="trash-2"></i>
+          </button>
 
-        <!-- Save Button -->
-        <button class="bc-btn bc-btn-save" id="btn-bc-save" title="Rit opslaan">
-          <i data-lucide="check"></i>
-        </button>
+          <!-- Resume Button -->
+          <button class="bc-btn bc-btn-resume" id="btn-bc-resume" title="Hervat">
+            <i data-lucide="play"></i>
+          </button>
+
+          <!-- Save Button -->
+          <button class="bc-btn bc-btn-save" id="btn-bc-save" title="Rit opslaan">
+            <i data-lucide="save"></i>
+          </button>
+        </div>
       </div>
     </div>
   `;
