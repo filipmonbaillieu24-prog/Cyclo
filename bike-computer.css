@@ -386,3 +386,69 @@
   color: var(--primary);
   font-weight: 700;
 }
+
+/* Live Telemetry Companion Markers on Leaflet Map */
+.leaflet-companion-marker-container {
+  background: transparent;
+  border: none;
+}
+
+.companion-marker-wrap {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  background-color: #1e293b;
+  border: 2px solid #f97316; /* Orange outline for companions */
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.5), 0 2px 5px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: bcPulseShadow 2s infinite ease-in-out;
+}
+
+.companion-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: #0f172a;
+}
+
+.companion-marker-dot {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background-color: #f97316;
+  border: 1.5px solid #ffffff;
+  border-radius: 50%;
+}
+
+@keyframes bcPulseShadow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(249, 115, 22, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.9);
+  }
+}
+
+/* Custom leaflet tooltip styles for dark-theme contrast */
+.leaflet-tooltip-companion {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.leaflet-tooltip-companion::before {
+  border-right-color: #0f172a !important;
+  border-left-color: #0f172a !important;
+}

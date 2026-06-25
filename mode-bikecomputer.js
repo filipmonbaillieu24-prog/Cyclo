@@ -38,6 +38,7 @@ let wakeLock = null;
 let bcMap = null;
 let bikePathPolyline = null;
 let locatorMarker = null;
+let companionMarkers = {};
 let routePolyline = null;
 let selectedRouteCoords = null;
 
@@ -411,11 +412,78 @@ function onGpsSuccess(position) {
 }
 
 function handleIncomingTelemetry(data) {
-  console.log('[Telemetry] Incoming payload:', data);
-  // This hook will be used in Issue #13 to render markers on Leaflet map
-  if (window._onIncomingTelemetryReceived) {
-    window._onIncomingTelemetryReceived(data);
+  if (!bcMap || !data || !data.user_id) return;
+
+  const latLng = [data.lat, data.lng];
+  const tooltipContent = `
+    <div style="font-weight:700;color:#f8fafc;margin-bottom:2px;font-size:12px;">${data.full_name || '@' + data.username}</div>
+    <div style="display:flex;gap:8px;color:#94a3b8;font-size:10px;white-space:nowrap;">
+      <span style="color:#ef4444;">❤️ ${data.hr || 0}</span>
+      <span style="color:#d4ff00;">⚡ ${data.watts || 0}W</span>
+      <span style="color:#00b4d8;">🚴 ${data.speed || 0}</span>
+    </div>
+  `;
+
+  let marker = companionMarkers[data.user_id];
+
+  if (!marker) {
+    // Create custom companion marker icon with avatar image
+    const companionIcon = L.divIcon({
+      className: 'leaflet-companion-marker-container',
+      html: `
+        <div class="companion-marker-wrap">
+          <img src="${data.avatar_url || 'https://api.dicebear.com/7.x/adventurer/svg?seed=' + data.user_id}" class="companion-avatar" onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed=${data.user_id}'" />
+          <div class="companion-marker-dot"></div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32]
+    });
+
+    marker = L.marker(latLng, { icon: companionIcon }).addTo(bcMap);
+    
+    // Bind permanent styled tooltip
+    marker.bindTooltip(tooltipContent, {
+      permanent: true,
+      direction: 'top',
+      offset: [0, -32],
+      className: 'leaflet-tooltip-companion'
+    });
+
+    companionMarkers[data.user_id] = marker;
+  } else {
+    // Smoothly animate marker position from current to new position
+    const startLatLng = marker.getLatLng();
+    const endLatLng = L.latLng(latLng[0], latLng[1]);
+    
+    animateCompanionMarker(marker, startLatLng, endLatLng, 950);
+    
+    // Update tooltip
+    marker.setTooltipContent(tooltipContent);
   }
+}
+
+function animateCompanionMarker(marker, startLatLng, endLatLng, duration) {
+  const startTime = performance.now();
+  
+  function tick() {
+    const now = performance.now();
+    const progress = Math.min((now - startTime) / duration, 1);
+    
+    const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * progress;
+    const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * progress;
+    
+    marker.setLatLng([lat, lng]);
+    
+    if (progress < 1) {
+      marker._animationFrame = requestAnimationFrame(tick);
+    }
+  }
+  
+  if (marker._animationFrame) {
+    cancelAnimationFrame(marker._animationFrame);
+  }
+  tick();
 }
 
 function startGpsWatch() {
@@ -794,6 +862,16 @@ function exitBikeComputerMode() {
   import('./realtime.js').then(realtime => {
     realtime.disconnectTelemetry();
   });
+
+  // Remove all companion markers from Leaflet map
+  Object.keys(companionMarkers).forEach(userId => {
+    const marker = companionMarkers[userId];
+    if (marker) {
+      if (marker._animationFrame) cancelAnimationFrame(marker._animationFrame);
+      if (bcMap) marker.removeFrom(bcMap);
+    }
+  });
+  companionMarkers = {};
 
   // Hide container
   const container = document.getElementById('bike-computer-container');
