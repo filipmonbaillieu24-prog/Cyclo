@@ -17,6 +17,7 @@ import {
 // Live Tracking State
 let isRunning = false;
 let isPaused = false;
+let activeRideId = null;
 let startTime = null;
 let elapsedTimeOffset = 0; // seconds
 let durationInterval = null;
@@ -71,8 +72,8 @@ function renderSetupPanel() {
 
   // Combineer routes
   const routesList = [];
-  myActivities.forEach(a => routesList.push({ id: a.id, name: `Rit: ${a.name}`, coords: a.coordinates }));
-  plannedRides.forEach(r => routesList.push({ id: r.id, name: `Geplande rit: ${r.title}`, coords: r.coordinates }));
+  myActivities.forEach(a => routesList.push({ id: a.id, name: `Rit: ${a.name}`, coords: a.coordinates, isRide: false }));
+  plannedRides.forEach(r => routesList.push({ id: r.id, name: `Geplande rit: ${r.title}`, coords: r.coordinates, isRide: true }));
 
   container.innerHTML = `
     <div class="bc-setup-panel">
@@ -104,7 +105,10 @@ function renderSetupPanel() {
     const selectedId = select.value;
     const selectedRoute = routesList.find(r => r.id === selectedId);
     selectedRouteCoords = selectedRoute ? selectedRoute.coords : null;
-    const routeName = selectedRoute ? selectedRoute.name.substring(5) : "Vrije Rit";
+    activeRideId = (selectedRoute && selectedRoute.isRide) ? selectedRoute.id : 'free-ride';
+    const routeName = selectedRoute 
+      ? (selectedRoute.isRide ? selectedRoute.name.substring(14) : selectedRoute.name.substring(5))
+      : "Vrije Rit";
     
     startRideTracking(routeName);
   });
@@ -263,6 +267,15 @@ function startRideTracking(routeName) {
   // Start Duration Timer
   startDurationTimer();
 
+  // Initialize WebSocket Telemetry Room
+  if (state.user) {
+    import('./realtime.js').then(realtime => {
+      realtime.initTelemetry(activeRideId, state.user.id, (data) => {
+        handleIncomingTelemetry(data);
+      });
+    });
+  }
+
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -380,6 +393,29 @@ function onGpsSuccess(position) {
 
   // Update Leaflet marker and path
   updateMapPosition(newCoord);
+
+  // Send Telemetry Update
+  if (isRunning && !isPaused && state.user) {
+    import('./realtime.js').then(realtime => {
+      realtime.sendTelemetry({
+        ride_id: activeRideId || 'free-ride',
+        user_id: state.user.id,
+        lat: newCoord.lat,
+        lng: newCoord.lng,
+        speed: parseFloat(currentSpeedKmh.toFixed(1)),
+        hr: currentHr || 0,
+        watts: currentPower || 0
+      });
+    });
+  }
+}
+
+function handleIncomingTelemetry(data) {
+  console.log('[Telemetry] Incoming payload:', data);
+  // This hook will be used in Issue #13 to render markers on Leaflet map
+  if (window._onIncomingTelemetryReceived) {
+    window._onIncomingTelemetryReceived(data);
+  }
 }
 
 function startGpsWatch() {
@@ -753,6 +789,11 @@ function exitBikeComputerMode() {
   // Release lock
   releaseScreenWakeLock();
   disconnectAll();
+
+  // Disconnect WebSocket Telemetry room
+  import('./realtime.js').then(realtime => {
+    realtime.disconnectTelemetry();
+  });
 
   // Hide container
   const container = document.getElementById('bike-computer-container');
