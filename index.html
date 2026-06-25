@@ -418,7 +418,13 @@
                 <div style="height:120px;position:relative;margin-bottom:10px;">
                   <canvas id="route-elevation-chart"></canvas>
                 </div>
-                <div id="route-climbs-list" style="display:flex;flex-direction:column;gap:6px;max-height:150px;overflow-y:auto;padding-right:2px;"></div>
+                <div id="route-climbs-list" style="display:flex;flex-direction:column;gap:6px;max-height:100px;overflow-y:auto;padding-right:2px;margin-bottom:8px;"></div>
+                <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;">
+                  <h5 style="font-size:10px;font-weight:600;color:var(--text-muted);margin:0 0 6px 0;display:flex;align-items:center;gap:4px;">
+                    <i data-lucide="navigation-2" style="width:12px;height:12px;"></i> Route Cue-Sheet (Turn-by-Turn)
+                  </h5>
+                  <div id="route-cue-sheet" style="display:flex;flex-direction:column;gap:4px;max-height:90px;overflow-y:auto;padding-right:2px;font-family:monospace;font-size:10px;color:var(--text-muted);"></div>
+                </div>
               </div>
               <button class="btn btn-primary w-full" id="btn-download-gpx" style="display:none;margin-top:12px;">
                 <i data-lucide="download" style="width:14px;height:14px;"></i>

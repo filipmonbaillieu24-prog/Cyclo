@@ -41,6 +41,7 @@ let locatorMarker = null;
 let companionMarkers = {};
 let routePolyline = null;
 let selectedRouteCoords = null;
+let activeRouteCueSheet = null;
 
 // Simulator GPS Interval
 let simGpsInterval = null;
@@ -76,6 +77,16 @@ function renderSetupPanel() {
   myActivities.forEach(a => routesList.push({ id: a.id, name: `Rit: ${a.name}`, coords: a.coordinates, isRide: false }));
   plannedRides.forEach(r => routesList.push({ id: r.id, name: `Geplande rit: ${r.title}`, coords: r.coordinates, isRide: true }));
 
+  if (state.activeRouteBuilderRoute) {
+    routesList.push({
+      id: 'active-builder',
+      name: `🗺️ Route: ${state.activeRouteBuilderRoute.name}`,
+      coords: state.activeRouteBuilderRoute.coordinates,
+      cueSheet: state.activeRouteBuilderRoute.cueSheet,
+      isRide: false
+    });
+  }
+
   container.innerHTML = `
     <div class="bc-setup-panel">
       <div style="font-size: 54px; margin-bottom: 8px;">🚴</div>
@@ -106,9 +117,10 @@ function renderSetupPanel() {
     const selectedId = select.value;
     const selectedRoute = routesList.find(r => r.id === selectedId);
     selectedRouteCoords = selectedRoute ? selectedRoute.coords : null;
+    activeRouteCueSheet = selectedRoute ? selectedRoute.cueSheet : null;
     activeRideId = (selectedRoute && selectedRoute.isRide) ? selectedRoute.id : 'free-ride';
     const routeName = selectedRoute 
-      ? (selectedRoute.isRide ? selectedRoute.name.substring(14) : selectedRoute.name.substring(5))
+      ? (selectedRoute.id === 'active-builder' ? selectedRoute.name : (selectedRoute.isRide ? selectedRoute.name.substring(14) : selectedRoute.name.substring(5)))
       : "Vrije Rit";
     
     startRideTracking(routeName);
@@ -145,6 +157,15 @@ function startRideTracking(routeName) {
         <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#ef4444;" id="bc-sensor-status-dot"></span>
         <span id="bc-sensor-status-lbl">Sensoren</span>
       </button>
+    </div>
+
+    <!-- Live Turn-by-Turn Navigatie Banner -->
+    <div id="bc-nav-banner" style="display:none; margin: 10px 15px; padding: 10px 14px; background: rgba(18, 26, 42, 0.85); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px; align-items: center; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+      <div id="bc-nav-icon" style="font-size:24px;">🗺️</div>
+      <div style="display:flex; flex-direction:column; flex:1;">
+        <span id="bc-nav-instruction" style="font-size:12px; font-weight:700; color:#fff; text-align:left;">Rechtdoor op de route</span>
+        <span id="bc-nav-dist-to" style="font-size:10px; color:var(--text-muted); text-align:left;">—</span>
+      </div>
     </div>
 
     <!-- Speed Display -->
@@ -394,6 +415,9 @@ function onGpsSuccess(position) {
 
   // Update Leaflet marker and path
   updateMapPosition(newCoord);
+
+  // Update Live Navigation Banner
+  updateLiveNavigation();
 
   // Send Telemetry Update
   if (isRunning && !isPaused && state.user) {
@@ -872,6 +896,8 @@ function exitBikeComputerMode() {
     }
   });
   companionMarkers = {};
+  selectedRouteCoords = null;
+  activeRouteCueSheet = null;
 
   // Hide container
   const container = document.getElementById('bike-computer-container');
@@ -1038,4 +1064,56 @@ function openSensorDialog() {
       pwrOpt.classList.add('active');
     }
   });
+}
+
+// ─── Live Turn-by-Turn Navigatie Update ───────────
+function updateLiveNavigation() {
+  const banner = document.getElementById('bc-nav-banner');
+  const instrEl = document.getElementById('bc-nav-instruction');
+  const distToEl = document.getElementById('bc-nav-dist-to');
+  const iconEl = document.getElementById('bc-nav-icon');
+  
+  if (!banner || !instrEl || !distToEl) return;
+  
+  if (!activeRouteCueSheet || activeRouteCueSheet.length === 0) {
+    banner.style.display = 'none';
+    return;
+  }
+  
+  banner.style.display = 'flex';
+  
+  // Find first instruction whose target distance is greater than our current position
+  const nextCue = activeRouteCueSheet.find(cue => cue.distanceKm > distanceKm);
+  
+  if (nextCue) {
+    instrEl.textContent = nextCue.text;
+    const distRemainingM = Math.round((nextCue.distanceKm - distanceKm) * 1000);
+    
+    if (distRemainingM <= 50) {
+      distToEl.textContent = `Nu: ${nextCue.text}`;
+      distToEl.style.color = 'var(--primary)';
+    } else if (distRemainingM < 1000) {
+      distToEl.textContent = `over ${distRemainingM}m`;
+      distToEl.style.color = 'var(--text-muted)';
+    } else {
+      distToEl.textContent = `over ${(distRemainingM / 1000).toFixed(1)} km`;
+      distToEl.style.color = 'var(--text-muted)';
+    }
+    
+    // Choose appropriate emoji icon
+    let icon = '🗺️';
+    const textLower = nextCue.text.toLowerCase();
+    if (textLower.includes('linksaf') || textLower.includes('bocht links')) icon = '⬅️';
+    else if (textLower.includes('rechtsaf') || textLower.includes('bocht rechts')) icon = '➡️';
+    else if (textLower.includes('rechtdoor')) icon = '⬆️';
+    else if (textLower.includes('gravel')) icon = '⚠️';
+    else if (textLower.includes('kasseien')) icon = '⚠️';
+    else if (textLower.includes('aankomst') || textLower.includes('finish')) icon = '🏁';
+    if (iconEl) iconEl.textContent = icon;
+    
+  } else {
+    instrEl.textContent = '🏁 Bestemming bereikt';
+    distToEl.textContent = '';
+    if (iconEl) iconEl.textContent = '🏁';
+  }
 }

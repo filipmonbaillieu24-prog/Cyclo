@@ -169,10 +169,17 @@ function hideRoutePanels() {
   const elevPanel = document.getElementById('route-elevation-panel');
   if (elevPanel) elevPanel.style.display = 'none';
   
+  const cueSheetListEl = document.getElementById('route-cue-sheet');
+  if (cueSheetListEl) cueSheetListEl.innerHTML = '';
+  
   if (elevationChartInstance) {
     elevationChartInstance.destroy();
     elevationChartInstance = null;
   }
+  
+  import('./state.js').then(st => {
+    st.state.activeRouteBuilderRoute = null;
+  });
 }
 
 // ─── Oppervlakte Classificatie & Overpass ──────────
@@ -507,12 +514,129 @@ function renderElevationChart(distancesKm, elevations, climbs) {
   });
 }
 
+// ─── Cue-Sheet Generator ──────────────────────────
+function generateCueSheet(geoCoords, smoothEle, steps, pointSurfaces, distancesKm) {
+  const cues = [];
+  
+  // 1. Start cue
+  let startStreet = 'Route';
+  if (steps && steps.length > 0 && steps[0].name) {
+    startStreet = steps[0].name;
+  }
+  cues.push({
+    distanceKm: 0.0,
+    text: `Start route op de ${startStreet}`
+  });
+  
+  // 2. Turn cues from OSRM Steps
+  if (steps && steps.length > 0) {
+    let accumulatedDist = 0;
+    steps.forEach((step, idx) => {
+      accumulatedDist += step.distance;
+      const stepDistKm = accumulatedDist / 1000;
+      
+      const maneuver = step.maneuver;
+      if (maneuver && idx > 0 && idx < steps.length - 1) {
+        const modifier = maneuver.modifier || '';
+        const streetName = step.name || 'weg';
+        
+        let instruction = '';
+        if (modifier.includes('sharp left')) {
+          instruction = `Scherpe bocht links naar ${streetName}`;
+        } else if (modifier.includes('left')) {
+          instruction = `Sla linksaf naar ${streetName}`;
+        } else if (modifier.includes('sharp right')) {
+          instruction = `Scherpe bocht rechts naar ${streetName}`;
+        } else if (modifier.includes('right')) {
+          instruction = `Sla rechtsaf naar ${streetName}`;
+        } else if (modifier.includes('straight')) {
+          instruction = `Rechtdoor op ${streetName}`;
+        }
+        
+        if (instruction) {
+          cues.push({
+            distanceKm: stepDistKm,
+            text: instruction
+          });
+        }
+      }
+    });
+  }
+  
+  // 3. Wegdek transities
+  let currentSurface = pointSurfaces[0];
+  
+  for (let i = 1; i < pointSurfaces.length; i++) {
+    const s = pointSurfaces[i];
+    if (s !== currentSurface) {
+      const transDistKm = distancesKm[i];
+      
+      if (s === 'gravel') {
+        let j = i;
+        while (j < pointSurfaces.length && pointSurfaces[j] === 'gravel') {
+          j++;
+        }
+        const lenKm = distancesKm[Math.min(j - 1, pointSurfaces.length - 1)] - distancesKm[i];
+        cues.push({
+          distanceKm: transDistKm,
+          text: `⚠️ Start Gravelsegment (${lenKm.toFixed(1)} km)`
+        });
+      } else if (s === 'cobblestone') {
+        let j = i;
+        while (j < pointSurfaces.length && pointSurfaces[j] === 'cobblestone') {
+          j++;
+        }
+        const lenKm = distancesKm[Math.min(j - 1, pointSurfaces.length - 1)] - distancesKm[i];
+        cues.push({
+          distanceKm: transDistKm,
+          text: `⚠️ Start Kasseiensegment (${lenKm.toFixed(1)} km)`
+        });
+      } else if (currentSurface === 'gravel' && s === 'asphalt') {
+        cues.push({
+          distanceKm: transDistKm,
+          text: `✅ Einde Gravelsegment - terug op asfalt`
+        });
+      } else if (currentSurface === 'cobblestone' && s === 'asphalt') {
+        cues.push({
+          distanceKm: transDistKm,
+          text: `✅ Einde Kasseiensegment - terug op asfalt`
+        });
+      }
+      
+      currentSurface = s;
+    }
+  }
+  
+  // 4. Arrival cue
+  const totalD = distancesKm[distancesKm.length - 1];
+  cues.push({
+    distanceKm: totalD,
+    text: `🏁 Aankomst`
+  });
+  
+  // Sort and clean
+  cues.sort((a, b) => a.distanceKm - b.distanceKm);
+  
+  const cleanCues = [];
+  cues.forEach(cue => {
+    const isDuplicate = cleanCues.some(c => Math.abs(c.distanceKm - cue.distanceKm) < 0.05 && c.text === cue.text);
+    if (!isDuplicate) {
+      cleanCues.push({
+        distanceKm: cue.distanceKm,
+        text: cue.text
+      });
+    }
+  });
+  
+  return cleanCues;
+}
+
 // ─── Bereken route via OSRM ───────────────────────
 async function calculateRoute() {
   if (waypoints.length < 2) return;
   
   const coords = waypoints.map(p => `${p.lng},${p.lat}`).join(';');
-  const url    = `${OSRM_BIKE_URL}/${coords}?overview=full&geometries=geojson&steps=false&annotations=nodes`;
+  const url    = `${OSRM_BIKE_URL}/${coords}?overview=full&geometries=geojson&steps=true&annotations=nodes`;
   
   const statusEl = document.getElementById('route-builder-status');
   if (statusEl) statusEl.textContent = 'Route berekenen...';
@@ -659,12 +783,121 @@ async function calculateRoute() {
     
     const distKm = (route.distance / 1000);
     const durMin  = route.duration / 60;
+    
+    // ─── Klimdetectie & Hoogteprofiel integratie ──────
+    if (statusEl) statusEl.textContent = 'Hoogtedata ophalen...';
+    const elevations = await fetchElevations(geoCoords);
+    
+    const climbs = detectClimbs(geoCoords, elevations);
+    
+    // Update climbs panel
+    const elevPanel = document.getElementById('route-elevation-panel');
+    const climbsListEl = document.getElementById('route-climbs-list');
+    const climbingStatsEl = document.getElementById('route-climbing-stats');
+    
+    if (elevPanel) elevPanel.style.display = 'block';
+    
+    // Smooth elevations for rendering
+    const smoothEle = new Array(elevations.length);
+    for (let i = 0; i < elevations.length; i++) {
+      const wStart = Math.max(0, i - 2);
+      const wEnd = Math.min(elevations.length - 1, i + 2);
+      let sum = 0;
+      for (let k = wStart; k <= wEnd; k++) sum += elevations[k];
+      smoothEle[i] = sum / (wEnd - wStart + 1);
+    }
+    
+    // Calculate vertical gain
+    let totalAscent = 0;
+    for (let i = 1; i < smoothEle.length; i++) {
+      const diff = smoothEle[i] - smoothEle[i-1];
+      if (diff > 0) totalAscent += diff;
+    }
+    
+    if (climbingStatsEl) {
+      climbingStatsEl.textContent = `${Math.round(totalAscent)} hm | ${climbs.length} klim(men)`;
+    }
+    
+    if (climbsListEl) {
+      climbsListEl.innerHTML = '';
+      if (climbs.length === 0) {
+        const pld = document.createElement('div');
+        pld.style.cssText = 'font-size:11px;color:var(--text-muted);text-align:center;padding:6px;';
+        pld.textContent = 'Geen beklimmingen gedetecteerd (vlak parcours)';
+        climbsListEl.appendChild(pld);
+      } else {
+        climbs.forEach((climb, idx) => {
+          const card = document.createElement('div');
+          card.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding:8px 10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;font-size:11px;';
+          card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <strong style="color:var(--text-main);">Klim #${idx + 1}</strong>
+                <span style="color:var(--text-muted);margin-left:6px;">(km ${climb.startDistKm} - ${climb.endDistKm})</span>
+              </div>
+              <span style="padding:2px 6px;border-radius:4px;font-weight:800;font-size:10px;background:${climb.badgeColor};color:#fff;">${climb.category}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;color:var(--text-muted);font-size:10px;margin-top:2px;">
+              <span>Afstand: <strong>${(climb.lengthMs / 1000).toFixed(1)} km</strong></span>
+              <span>Stijging: <strong>${Math.round(climb.gainMs)} hm</strong></span>
+              <span>Gem: <strong>${climb.avgGrade.toFixed(1)}%</strong></span>
+              <span>Max: <strong>${climb.maxGradient.toFixed(1)}%</strong></span>
+            </div>
+          `;
+          climbsListEl.appendChild(card);
+        });
+      }
+    }
+    
+    // Draw elevation chart
+    renderElevationChart(distancesKm, smoothEle, climbs);
+    
+    // ─── Cue-Sheet generation en weergave ───────────
+    const steps = [];
+    if (route.legs) {
+      route.legs.forEach(leg => {
+        if (leg.steps) {
+          leg.steps.forEach(step => steps.push(step));
+        }
+      });
+    }
+    
+    const cueSheet = generateCueSheet(geoCoords, smoothEle, steps, pointSurfaces, distancesKm);
+    
     currentRoute = {
       coordinates: geoCoords.map(c => ({ lat: c[1], lng: c[0] })),
       distanceKm: distKm.toFixed(1),
       durationMin: Math.round(durMin),
-      name: document.getElementById('route-name-input')?.value || 'Mijn Route'
+      name: document.getElementById('route-name-input')?.value || 'Mijn Route',
+      cueSheet
     };
+    
+    // Export route to global state for bike computer
+    import('./state.js').then(st => {
+      st.state.activeRouteBuilderRoute = currentRoute;
+    });
+    
+    // Render Cue Sheet UI
+    const cueSheetListEl = document.getElementById('route-cue-sheet');
+    if (cueSheetListEl) {
+      cueSheetListEl.innerHTML = '';
+      if (cueSheet.length === 0) {
+        const item = document.createElement('div');
+        item.style.cssText = 'padding:6px 0; text-align:center; color:var(--text-muted);';
+        item.textContent = 'Geen instructies beschikbaar.';
+        cueSheetListEl.appendChild(item);
+      } else {
+        cueSheet.forEach(cue => {
+          const item = document.createElement('div');
+          item.style.cssText = 'display:flex; justify-content:space-between; padding:4px 0; border-bottom: 1px dashed rgba(255,255,255,0.02); line-height:1.4;';
+          item.innerHTML = `
+            <span style="color:var(--primary); font-weight:600; min-width:48px;">[${cue.distanceKm.toFixed(1)} km]</span>
+            <span style="flex:1; text-align:left; margin-left:8px; color:var(--text-main);">${cue.text}</span>
+          `;
+          cueSheetListEl.appendChild(item);
+        });
+      }
+    }
     
     // Update stats UI
     const distEl = document.getElementById('route-distance');
@@ -713,74 +946,6 @@ async function calculateRoute() {
         container.style.display = 'none';
       }
     }
-    
-    // ─── Klimdetectie & Hoogteprofiel integratie ──────
-    if (statusEl) statusEl.textContent = 'Hoogtedata ophalen...';
-    const elevations = await fetchElevations(geoCoords);
-    
-    const climbs = detectClimbs(geoCoords, elevations);
-    
-    // Update climbs panel
-    const elevPanel = document.getElementById('route-elevation-panel');
-    const climbsListEl = document.getElementById('route-climbs-list');
-    const climbingStatsEl = document.getElementById('route-climbing-stats');
-    
-    if (elevPanel) elevPanel.style.display = 'block';
-    
-    // Smooth elevations for rendering
-    const smoothEle = new Array(elevations.length);
-    for (let i = 0; i < elevations.length; i++) {
-      const wStart = Math.max(0, i - 2);
-      const wEnd = Math.min(elevations.length - 1, i + 2);
-      let sum = 0;
-      for (let k = wStart; k <= wEnd; k++) sum += elevations[k];
-      smoothEle[i] = sum / (wEnd - wStart + 1);
-    }
-    
-    // Calculate vertical gain
-    let totalAscent = 0;
-    for (let i = 1; i < smoothEle.length; i++) {
-      const diff = smoothEle[i] - smoothEle[i-1];
-      if (diff > 0) totalAscent += diff;
-    }
-    
-    if (climbingStatsEl) {
-      climbingStatsEl.textContent = `${Math.round(totalAscent)} hm | ${climbs.length} klim(men)`;
-    }
-    
-    if (climbsListEl) {
-      climbsListEl.innerHTML = '';
-      if (climbs.length === 0) {
-        const pld = document.createElement('div');
-        pld.style.cssText = 'font-size:11px;color:var(--text-muted);text-align:center;padding:10px;';
-        pld.textContent = 'Geen beklimmingen gedetecteerd (vlak parcours)';
-        climbsListEl.appendChild(pld);
-      } else {
-        climbs.forEach((climb, idx) => {
-          const card = document.createElement('div');
-          card.style.cssText = 'display:flex;flex-direction:column;gap:4px;padding:8px 10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:6px;font-size:11px;';
-          card.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <strong style="color:var(--text-main);">Klim #${idx + 1}</strong>
-                <span style="color:var(--text-muted);margin-left:6px;">(km ${climb.startDistKm} - ${climb.endDistKm})</span>
-              </div>
-              <span style="padding:2px 6px;border-radius:4px;font-weight:800;font-size:10px;background:${climb.badgeColor};color:#fff;">${climb.category}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;color:var(--text-muted);font-size:10px;margin-top:2px;">
-              <span>Afstand: <strong>${(climb.lengthMs / 1000).toFixed(1)} km</strong></span>
-              <span>Stijging: <strong>${Math.round(climb.gainMs)} hm</strong></span>
-              <span>Gem: <strong>${climb.avgGrade.toFixed(1)}%</strong></span>
-              <span>Max: <strong>${climb.maxGradient.toFixed(1)}%</strong></span>
-            </div>
-          `;
-          climbsListEl.appendChild(card);
-        });
-      }
-    }
-    
-    // Draw elevation chart
-    renderElevationChart(distancesKm, smoothEle, climbs);
     
     if (statusEl) statusEl.textContent = `✓ Route berekend en geanalyseerd`;
     
