@@ -48,6 +48,8 @@ import { loadSocialFeed, renderFeedCard, searchUsers, followUser, unfollowUser, 
 import { initProfileAvatarEditor } from './profile-avatar.js';
 import { updateFitnessBaseline, calculateFitnessMetrics, calculatePRs, buildHeatmapData, comparePeriods, calculateMMP, estimateVO2max, compareSeasons, calculateBadges, analyzeTrainingStructure, calculateReadinessScore } from './zones.js';
 import { renderEquipmentSection, openEquipmentModal } from './equipment.js';
+import { evaluateAndAdaptPlan } from './training-engine.js';
+import { fetchWeatherData, generateClothingAdvice } from './weather-service.js';
 import { checkOnboarding, initHelpButton, renderEmptyState, triggerPageTourIfNew, setCurrentPage } from './onboarding.js';
 import { initDesktopView } from './desktop-view.js';
 import { initMobileView } from './mobile-view.js';
@@ -151,6 +153,19 @@ export async function loadDashboardData() {
     // Sociale Feed bijwerken
     loadFeedSection();
 
+    // Wekelijkse adaptieve plan evalueren en renderen
+    if (state.user && state.user.id) {
+      try {
+        const plan = await evaluateAndAdaptPlan(state.user.id);
+        renderAdaptiveTrainingPlan(plan);
+      } catch(e) { console.warn('evaluateAndAdaptPlan:', e); }
+    }
+
+    // Weer & Kledingadvies laden en renderen
+    try {
+      await loadWeatherAndClothing();
+    } catch(e) { console.warn('loadWeatherAndClothing:', e); }
+
     // Realtime synchronisatie opzetten (eenmalig)
     if (!activeRealtimeChannel) {
       activeRealtimeChannel = setupRealtimeSubscriptions(loadDashboardData);
@@ -230,6 +245,16 @@ export function loadMockDashboardData() {
 
     // Rider Score berekenen en tonen op basis van bestaande ritten
     _displayRiderScoreFromActivities();
+
+    // Wekelijkse adaptieve plan evalueren en renderen
+    if (state.user && state.user.id) {
+      evaluateAndAdaptPlan(state.user.id).then(plan => {
+        renderAdaptiveTrainingPlan(plan);
+      }).catch(e => console.warn('evaluateAndAdaptPlan (mock):', e));
+    }
+
+    // Weer & Kledingadvies laden en renderen
+    loadWeatherAndClothing().catch(e => console.warn('loadWeatherAndClothing (mock):', e));
   });
 }
 
@@ -496,6 +521,18 @@ function setupEventListeners() {
       const name = nameEl?.value || 'Cyclo Route';
       const rb = await import('./route-builder.js').catch(() => null);
       if (rb?.downloadRouteAsGpx) rb.downloadRouteAsGpx(name);
+    });
+    document.getElementById('btn-reverse-route')?.addEventListener('click', async () => {
+      const rb = await import('./route-builder.js').catch(() => null);
+      if (rb?.reverseRoute) rb.reverseRoute();
+    });
+    document.getElementById('btn-reverse-route-advisory')?.addEventListener('click', async () => {
+      const rb = await import('./route-builder.js').catch(() => null);
+      if (rb?.reverseRoute) rb.reverseRoute();
+    });
+    document.getElementById('btn-toggle-route-view')?.addEventListener('click', async () => {
+      const rb = await import('./route-builder.js').catch(() => null);
+      if (rb?.toggleRouteViewMode) rb.toggleRouteViewMode();
     });
     
     // Import GPX knoppen
@@ -1445,6 +1482,156 @@ function renderFitnessChart(activities) {
   });
 }
 
+// ─── Adaptief Trainingsplan & Weer/Kledingadvies Widgets ───────────────────────
+export function renderAdaptiveTrainingPlan(plan) {
+  const panel = document.getElementById('adaptive-training-panel');
+  if (!panel) return;
+  if (!plan) {
+    panel.style.display = 'none';
+    return;
+  }
+  
+  panel.style.display = 'block';
+  
+  const progressText = document.getElementById('training-tss-progress');
+  const progressBar = document.getElementById('training-tss-bar');
+  if (progressText) progressText.textContent = `${plan.actual_tss.toFixed(0)} / ${plan.planned_tss} TSS`;
+  if (progressBar) {
+    const pct = Math.min(100, (plan.actual_tss / plan.planned_tss) * 100);
+    progressBar.style.width = `${pct}%`;
+  }
+  
+  const adjCard = document.getElementById('training-adjustment-card');
+  if (adjCard) {
+    if (plan.adjustment_type === 'on_track') {
+      adjCard.style.display = 'none';
+    } else {
+      adjCard.style.display = 'block';
+      if (plan.adjustment_type === 'reduce_intensity') {
+        adjCard.style.background = 'rgba(212, 255, 0, 0.1)';
+        adjCard.style.border = '1px solid rgba(212, 255, 0, 0.3)';
+        adjCard.style.color = 'var(--text-primary)';
+      } else { // rest_days
+        adjCard.style.background = 'rgba(239, 68, 68, 0.1)';
+        adjCard.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        adjCard.style.color = '#ef4444';
+      }
+      adjCard.textContent = plan.notes;
+    }
+  }
+  
+  const blocksList = document.getElementById('training-blocks-list');
+  if (blocksList) {
+    blocksList.innerHTML = '';
+    if (plan.training_blocks && plan.training_blocks.length > 0) {
+      plan.training_blocks.forEach(block => {
+        const item = document.createElement('div');
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.justifyContent = 'space-between';
+        item.style.background = 'rgba(255,255,255,0.02)';
+        item.style.border = '1px solid rgba(255,255,255,0.05)';
+        item.style.borderRadius = '8px';
+        item.style.padding = '8px 12px';
+        item.style.fontSize = '11px';
+        
+        item.innerHTML = `
+          <div>
+            <div style="font-weight:700; color:var(--text-primary);">${block.day} &bull; ${block.type}</div>
+            <div style="color:var(--text-muted); font-size:10px;">${block.target}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-weight:600; color:var(--primary);">${block.durationMin} min</div>
+            <div style="color:var(--text-muted); font-size:9px;">${block.targetPower}</div>
+          </div>
+        `;
+        blocksList.appendChild(item);
+      });
+    } else {
+      blocksList.innerHTML = '<div style="font-size:11px; color:var(--text-muted);">Geen trainingen gepland.</div>';
+    }
+  }
+}
+
+export async function loadWeatherAndClothing() {
+  let lat = 50.85;
+  let lng = 4.35;
+  
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        lat = position.coords.latitude;
+        lng = position.coords.longitude;
+        await fetchAndRenderWeather(lat, lng);
+      },
+      async () => {
+        await fetchAndRenderWeather(lat, lng);
+      },
+      { timeout: 5000 }
+    );
+  } else {
+    await fetchAndRenderWeather(lat, lng);
+  }
+}
+
+async function fetchAndRenderWeather(lat, lng) {
+  try {
+    const data = await fetchWeatherData(lat, lng);
+    if (!data) return;
+    const advice = generateClothingAdvice(data.temp, data.windSpeedKmh, data.rainProb);
+    
+    const panel = document.getElementById('weather-clothing-panel');
+    if (!panel) return;
+    panel.style.display = 'block';
+    
+    const iconEl = document.getElementById('weather-icon');
+    const tempEl = document.getElementById('weather-temp');
+    const feelEl = document.getElementById('weather-feel');
+    const condEl = document.getElementById('weather-condition');
+    const windEl = document.getElementById('weather-wind');
+    const adviceEl = document.getElementById('clothing-advice');
+    const itemsEl = document.getElementById('clothing-items-list');
+    
+    if (iconEl) iconEl.textContent = advice.icon;
+    if (tempEl) tempEl.textContent = `${data.temp.toFixed(0)}°C`;
+    if (feelEl) feelEl.textContent = `Gevoel: ${advice.feelTemp.toFixed(0)}°C`;
+    
+    const conditionTranslations = {
+      'Clear': 'Helder',
+      'Clouds': 'Bewolkt',
+      'Rain': 'Regenachtig',
+      'Drizzle': 'Lichte regen',
+      'Thunderstorm': 'Onweer',
+      'Snow': 'Sneeuw',
+      'Mist': 'Mist',
+      'Fog': 'Dichte mist',
+      'Helder': 'Helder',
+      'Bewolkt': 'Bewolkt',
+      'Regenachtig': 'Regenachtig'
+    };
+    const condText = conditionTranslations[data.condition] || data.condition;
+    
+    if (condEl) condEl.textContent = condText;
+    if (windEl) windEl.textContent = `Wind: ${data.windSpeedKmh.toFixed(0)} km/h`;
+    if (adviceEl) adviceEl.textContent = advice.advice;
+    
+    if (itemsEl) {
+      itemsEl.innerHTML = '';
+      advice.items.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        itemsEl.appendChild(li);
+      });
+    }
+    
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  } catch (e) {
+    console.error('Weer ophalen of renderen mislukt:', e);
+  }
+}
+
 // ─── Periode Vergelijking ────────────────────────────────────────────────────
 function renderPeriodComparison(activities) {
   const section = document.getElementById('period-comparison-section');
@@ -1776,6 +1963,19 @@ async function saveDailyBiometrics(hrv, restingHR) {
     showToast('Biometrie succesvol opgeslagen!', 'success');
   } catch (err) {
     showToast('Kon biometrie niet opslaan: ' + err.message, 'error');
+  }
+
+  // Wekelijks plan herberekenen en tonen (omdat HRV veranderd kan zijn)
+  if (state.user && state.user.id) {
+    try {
+      const plan = await evaluateAndAdaptPlan(state.user.id);
+      renderAdaptiveTrainingPlan(plan);
+      if (plan && plan.adjustment_type !== 'on_track') {
+        showToast(plan.notes, plan.adjustment_type === 'rest_days' ? 'warning' : 'info');
+      }
+    } catch (e) {
+      console.warn('Plan herberekening mislukt na opslaan biometrie:', e);
+    }
   }
 }
 

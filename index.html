@@ -381,6 +381,12 @@
                 <button class="btn btn-secondary btn-sm" id="btn-clear-route" disabled>
                   <i data-lucide="trash-2" style="width:13px;height:13px;"></i> Wis
                 </button>
+                <button class="btn btn-secondary btn-sm" id="btn-reverse-route" disabled>
+                  <i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Omdraaien
+                </button>
+                <button class="btn btn-secondary btn-sm" id="btn-toggle-route-view" style="display:none;">
+                  <i data-lucide="wind" style="width:13px;height:13px;"></i> Toon Wind
+                </button>
                 <button class="btn btn-secondary btn-sm" id="btn-import-gpx">
                   <i data-lucide="upload" style="width:13px;height:13px;"></i> Import
                 </button>
@@ -406,6 +412,20 @@
                 </div>
                 <div id="route-surface-bar" style="height:6px;width:100%;background:rgba(255,255,255,0.08);border-radius:3px;display:flex;overflow:hidden;"></div>
               </div>
+              <!-- Wind advies panel -->
+              <div id="wind-advisory-panel" style="display:none;margin-bottom:12px;padding:12px 14px;background:linear-gradient(135deg, rgba(212,255,0,0.12), rgba(0,240,255,0.06));border:1px solid rgba(212,255,0,0.3);border-radius:10px;animation: obSlideUp 0.3s ease;">
+                <div style="display:flex;align-items:start;gap:10px;">
+                  <i data-lucide="wind" style="width:20px;height:20px;color:var(--primary);flex-shrink:0;margin-top:2px;"></i>
+                  <div style="flex:1;">
+                    <div style="font-weight:700;color:var(--text-primary);font-size:13px;" id="wind-advisory-title">Wind Voordeel Advies</div>
+                    <div style="font-size:11px;color:var(--text-muted);line-height:1.4;margin-top:4px;" id="wind-advisory-text">Tip: door de route om te draaien bespaar je wind...</div>
+                    <button class="btn btn-primary btn-sm" id="btn-reverse-route-advisory" style="font-size:10px;padding:4px 10px;margin-top:8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                      <i data-lucide="refresh-cw" style="width:10px;height:10px;"></i> Route nu omdraaien
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div id="route-builder-map" class="route-builder-map"></div>
               <!-- Route Hoogteprofiel en Klimmen -->
               <div id="route-elevation-panel" style="display:none;margin-top:14px;border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;">
@@ -455,6 +475,53 @@
             </div>
             <button id="btn-edit-profile"></button>
             <button id="btn-logout"></button>
+          </div>
+
+          <!-- Weer & Kledingadvies Widget -->
+          <div class="glass-panel mb-4" id="weather-clothing-panel" style="display:none;">
+            <h3 class="widget-title"><i data-lucide="cloud-sun" style="color:var(--secondary)"></i> Weer &amp; Kledingadvies</h3>
+            <div id="weather-widget-content">
+              <div class="d-flex justify-between align-center mb-3">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span id="weather-icon" style="font-size:24px;">☀️</span>
+                  <div>
+                    <div style="font-size:14px; font-weight:700;" id="weather-temp">—°C</div>
+                    <div style="font-size:10px; color:var(--text-muted);" id="weather-feel">Gevoel: —°C</div>
+                  </div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:11px; font-weight:600; color:var(--text-primary);" id="weather-condition">Helder</div>
+                  <div style="font-size:10px; color:var(--text-muted);" id="weather-wind">Wind: — km/h</div>
+                </div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:10px; margin-top:8px;">
+                <div style="font-size:11px; font-weight:700; color:var(--primary); margin-bottom:4px;" id="clothing-title">Kledingadvies</div>
+                <div style="font-size:12px; font-weight:600; color:var(--text-primary);" id="clothing-advice">—</div>
+                <ul id="clothing-items-list" style="margin:6px 0 0; padding-left:16px; font-size:11px; color:var(--text-muted); display:flex; flex-direction:column; gap:3px;">
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Adaptief Trainingsschema Widget -->
+          <div class="glass-panel mb-4" id="adaptive-training-panel" style="display:none;">
+            <h3 class="widget-title"><i data-lucide="dumbbell" style="color:var(--primary)"></i> Adaptief Trainingsschema</h3>
+            <div id="adaptive-training-content">
+              <div class="d-flex justify-between align-center mb-2" style="font-size:11px; color:var(--text-muted);">
+                <span>Weekelijkse TSS</span>
+                <span id="training-tss-progress">— / — TSS</span>
+              </div>
+              <div style="height:6px; width:100%; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; margin-bottom:12px; display:flex;">
+                <div id="training-tss-bar" style="height:100%; width:0%; background:var(--primary); transition:width 0.3s ease;"></div>
+              </div>
+              <div id="training-adjustment-card" class="mb-3" style="padding:10px; border-radius:8px; font-size:11px; line-height:1.4; display:none;">
+                <!-- Wordt dynamisch gevuld met Scenario 1 of 2 details -->
+              </div>
+              <div style="font-size:11px; font-weight:700; color:var(--text-primary); margin-bottom:6px;">Trainingsblokken deze week:</div>
+              <div id="training-blocks-list" style="display:flex; flex-direction:column; gap:6px;">
+                <!-- Renders weekly sessions -->
+              </div>
+            </div>
           </div>
 
           <!-- Beschikbaarheid Editor -->

@@ -3,6 +3,7 @@
 // GPX export compatibel met Garmin Edge, Wahoo ELEMNT, Hammerhead Karoo
 
 import { showToast } from './state.js';
+import { fetchWeatherData, calculateBearing, relativeWindAngle, getWindClass } from './weather-service.js';
 
 const OSRM_BIKE_URL = 'https://router.project-osrm.org/route/v1/cycling';
 
@@ -20,6 +21,17 @@ let waypointMarkers = [];
 let currentRoute = null;
 let onWaypointChangeCb = null;
 let elevationChartInstance = null;
+
+let routeViewMode = 'surface';
+let lastCalculatedGeoCoords = null;
+let lastCalculatedPointSurfaces = null;
+let lastCalculatedWindClasses = null;
+
+const WIND_COLORS = {
+  tailwind: '#4ade80',   // Groen (Rugwind)
+  crosswind: '#fef08a',  // Geel (Zijwind)
+  headwind: '#f87171'    // Rood (Tegenwind)
+};
 
 // ─── Initialiseer de route-bouwer kaart ───────────
 export function initRouteBuilder(containerId, options = {}) {
@@ -631,6 +643,37 @@ function generateCueSheet(geoCoords, smoothEle, steps, pointSurfaces, distancesK
   return cleanCues;
 }
 
+function drawRoutePolylines(geoCoords, pointSurfaces, windClasses) {
+  if (routeLayer) routeLayer.clearLayers();
+  if (!geoCoords || geoCoords.length === 0) return;
+  
+  let currentRun = [ [geoCoords[0][1], geoCoords[0][0]] ];
+  let currentType = routeViewMode === 'wind' ? (windClasses[0] || 'crosswind') : pointSurfaces[0];
+  
+  for (let i = 1; i < geoCoords.length; i++) {
+    const pt = [geoCoords[i][1], geoCoords[i][0]];
+    const type = routeViewMode === 'wind' ? (windClasses[i] || 'crosswind') : pointSurfaces[i];
+    currentRun.push(pt);
+    
+    if (type !== currentType || i === geoCoords.length - 1) {
+      const color = routeViewMode === 'wind' 
+        ? (WIND_COLORS[currentType] || WIND_COLORS.crosswind)
+        : (SURFACE_COLORS[currentType] || SURFACE_COLORS.asphalt);
+        
+      L.polyline(currentRun, {
+        color: color,
+        weight: 5,
+        opacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(routeLayer);
+      
+      currentRun = [pt];
+      currentType = type;
+    }
+  }
+}
+
 // ─── Bereken route via OSRM ───────────────────────
 async function calculateRoute() {
   if (waypoints.length < 2) return;
@@ -731,28 +774,89 @@ async function calculateRoute() {
       }
     }
     
-    // Draw multi-colored polyline segments
-    let currentRun = [ [geoCoords[0][1], geoCoords[0][0]] ];
-    let currentType = pointSurfaces[0];
-    
-    for (let i = 1; i < geoCoords.length; i++) {
-      const pt = [geoCoords[i][1], geoCoords[i][0]];
-      const type = pointSurfaces[i];
-      currentRun.push(pt);
-      
-      if (type !== currentType || i === geoCoords.length - 1) {
-        L.polyline(currentRun, {
-          color: SURFACE_COLORS[currentType] || SURFACE_COLORS.asphalt,
-          weight: 5,
-          opacity: 0.9,
-          lineCap: 'round',
-          lineJoin: 'round'
-        }).addTo(routeLayer);
-        
-        currentRun = [pt];
-        currentType = type;
+    // Wind vector en windhoek berekeningen
+    let windData = null;
+    let windClasses = [];
+    if (geoCoords.length > 0) {
+      try {
+        windData = await fetchWeatherData(geoCoords[0][1], geoCoords[0][0]);
+      } catch (err) {
+        console.warn('Kon winddata niet ophalen:', err);
       }
     }
+
+    if (windData) {
+      for (let i = 0; i < geoCoords.length; i++) {
+        if (i === 0) {
+          windClasses.push('crosswind');
+          continue;
+        }
+        const lat1 = geoCoords[i-1][1];
+        const lon1 = geoCoords[i-1][0];
+        const lat2 = geoCoords[i][1];
+        const lon2 = geoCoords[i][0];
+        const bearing = calculateBearing(lat1, lon1, lat2, lon2);
+        const relAngle = relativeWindAngle(bearing, windData.windDirection);
+        const windClass = getWindClass(relAngle);
+        windClasses.push(windClass);
+      }
+      
+      // Toon/verberg de wind/wegdek toggle knop
+      const toggleBtn = document.getElementById('btn-toggle-route-view');
+      if (toggleBtn) toggleBtn.style.display = '';
+      
+      // Wind optimalisatie segment-vergelijking (Heenrit vs Terugrit)
+      let outwardHeadwindDist = 0;
+      let outwardTailwindDist = 0;
+      let returnHeadwindDist = 0;
+      let returnTailwindDist = 0;
+      
+      const halfIndex = Math.floor(geoCoords.length / 2);
+      for (let i = 0; i < geoCoords.length - 1; i++) {
+        const p1 = L.latLng(geoCoords[i][1], geoCoords[i][0]);
+        const p2 = L.latLng(geoCoords[i+1][1], geoCoords[i+1][0]);
+        const d = p1.distanceTo(p2);
+        const wc = windClasses[i+1] || 'crosswind';
+        
+        if (i < halfIndex) {
+          if (wc === 'headwind') outwardHeadwindDist += d;
+          if (wc === 'tailwind') outwardTailwindDist += d;
+        } else {
+          if (wc === 'headwind') returnHeadwindDist += d;
+          if (wc === 'tailwind') returnTailwindDist += d;
+        }
+      }
+      
+      const advPanel = document.getElementById('wind-advisory-panel');
+      const advText = document.getElementById('wind-advisory-text');
+      
+      if (advPanel && advText) {
+        const isAdvisoryActive = returnHeadwindDist > (outwardHeadwindDist * 1.30);
+        const diffHeadwind = returnHeadwindDist - outwardHeadwindDist;
+        const timeSavedSec = diffHeadwind * 0.028;
+        const timeSavedMin = Math.round(timeSavedSec / 60);
+        
+        if (isAdvisoryActive && timeSavedMin >= 2) {
+          advPanel.style.display = 'block';
+          advText.innerHTML = `⚠️ <strong>Tegenwind in de finale gedetecteerd!</strong> Je hebt op de terugweg meer tegenwind (${(returnHeadwindDist/1000).toFixed(1)} km) dan op de heenweg (${(outwardHeadwindDist/1000).toFixed(1)} km) bij wind uit ${windData.windDirection}° (${windData.windSpeedKmh.toFixed(0)} km/h).<br>Door deze route om te draaien heb je rugwind in de finale en bespaar je naar schatting <strong>~${timeSavedMin} minuten</strong>.`;
+        } else {
+          advPanel.style.display = 'none';
+        }
+      }
+    } else {
+      const toggleBtn = document.getElementById('btn-toggle-route-view');
+      if (toggleBtn) toggleBtn.style.display = 'none';
+      const advPanel = document.getElementById('wind-advisory-panel');
+      if (advPanel) advPanel.style.display = 'none';
+    }
+
+    // Cache resultaten voor snelle view-mode toggles
+    lastCalculatedGeoCoords = geoCoords;
+    lastCalculatedPointSurfaces = pointSurfaces;
+    lastCalculatedWindClasses = windClasses;
+
+    // Draw route polylines o.b.v. actieve view mode
+    drawRoutePolylines(geoCoords, pointSurfaces, windClasses);
     
     // Fit bounds of the layer group
     if (routeLayer.getLayers().length > 0) {
@@ -1132,12 +1236,40 @@ function updateBuilderUI() {
   const wayptCount = document.getElementById('route-waypoint-count');
   const undoBtn    = document.getElementById('btn-undo-waypoint');
   const clearBtn   = document.getElementById('btn-clear-route');
+  const reverseBtn = document.getElementById('btn-reverse-route');
   
   if (wayptCount) wayptCount.textContent = waypoints.length;
   if (undoBtn)    undoBtn.disabled = waypoints.length === 0;
   if (clearBtn)   clearBtn.disabled = waypoints.length === 0;
+  if (reverseBtn) reverseBtn.disabled = waypoints.length < 2;
 
   if (onWaypointChangeCb && (!currentRoute || waypoints.length < 2)) {
     onWaypointChangeCb(waypoints.length, 0, 0);
+  }
+}
+
+export function reverseRoute() {
+  if (waypoints.length < 2) return;
+  waypoints.reverse();
+  waypointMarkers.reverse();
+  reindexMarkers();
+  calculateRoute();
+}
+
+export function toggleRouteViewMode() {
+  routeViewMode = routeViewMode === 'surface' ? 'wind' : 'surface';
+  
+  const toggleBtn = document.getElementById('btn-toggle-route-view');
+  if (toggleBtn) {
+    if (routeViewMode === 'wind') {
+      toggleBtn.innerHTML = '<i data-lucide="map" style="width:13px;height:13px;"></i> Toon Wegdek';
+    } else {
+      toggleBtn.innerHTML = '<i data-lucide="wind" style="width:13px;height:13px;"></i> Toon Wind';
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+  
+  if (lastCalculatedGeoCoords) {
+    drawRoutePolylines(lastCalculatedGeoCoords, lastCalculatedPointSurfaces, lastCalculatedWindClasses);
   }
 }

@@ -328,3 +328,44 @@ CREATE POLICY "Allow users to update their own equipment" ON public.equipment
 
 CREATE POLICY "Allow users to delete their own equipment" ON public.equipment
   FOR DELETE TO authenticated USING (auth.uid() = user_id);
+
+
+-- 12. Table for Daily Training Metrics (CTL, ATL, TSB)
+CREATE TABLE IF NOT EXISTS public.training_metrics (
+  id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID    NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  date        DATE    NOT NULL,
+  tss         FLOAT   DEFAULT 0,   -- Training Stress Score van die dag
+  ctl         FLOAT   DEFAULT 0,   -- Chronic Training Load (fitheid)
+  atl         FLOAT   DEFAULT 0,   -- Acute Training Load (vermoeidheid)
+  tsb         FLOAT   DEFAULT 0,   -- Training Stress Balance (vorm)
+  created_at  TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(user_id, date)
+);
+
+-- Enable RLS
+ALTER TABLE public.training_metrics ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own metrics" ON public.training_metrics
+  FOR ALL TO authenticated USING (auth.uid() = user_id);
+
+
+-- 13. Table for Adaptive Training Plans
+CREATE TABLE IF NOT EXISTS public.adaptive_plans (
+  id              UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID    NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  week_start      DATE    NOT NULL,
+  planned_tss     FLOAT,          -- Geplande wekelijkse TSS
+  actual_tss      FLOAT,          -- Werkelijke wekelijkse TSS
+  adjustment_type TEXT DEFAULT 'on_track' CHECK (adjustment_type IN ('reduce_intensity', 'rest_days', 'on_track')),
+  training_blocks JSONB,          -- Array van trainingssessies voor de week
+  notes           TEXT,
+  created_at      TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(user_id, week_start)
+);
+
+-- Enable RLS
+ALTER TABLE public.adaptive_plans ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own plans" ON public.adaptive_plans
+  FOR ALL TO authenticated USING (auth.uid() = user_id);
