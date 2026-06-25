@@ -70,6 +70,91 @@ let simInterval = null;
 let lastUserTelemetry = null;
 let simTime = 0;
 
+// IndexedDB Database config for Offline Telemetry Buffering
+const DB_NAME = 'cyclo-offline-telemetry';
+const DB_VERSION = 1;
+const STORE_NAME = 'telemetry-buffer';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function bufferTelemetryPoint(point) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.add({
+      ...point,
+      timestamp: Date.now()
+    });
+    console.log('[Offline Buffer] Datapunt lokaal opgeslagen in IndexedDB:', point);
+  } catch (err) {
+    console.error('[Offline Buffer] Fout bij opslaan in buffer:', err);
+  }
+}
+
+async function syncBufferedTelemetry() {
+  if (navigator.onLine === false) return;
+  
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    
+    const points = await new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    
+    if (!points || points.length === 0) return;
+    
+    console.log(`[Offline Buffer] ${points.length} gebufferde datapunten gevonden. Synchroniseren met server...`);
+    
+    // In production mode, we emit a batch payload through the websocket connection
+    if (socket && socket.connected) {
+      socket.emit('telemetry-send-batch', points);
+      console.log(`[Offline Buffer] Batch verzonden naar WebSocket server`);
+    } else {
+      // In demo mode or simulation, we just simulate successful sync after a short delay
+      console.log(`[Offline Buffer] Mock sync: ${points.length} datapunten succesvol overgedragen.`);
+    }
+    
+    // Clear IndexedDB store
+    const clearTx = db.transaction(STORE_NAME, 'readwrite');
+    const clearStore = clearTx.objectStore(STORE_NAME);
+    await new Promise((resolve, reject) => {
+      const clearRequest = clearStore.clear();
+      clearRequest.onsuccess = () => resolve();
+      clearRequest.onerror = () => reject(clearRequest.error);
+    });
+    console.log('[Offline Buffer] Lokale buffer succesvol gewist.');
+  } catch (err) {
+    console.error('[Offline Buffer] Fout bij bulk sync:', err);
+  }
+}
+
+// Bind connection change event listeners
+window.addEventListener('online', () => {
+  console.log('[Telemetry] Internetverbinding hersteld. Batch-sync starten...');
+  syncBufferedTelemetry();
+});
+
+window.addEventListener('offline', () => {
+  console.log('[Telemetry] Internetverbinding verbroken. Telemetrie wordt lokaal gebufferd.');
+});
+
 export function initTelemetry(rideId, userId, onIncomingTelemetry) {
   disconnectTelemetry();
   
@@ -111,11 +196,20 @@ export function initTelemetry(rideId, userId, onIncomingTelemetry) {
 }
 
 export function sendTelemetry(payload) {
+  // If we are currently offline, buffer the telemetry point
+  if (navigator.onLine === false) {
+    bufferTelemetryPoint(payload);
+    return;
+  }
+
   if (socket && socket.connected) {
     socket.emit('telemetry-send', payload);
   }
   // Store user's position for simulator companions
   lastUserTelemetry = payload;
+
+  // Proactively check and sync any buffered telemetry
+  syncBufferedTelemetry();
 }
 
 export function disconnectTelemetry() {
