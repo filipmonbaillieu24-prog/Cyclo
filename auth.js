@@ -121,8 +121,12 @@ export function setUser(userProfile, setUserCallback) {
     const helpItem = document.getElementById('nav-help-item');
     if (helpItem) helpItem.style.display = '';
 
-    // Ga naar sociale feed (Home) na inloggen
-    navigateTo('feed', setUserCallback);
+    // Ga naar sociale feed (Home) na inloggen, tenzij we net terugkomen van een OAuth koppeling
+    if (state.oauthRedirect === 'strava' || state.oauthRedirect === 'garmin') {
+      navigateTo('profile', setUserCallback);
+    } else {
+      navigateTo('feed', setUserCallback);
+    }
 
     // Onboarding check (na feed laden)
     setTimeout(() => {

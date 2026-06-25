@@ -13,6 +13,10 @@ export async function initGarminSync() {
     // Clean up URL
     const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
     window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+  } else if (params.get('garmin') === 'cancelled') {
+    showToast("Koppeling met Garmin Connect geannuleerd.", "info");
+    const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+    window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
   }
 
   // 2. Initial state sync

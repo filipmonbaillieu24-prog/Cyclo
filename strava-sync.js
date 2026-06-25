@@ -17,20 +17,38 @@ export async function initStravaSync() {
     if (params.get('strava') === 'connected') {
       _stravaCallbackHandled = true;
       showToast("Strava succesvol gekoppeld! Bekijk je profiel.", "success");
-      // Clean up URL
       const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
       window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-      // After Strava connect, navigate to profile so user sees connection status
-      // Wait for user session to be set before navigating
+      setTimeout(() => {
+        if (state.user && window._loadProfilePage) {
+          window._loadProfilePage();
+        }
+      }, 1500);
+    } else if (params.get('strava') === 'cancelled') {
+      _stravaCallbackHandled = true;
+      showToast("Koppeling met Strava geannuleerd.", "info");
+      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
       setTimeout(() => {
         if (state.user && window._loadProfilePage) {
           window._loadProfilePage();
         }
       }, 1500);
     }
+
     if (params.get('garmin') === 'connected') {
       _stravaCallbackHandled = true;
       showToast("Garmin Connect succesvol gekoppeld! Bekijk je profiel.", "success");
+      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+      setTimeout(() => {
+        if (state.user && window._loadProfilePage) {
+          window._loadProfilePage();
+        }
+      }, 1500);
+    } else if (params.get('garmin') === 'cancelled') {
+      _stravaCallbackHandled = true;
+      showToast("Koppeling met Garmin Connect geannuleerd.", "info");
       const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
       window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
       setTimeout(() => {

@@ -1149,6 +1149,14 @@ function updateSeasonHeader() {
 }
 // 5. APPLICATIE INITIALISATIE RUN
 document.addEventListener('DOMContentLoaded', () => {
+  // Check for Strava or Garmin callback parameters before they get cleaned up by modules
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('strava') === 'connected' || params.get('strava') === 'cancelled') {
+    state.oauthRedirect = 'strava';
+  } else if (params.get('garmin') === 'connected' || params.get('garmin') === 'cancelled') {
+    state.oauthRedirect = 'garmin';
+  }
+
   // Device routing
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
   if (isMobile) {

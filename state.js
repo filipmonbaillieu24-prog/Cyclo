@@ -117,7 +117,8 @@ export const state = {
   rides: [],                // Alle geplande groepsritten van deze maand
   profiles: [],             // Alle gebruikersprofielen (voor avatars & leaderboard)
   activities: [],           // Activiteiten (geüploade ritten) van de ingelogde gebruiker
-  selectedStatus: 'available' // Geselecteerde status in de beschikbaarheidswidget
+  selectedStatus: 'available', // Geselecteerde status in de beschikbaarheidswidget
+  oauthRedirect: null         // Type OAuth redirect ('strava' of 'garmin') bij opstarten
 };
 
 // 3. MOCK PROFIELEN VOOR OFFLINE STANDAARD GEBRUIKER

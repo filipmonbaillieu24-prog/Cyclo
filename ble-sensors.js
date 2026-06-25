@@ -35,16 +35,10 @@ export async function connectHeartRate() {
     showToast("Selecteer uw hartslagsensor in het popup-venster…", "info");
 
     hrDevice = await navigator.bluetooth.requestDevice({
-      filters: [
-        { services: ['heart_rate'] },
-        { namePrefix: 'Polar' },
-        { namePrefix: 'Garmin' },
-        { namePrefix: 'Wahoo' },
-        { namePrefix: 'CooSpo' },
-        { namePrefix: 'Scosche' }
-      ],
+      acceptAllDevices: true,
       optionalServices: ['heart_rate', 'battery_service', 'device_information']
     });
+
 
     hrDevice.addEventListener('gattserverdisconnected', onHeartRateDisconnected);
 
@@ -109,8 +103,10 @@ export async function connectCyclingPower() {
   try {
     updateStatus("Power: Koppelen...", false);
     powerDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ services: ['cycling_power'] }]
+      acceptAllDevices: true,
+      optionalServices: ['cycling_power', 'battery_service', 'device_information']
     });
+
 
     powerDevice.addEventListener('gattserverdisconnected', onCyclingPowerDisconnected);
 
