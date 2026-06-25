@@ -381,6 +381,10 @@
                 <button class="btn btn-secondary btn-sm" id="btn-clear-route" disabled>
                   <i data-lucide="trash-2" style="width:13px;height:13px;"></i> Wis
                 </button>
+                <button class="btn btn-secondary btn-sm" id="btn-import-gpx">
+                  <i data-lucide="upload" style="width:13px;height:13px;"></i> Import
+                </button>
+                <input type="file" id="route-gpx-upload" accept=".gpx" style="display:none;">
               </div>
               <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
                 <div class="route-stat-badge">
@@ -393,6 +397,14 @@
                 </div>
                 <span id="route-builder-status" style="font-size:11px;color:var(--text-muted);">Klik op de kaart om waypoints te plaatsen</span>
                 <span style="font-size:10px;color:var(--text-muted);margin-left:auto;"><strong id="route-waypoint-count">0</strong> wp</span>
+              </div>
+              <!-- Wegdek verdeling en gekleurde progress bar -->
+              <div id="route-surface-container" style="display:none;margin-bottom:12px;padding:10px 12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;">
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:6px;">
+                  <span>Wegdek verdeling</span>
+                  <span id="route-surface-stats" style="font-weight:600;color:var(--text-main);">—</span>
+                </div>
+                <div id="route-surface-bar" style="height:6px;width:100%;background:rgba(255,255,255,0.08);border-radius:3px;display:flex;overflow:hidden;"></div>
               </div>
               <div id="route-builder-map" class="route-builder-map"></div>
               <button class="btn btn-primary w-full" id="btn-download-gpx" style="display:none;margin-top:12px;">

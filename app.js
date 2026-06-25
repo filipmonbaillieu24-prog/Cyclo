@@ -497,6 +497,27 @@ function setupEventListeners() {
       const rb = await import('./route-builder.js').catch(() => null);
       if (rb?.downloadRouteAsGpx) rb.downloadRouteAsGpx(name);
     });
+    
+    // Import GPX knoppen
+    const importGpxBtn = document.getElementById('btn-import-gpx');
+    const gpxUploadInput = document.getElementById('route-gpx-upload');
+    importGpxBtn?.addEventListener('click', () => {
+      gpxUploadInput?.click();
+    });
+    gpxUploadInput?.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const text = event.target.result;
+        const rb = await import('./route-builder.js').catch(() => null);
+        if (rb?.importGpxRoute) {
+          rb.importGpxRoute(text);
+        }
+        gpxUploadInput.value = '';
+      };
+      reader.readAsText(file);
+    });
   }
 
   // ─── Profiel pagina avatar customizer ────────────────────────
