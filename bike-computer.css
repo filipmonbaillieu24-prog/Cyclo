@@ -1,18 +1,17 @@
-/* Cyclo - Mobile Bike Computer Stylesheet (OLED Black & Neon Contrast) */
+/* Cyclo - Bike Computer Stylesheet — Premium Dark Redesign */
+/* Design tokens: volledig afgestemd op Cyclo huisstijl (style.css) */
 
-/* Fullscreen Mode Container */
+/* ─── Fullscreen Container ───────────────────────────────────────────────── */
 #bike-computer-container {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: #000000 !important; /* Pure black for OLED battery saving */
-  color: #ffffff;
+  background-color: var(--bg-main); /* hsl(222,25%,7%) */
+  color: var(--text-primary);
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  padding: 16px;
   box-sizing: border-box;
   font-family: var(--font-body);
   overflow: hidden;
@@ -20,166 +19,12 @@
   -webkit-user-select: none;
 }
 
-/* Header with Route name and Connection status */
-.bc-header {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  right: 16px;
-  z-index: 10;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  padding: 8px 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-  box-sizing: border-box;
-}
-
-.bc-route-title {
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 60%;
-}
-
-.bc-sensor-badge {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.bc-sensor-badge.connected {
-  border-color: var(--primary);
-  background: rgba(212, 255, 0, 0.1);
-  color: var(--primary);
-}
-
-/* Primary Speed Display (Hero Element) */
-.bc-speed-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 0;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.bc-speed-val {
-  font-family: var(--font-display);
-  font-size: 84px;
-  font-weight: 800;
-  color: var(--primary); /* Neon Volt Green */
-  line-height: 0.9;
-  letter-spacing: -0.04em;
-  text-shadow: 0 0 20px rgba(212, 255, 0, 0.25);
-}
-
-.bc-speed-lbl {
-  font-size: 12px;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-top: 4px;
-}
-
-/* Grid for Metrics (Duration, Distance, Heart Rate, Power) */
-.bc-metrics-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 12px 0;
-  flex-shrink: 0;
-}
-
-.bc-metric-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-lg);
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  height: 80px;
-  position: relative;
-  overflow: hidden;
-}
-
-.bc-metric-card.pulsing-hr::before {
-  content: '';
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
-  animation: bc-pulse-dot 1s infinite alternate;
-}
-
-@keyframes bc-pulse-dot {
-  0% { transform: scale(0.8); opacity: 0.5; }
-  100% { transform: scale(1.3); opacity: 1; }
-}
-
-.bc-metric-val {
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1;
-}
-
-.bc-metric-val.color-cyan {
-  color: var(--secondary); /* Electric Cyan */
-}
-
-.bc-metric-val.color-pink {
-  color: var(--accent); /* Coral Pink */
-}
-
-.bc-metric-val.color-volt {
-  color: var(--primary); /* Volt Green */
-}
-
-.bc-metric-lbl {
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 6px;
-}
-
-/* Live Navigation Map Box */
+/* ─── Map (full bleed) ────────────────────────────────────────────────────── */
 .bc-map-wrap {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   z-index: 1;
-  border: none;
-  margin-bottom: 0;
-  border-radius: 0;
-  background: #080a0f;
+  background: var(--bg-main);
 }
 
 #bike-computer-map {
@@ -187,147 +32,564 @@
   height: 100%;
 }
 
-/* Custom pulsing position marker inside Leaflet */
-.leaflet-bike-location-marker {
-  width: 18px;
-  height: 18px;
+/* ─── Header bar ──────────────────────────────────────────────────────────── */
+.bc-header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 10;
+  height: 48px;
+  background: var(--bg-surface); /* hsl(222,20%,11%) */
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.bc-route-title {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
+.bc-sensor-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.bc-sensor-badge.connected {
+  border-color: var(--border-active);
+  color: var(--primary);
+}
+
+/* ─── Nav Banner (turn-by-turn) ───────────────────────────────────────────── */
+#bc-nav-banner {
+  position: absolute;
+  top: 56px; left: 12px; right: 12px;
+  z-index: 10;
+  background: var(--bg-surface);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+#bc-nav-banner span {
+  font-family: var(--font-body);
+}
+
+/* ─── Companion Side Panel ────────────────────────────────────────────────── */
+#bc-companion-panel {
+  position: absolute;
+  top: 56px;
+  right: 12px;
+  width: 158px;
+  max-height: 45vh;
+  overflow-y: auto;
+  background: var(--bg-surface);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  z-index: 20;
+  display: none;
+}
+
+#bc-companion-panel .bc-companion-header {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* ─── Bottom Dashboard ────────────────────────────────────────────────────── */
+.bc-bottom-dashboard {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 10;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--primary);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Speed + metrics row */
+.bc-dashboard-row {
+  display: flex;
+  align-items: stretch;
+  min-height: 100px;
+}
+
+/* Left: dominant speed */
+.bc-speed-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 16px;
+  flex-shrink: 0;
+  width: 42%;
+  border-right: 1px solid rgba(255,255,255,0.06);
+}
+
+.bc-speed-val {
+  font-family: var(--font-display);
+  font-size: 72px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.bc-speed-lbl {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-top: 4px;
+}
+
+/* Right: 2x2 metrics grid */
+.bc-metrics-grid-compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+}
+
+.bc-metric-card-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  position: relative;
+  box-sizing: border-box;
+}
+
+.bc-metric-card-compact:nth-child(even) {
+  border-right: none;
+}
+
+.bc-metric-card-compact:nth-child(3),
+.bc-metric-card-compact:nth-child(4) {
+  border-bottom: none;
+}
+
+.bc-metric-val-compact {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.bc-metric-val-compact.color-pink  { color: var(--accent); }
+.bc-metric-val-compact.color-volt  { color: var(--primary); }
+.bc-metric-val-compact.color-cyan  { color: var(--secondary); }
+
+.bc-metric-lbl-compact {
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 3px;
+}
+
+/* Pulsing HR dot */
+.bc-metric-card-compact.pulsing-hr::before {
+  content: '';
+  position: absolute;
+  top: 7px; right: 7px;
+  width: 5px; height: 5px;
   border-radius: 50%;
-  background-color: var(--secondary);
-  border: 3px solid #ffffff;
-  box-shadow: 0 0 15px var(--secondary), 0 0 5px rgba(0, 0, 0, 0.5);
-  animation: leaflet-pulse 2s infinite;
+  background: var(--accent);
+  animation: bc-pulse-dot 1s infinite alternate;
 }
 
-@keyframes leaflet-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(0, 240, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); }
+@keyframes bc-pulse-dot {
+  0%   { transform: scale(0.8); opacity: 0.5; }
+  100% { transform: scale(1.3); opacity: 1; }
 }
 
-/* Control Buttons Section */
+/* ─── Controls row ────────────────────────────────────────────────────────── */
 .bc-controls {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 24px;
-  margin-top: auto;
-  padding: 8px 0 16px;
-  flex-shrink: 0;
+  gap: 20px;
+  padding: 12px 0 16px;
+  border-top: 1px solid rgba(255,255,255,0.05);
 }
 
-/* Bumpy-Road Big Buttons */
 .bc-btn {
-  width: 72px;
-  height: 72px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  font-size: 20px;
+  color: var(--text-primary);
+  transition: transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+              box-shadow 0.18s ease;
   box-sizing: border-box;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
 }
 
-.bc-btn:active {
-  transform: scale(0.92);
-}
+.bc-btn:active { transform: scale(0.9); }
 
-.bc-btn-start {
+/* Pause — volt primary */
+.bc-btn-pause {
   background: var(--primary);
   color: var(--text-on-primary);
-  box-shadow: 0 4px 15px rgba(212, 255, 0, 0.3);
+  width: 64px;
+  height: 64px;
+  box-shadow: 0 0 16px var(--primary-glow);
 }
 
-.bc-btn-pause {
-  background: #ffa000;
-  box-shadow: 0 4px 15px rgba(255, 160, 0, 0.3);
-}
-
+/* Resume */
 .bc-btn-resume {
   background: var(--primary);
   color: var(--text-on-primary);
-  box-shadow: 0 4px 15px rgba(212, 255, 0, 0.3);
+  width: 64px;
+  height: 64px;
+  box-shadow: 0 0 16px var(--primary-glow);
 }
 
-/* Paused state control buttons */
+/* Secondary actions */
 .bc-btn-discard {
-  background: #ef4444;
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #ef4444;
 }
 
 .bc-btn-save {
-  background: var(--secondary);
-  color: var(--text-on-primary);
-  box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--secondary);
 }
 
-/* Floating bottom nav play button */
-.mobile-start-ride-circle {
-  width: 42px;
-  height: 42px;
+/* ─── GPS position marker ─────────────────────────────────────────────────── */
+.leaflet-bike-location-marker-container {
+  background: transparent;
+  border: none;
+}
+
+.leaflet-bike-location-marker {
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: #fff;
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-glow);
+  animation: bc-location-pulse 2s infinite;
+}
+
+@keyframes bc-location-pulse {
+  0%   { box-shadow: 0 0 0 0   var(--primary-glow); }
+  70%  { box-shadow: 0 0 0 10px rgba(212,255,0,0); }
+  100% { box-shadow: 0 0 0 0   rgba(212,255,0,0); }
+}
+
+/* ─── Companion map markers ───────────────────────────────────────────────── */
+.companion-marker-wrap {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 2px solid var(--secondary);
+  box-shadow: 0 0 8px rgba(0,240,255,0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: -14px auto 1px;
-  box-shadow: 0 4px 15px rgba(212, 255, 0, 0.4), var(--shadow-volt);
-  border: 2px solid var(--bg-surface);
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: bc-companion-pulse 2.5s infinite ease-in-out;
 }
 
-.mobile-nav-item:hover .mobile-start-ride-circle,
-.mobile-nav-item.active .mobile-start-ride-circle {
-  transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5), 0 0 25px rgba(212, 255, 0, 0.3);
+.companion-avatar {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
-/* GPX route selection screen styling */
+.companion-marker-dot {
+  position: absolute;
+  bottom: -3px; left: 50%;
+  transform: translateX(-50%);
+  width: 7px; height: 7px;
+  background: var(--secondary);
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+}
+
+@keyframes bc-companion-pulse {
+  0%, 100% { box-shadow: 0 0 6px  rgba(0,240,255,0.4); }
+  50%       { box-shadow: 0 0 14px rgba(0,240,255,0.75); }
+}
+
+/* Companion tooltip */
+.leaflet-tooltip-companion {
+  background: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 6px 10px !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  box-shadow: var(--shadow-premium) !important;
+}
+
+/* ─── Setup Panel ─────────────────────────────────────────────────────────── */
 .bc-setup-panel {
-  flex-grow: 1;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  overflow-y: auto;
+  background: var(--bg-main);
+}
+
+.bc-setup-header {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 20px;
+  padding: 32px 20px 20px;
+  gap: 4px;
 }
 
 .bc-setup-title {
   font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 8px;
-  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin: 0;
 }
 
-.bc-select-control {
+.bc-setup-subtitle {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.bc-setup-divider {
   width: 100%;
-  max-width: 320px;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  color: #ffffff !important;
-  padding: 14px 18px !important;
-  border-radius: var(--radius-lg) !important;
-  font-size: 14px !important;
-  height: auto !important;
-  margin-bottom: 24px;
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin: 0;
 }
 
-/* Modal sensor dialog */
-.bc-sensor-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
+/* Settings rows */
+.bc-setup-rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.bc-setup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: var(--bg-surface);
+  min-height: 60px;
+  box-sizing: border-box;
+  gap: 12px;
+}
+
+.bc-setup-row-left {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.bc-setup-row-label {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+
+.bc-setup-row-value {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bc-setup-row-sub {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--primary);
+  margin-top: 2px;
+}
+
+.bc-setup-row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.bc-setup-chevron {
+  color: rgba(255,255,255,0.2);
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Badge "VANDAAG" */
+.bc-setup-badge {
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--primary);
+  color: var(--text-on-primary);
+  padding: 3px 7px;
+  border-radius: 4px;
+}
+
+/* Select inside rows (verborgen achter custom UI, als fallback) */
+.bc-setup-select-overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+}
+
+/* Spacer between rows and footer */
+.bc-setup-spacer {
+  height: 16px;
+  background: var(--bg-main);
+  flex-shrink: 0;
+}
+
+/* Footer CTA */
+.bc-setup-footer {
+  padding: 0 16px 32px;
+  background: var(--bg-main);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.bc-btn-start-ride {
+  width: 100%;
+  max-width: 400px;
+  height: 54px;
+  background: var(--primary);
+  color: var(--text-on-primary);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background var(--transition-fast), transform 0.15s;
+}
+
+.bc-btn-start-ride:active {
+  transform: scale(0.98);
+  background: var(--primary-hover);
+}
+
+.bc-btn-cancel {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px;
+  transition: color var(--transition-fast);
+}
+
+.bc-btn-cancel:hover { color: var(--text-secondary); }
+
+/* ─── Toggle Switch ───────────────────────────────────────────────────────── */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: rgba(255,255,255,0.1);
+  transition: 0.3s;
+}
+.slider.round { border-radius: 26px; }
+.slider.round::before { border-radius: 50%; }
+.slider::before {
+  position: absolute;
+  content: '';
+  height: 20px; width: 20px;
+  left: 3px; bottom: 3px;
+  background: var(--text-muted);
+  transition: 0.3s;
+}
+input:checked + .slider { background: var(--primary); }
+input:checked + .slider::before {
+  transform: translateX(18px);
+  background: var(--text-on-primary);
+}
+
+/* ─── Sensor Dialog ───────────────────────────────────────────────────────── */
+.bc-sensor-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   z-index: 10001;
   display: flex;
   align-items: center;
@@ -339,18 +601,18 @@
 .bc-sensor-box {
   width: 100%;
   max-width: 380px;
-  background: #0f121d;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-surface);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: var(--radius-lg);
   padding: 24px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-premium);
 }
 
 .bc-sensor-box h3 {
   font-family: var(--font-display);
-  font-size: 18px;
-  margin-bottom: 12px;
-  color: #ffffff;
+  font-size: 17px;
+  margin-bottom: 10px;
+  color: var(--text-primary);
 }
 
 .bc-sensor-box p {
@@ -364,28 +626,29 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
   border-radius: var(--radius-md);
   padding: 12px 16px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .bc-sensor-option:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
 }
 
 .bc-sensor-option.active {
-  border-color: var(--primary);
-  background: rgba(212, 255, 0, 0.08);
+  border-color: var(--border-active);
+  background: rgba(212,255,0,0.06);
 }
 
 .bc-sensor-option-name {
   font-weight: 600;
   font-size: 13px;
+  color: var(--text-primary);
 }
 
 .bc-sensor-option-status {
@@ -398,199 +661,22 @@
   font-weight: 700;
 }
 
-/* Live Telemetry Companion Markers on Leaflet Map */
-.leaflet-companion-marker-container {
-  background: transparent;
-  border: none;
-}
-
-.companion-marker-wrap {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  background-color: #1e293b;
-  border: 2px solid #f97316; /* Orange outline for companions */
+/* ─── Mobile start-ride nav button ───────────────────────────────────────── */
+.mobile-start-ride-circle {
+  width: 42px; height: 42px;
   border-radius: 50%;
-  box-shadow: 0 0 10px rgba(249, 115, 22, 0.5), 0 2px 5px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: bcPulseShadow 2s infinite ease-in-out;
+  margin: -14px auto 1px;
+  box-shadow: 0 4px 15px rgba(212,255,0,0.4), var(--shadow-volt);
+  border: 2px solid var(--bg-surface);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.companion-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-  background-color: #0f172a;
+.mobile-nav-item:hover .mobile-start-ride-circle,
+.mobile-nav-item.active .mobile-start-ride-circle {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0,240,255,0.5), 0 0 25px rgba(212,255,0,0.3);
 }
-
-.companion-marker-dot {
-  position: absolute;
-  bottom: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 8px;
-  height: 8px;
-  background-color: #f97316;
-  border: 1.5px solid #ffffff;
-  border-radius: 50%;
-}
-
-@keyframes bcPulseShadow {
-  0%, 100% {
-    box-shadow: 0 0 8px rgba(249, 115, 22, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 15px rgba(249, 115, 22, 0.9);
-  }
-}
-
-/* Custom leaflet tooltip styles for dark-theme contrast */
-.leaflet-tooltip-companion {
-  background-color: #0f172a !important;
-  color: #f8fafc !important;
-  border: 1px solid #334155 !important;
-  border-radius: 8px !important;
-  padding: 8px 12px !important;
-  font-size: 11px !important;
-  line-height: 1.4 !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-}
-
-.leaflet-tooltip-companion::before {
-  border-right-color: #0f172a !important;
-  border-left-color: #0f172a !important;
-}
-
-/* Fullscreen Overlays for Bike Computer */
-.bc-bottom-dashboard {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  right: 16px;
-  z-index: 10;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  pointer-events: auto;
-  box-sizing: border-box;
-}
-
-.bc-dashboard-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.bc-speed-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-}
-
-.bc-metrics-grid-compact {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  flex: 1.5;
-}
-
-.bc-metric-card-compact {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 52px;
-  position: relative;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.bc-metric-val-compact {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1.1;
-}
-
-.bc-metric-lbl-compact {
-  font-size: 8px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 2px;
-}
-
-.bc-metric-card-compact.pulsing-hr::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background-color: var(--accent);
-  box-shadow: 0 0 6px var(--accent);
-  animation: bc-pulse-dot 1s infinite alternate;
-}
-
-/* ─── Toggle Switch for Nutrition Alerts ─────────────────────────── */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-}
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.slider {
-  position: absolute;
-  cursor: pointer;
-  inset: 0;
-  background-color: #334155;
-  transition: 0.3s;
-}
-.slider.round {
-  border-radius: 24px;
-}
-.slider.round::before {
-  border-radius: 50%;
-}
-.slider::before {
-  position: absolute;
-  content: '';
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: #94a3b8;
-  transition: 0.3s;
-}
-input:checked + .slider {
-  background-color: var(--primary, #d4ff00);
-}
-input:checked + .slider::before {
-  transform: translateX(20px);
-  background-color: #0f172a;
-}
-

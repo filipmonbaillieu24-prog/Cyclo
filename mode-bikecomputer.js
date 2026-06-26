@@ -103,59 +103,139 @@ function renderSetupPanel() {
 
   container.innerHTML = `
     <div class="bc-setup-panel">
-      <div style="font-size: 54px; margin-bottom: 8px;">🚴</div>
-      <h2 class="bc-setup-title">Fietscomputer Modus</h2>
-      <p style="font-size: 13px; color: var(--text-secondary); text-align: center; max-width: 280px; margin-bottom: 24px; line-height: 1.5;">
-        Selecteer een route om te navigeren of kies voor een vrije rit om direct te starten.
-      </p>
+      <!-- Header -->
+      <div class="bc-setup-header">
+        <div style="font-size:40px;">🚴</div>
+        <h2 class="bc-setup-title">Fietscomputer</h2>
+        <p class="bc-setup-subtitle">Configureer je rit</p>
+      </div>
+      <div class="bc-setup-divider"></div>
 
-      <label style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 8px;">Kies Route / GPX</label>
-      <select id="bc-route-select" class="form-control bc-select-control">
-        <option value="">-- Vrije Rit (Geen Route) --</option>
-        ${routesList.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
-      </select>
+      <!-- Config Rows -->
+      <div class="bc-setup-rows">
 
-      ${joinedRides.length > 0 ? `
-      <label style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 16px; margin-bottom: 8px;">Rij mee met Geplande Rit</label>
-      <select id="bc-group-ride-select" class="form-control bc-select-control">
-        <option value="">-- Vrije Rit (Geen groep) --</option>
-        ${joinedRides.map(r => {
-          const dateStr = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(r.date));
-          const participants = r.ride_participants ? r.ride_participants.length : (r.participants?.length || 0);
-          return `<option value="${r.id}">${r.title} (${dateStr}) · ${participants} deelnemers</option>`;
-        }).join('')}
-      </select>
-      <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px; margin-bottom: 4px;">👥 Iedereen die dezelfde rit selecteert, ziet jou live op de kaart</div>
-      ` : ''}
-
-      <label style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 16px; margin-bottom: 8px;">Voeding & Hydratatie</label>
-      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 320px; margin-bottom: 16px; background: rgba(255,255,255,0.05); padding: 10px 14px; border-radius: 10px;">
-        <div>
-          <div style="font-size: 13px; font-weight: 600; color: #fff;">Voedings- & Hydratatie Alerts</div>
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Herinnering elke 15–45 min</div>
+        <!-- Route -->
+        <div class="bc-setup-row" style="position:relative;">
+          <div class="bc-setup-row-left">
+            <div class="bc-setup-row-label">Route / GPX</div>
+            <div class="bc-setup-row-value" id="bc-route-display">
+              ${routesList.length > 0 ? routesList[0].name : 'Vrije Rit (Geen Route)'}
+            </div>
+          </div>
+          <div class="bc-setup-row-right">
+            <select id="bc-route-select" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
+              <option value="">Vrije Rit (Geen Route)</option>
+              ${routesList.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
+            </select>
+            <span class="bc-setup-chevron">›</span>
+          </div>
         </div>
-        <label class="switch" style="flex-shrink:0;">
-          <input type="checkbox" id="bc-nutrition-toggle" checked>
-          <span class="slider round"></span>
-        </label>
+
+        ${joinedRides.length > 0 ? `
+        <!-- Groepsrit -->
+        <div class="bc-setup-row" style="position:relative;">
+          <div class="bc-setup-row-left">
+            <div class="bc-setup-row-label">Groepsrit</div>
+            <div class="bc-setup-row-value" id="bc-group-ride-display">Vrije Rit (Geen groep)</div>
+            <div class="bc-setup-row-sub" id="bc-group-ride-sub" style="display:none;">👥 Iedereen die dit selecteert ziet jou live</div>
+          </div>
+          <div class="bc-setup-row-right">
+            <select id="bc-group-ride-select" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
+              <option value="">Vrije Rit (Geen groep)</option>
+              ${joinedRides.map(r => {
+                const dateStr = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(r.date));
+                const count = r.ride_participants ? r.ride_participants.length : (r.participants?.length || 0);
+                return `<option value="${r.id}">${r.title} (${dateStr}) · ${count}</option>`;
+              }).join('')}
+            </select>
+            <span class="bc-setup-chevron">›</span>
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- Training -->
+        <div class="bc-setup-row" style="position:relative;">
+          <div class="bc-setup-row-left">
+            <div class="bc-setup-row-label">Koppel Training</div>
+            <div class="bc-setup-row-value" id="bc-training-display">Geen Training</div>
+          </div>
+          <div class="bc-setup-row-right">
+            ${getSuggestedWorkoutForToday() ? `<span class="bc-setup-badge">Vandaag</span>` : ''}
+            <select id="bc-training-select" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
+              <option value="">Geen Training</option>
+              ${getSuggestedWorkoutForToday() ? `<option value="suggested">Voorgesteld: ${getSuggestedWorkoutForToday()}</option>` : ''}
+            </select>
+            <span class="bc-setup-chevron">›</span>
+          </div>
+        </div>
+
+        <!-- Voeding -->
+        <div class="bc-setup-row">
+          <div class="bc-setup-row-left">
+            <div class="bc-setup-row-label">Voeding & Hydratatie</div>
+            <div class="bc-setup-row-value">Alerts</div>
+            <div class="bc-setup-row-sub" style="color:var(--text-muted);">Herinnering elke 15–45 min</div>
+          </div>
+          <div class="bc-setup-row-right">
+            <label class="switch">
+              <input type="checkbox" id="bc-nutrition-toggle" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </div>
+
       </div>
 
+      <div class="bc-setup-spacer"></div>
 
-      <label style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 16px; margin-bottom: 8px;">Koppel Training (Optioneel)</label>
-      <select id="bc-training-select" class="form-control bc-select-control">
-        <option value="">-- Geen Training --</option>
-        ${getSuggestedWorkoutForToday() ? `<option value="suggested">Voorgesteld: ${getSuggestedWorkoutForToday()}</option>` : ''}
-      </select>
-
-      <button class="btn btn-primary" id="btn-bc-start-ride" style="width: 100%; max-width: 320px; padding: 14px; border-radius: var(--radius-lg); font-size: 15px; font-weight: 700; margin-top: 20px;">
-        <i data-lucide="play" style="width: 16px; height: 16px; fill: var(--text-on-primary);"></i> Start Training
-      </button>
-      
-      <button class="btn btn-secondary" id="btn-bc-exit" style="width: 100%; max-width: 320px; padding: 14px; border-radius: var(--radius-lg); font-size: 15px; margin-top: 10px;">
-        ✕ Annuleren
-      </button>
+      <!-- Footer CTA -->
+      <div class="bc-setup-footer">
+        <button class="bc-btn-start-ride" id="btn-bc-start-ride">
+          <i data-lucide="play" style="width:16px;height:16px;fill:var(--text-on-primary);"></i>
+          Start Training
+        </button>
+        <button class="bc-btn-cancel" id="btn-bc-exit">Annuleren</button>
+      </div>
     </div>
   `;
+
+  // Live display updates voor de row-selects
+  const routeSelect = document.getElementById('bc-route-select');
+  const routeDisplay = document.getElementById('bc-route-display');
+  if (routeSelect && routeDisplay) {
+    routeSelect.addEventListener('change', () => {
+      const sel = routesList.find(r => r.id === routeSelect.value);
+      routeDisplay.textContent = sel ? sel.name : 'Vrije Rit (Geen Route)';
+    });
+  }
+
+  const groupSelect = document.getElementById('bc-group-ride-select');
+  const groupDisplay = document.getElementById('bc-group-ride-display');
+  const groupSub = document.getElementById('bc-group-ride-sub');
+  if (groupSelect && groupDisplay) {
+    groupSelect.addEventListener('change', () => {
+      const sel = joinedRides.find(r => r.id === groupSelect.value);
+      if (sel) {
+        const dateStr = new Intl.DateTimeFormat('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(sel.date));
+        groupDisplay.textContent = `${sel.title} · ${dateStr}`;
+        if (groupSub) groupSub.style.display = 'block';
+      } else {
+        groupDisplay.textContent = 'Vrije Rit (Geen groep)';
+        if (groupSub) groupSub.style.display = 'none';
+      }
+    });
+  }
+
+  const trainingSelect = document.getElementById('bc-training-select');
+  const trainingDisplay = document.getElementById('bc-training-display');
+  if (trainingSelect && trainingDisplay) {
+    trainingSelect.addEventListener('change', () => {
+      trainingDisplay.textContent = trainingSelect.value === 'suggested'
+        ? (getSuggestedWorkoutForToday() || 'Voorgesteld')
+        : 'Geen Training';
+    });
+  }
+
 
   // Bind Events
   document.getElementById('btn-bc-start-ride').addEventListener('click', () => {
@@ -220,51 +300,57 @@ function startRideTracking(routeName) {
 
   const container = document.getElementById('bike-computer-container');
   container.innerHTML = `
-    <!-- Navigatiekaart -->
+    <!-- Map (full bleed) -->
     <div class="bc-map-wrap">
       <div id="bike-computer-map"></div>
     </div>
 
-    <!-- Header -->
+    <!-- Header bar -->
     <div class="bc-header">
       <div class="bc-route-title">${routeName}</div>
       <button class="bc-sensor-badge" id="btn-bc-sensors">
-        <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#ef4444;" id="bc-sensor-status-dot"></span>
+        <span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;" id="bc-sensor-status-dot"></span>
         <span id="bc-sensor-status-lbl">Sensoren</span>
       </button>
     </div>
 
-    <!-- Live Turn-by-Turn Navigatie Banner -->
-    <div id="bc-nav-banner" style="display:none; margin: 0; padding: 10px 14px; background: rgba(18, 26, 42, 0.85); border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px; align-items: center; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-      <div id="bc-nav-icon" style="font-size:24px;">🗺️</div>
-      <div style="display:flex; flex-direction:column; flex:1;">
-        <span id="bc-nav-instruction" style="font-size:12px; font-weight:700; color:#fff; text-align:left;">Rechtdoor op de route</span>
-        <span id="bc-nav-dist-to" style="font-size:10px; color:var(--text-muted); text-align:left;">—</span>
+    <!-- Turn-by-turn nav banner -->
+    <div id="bc-nav-banner" style="position:absolute;top:56px;left:12px;right:12px;z-index:10;background:var(--bg-surface);border-left:3px solid var(--primary);border-radius:var(--radius-sm);padding:8px 14px;display:none;align-items:center;gap:12px;box-sizing:border-box;">
+      <div id="bc-nav-icon" style="font-size:22px;">🗺️</div>
+      <div style="display:flex;flex-direction:column;flex:1;">
+        <span id="bc-nav-instruction" style="font-size:12px;font-weight:700;color:var(--text-primary);">Rechtdoor op de route</span>
+        <span id="bc-nav-dist-to" style="font-size:10px;color:var(--text-muted);">—</span>
       </div>
     </div>
 
-    <!-- Bottom Dashboard Overlay -->
+    <!-- Companion panel -->
+    <div id="bc-companion-panel">
+      <div class="bc-companion-header">Rijders nabij</div>
+      <div id="bc-companion-list"></div>
+    </div>
+
+    <!-- Bottom Dashboard -->
     <div class="bc-bottom-dashboard">
       <div class="bc-dashboard-row">
-        <!-- Speed Display (Left) -->
+        <!-- Speed (dominant left) -->
         <div class="bc-speed-column">
           <div class="bc-speed-val" id="bc-speed">0.0</div>
           <div class="bc-speed-lbl">km/h</div>
         </div>
 
-        <!-- Metrics Grid (Right) -->
+        <!-- 2x2 Metrics grid (right) -->
         <div class="bc-metrics-grid-compact">
           <div class="bc-metric-card-compact" id="bc-hr-card">
             <span class="bc-metric-val-compact color-pink" id="bc-hr">—</span>
-            <span class="bc-metric-lbl-compact">Hartslag</span>
+            <span class="bc-metric-lbl-compact">❤ BPM</span>
           </div>
           <div class="bc-metric-card-compact">
             <span class="bc-metric-val-compact color-volt" id="bc-power">—</span>
-            <span class="bc-metric-lbl-compact">Vermogen</span>
+            <span class="bc-metric-lbl-compact">⚡ Watt</span>
           </div>
           <div class="bc-metric-card-compact">
-            <span class="bc-metric-val-compact color-cyan" id="bc-distance">0.00</span>
-            <span class="bc-metric-lbl-compact">Afstand (km)</span>
+            <span class="bc-metric-val-compact" id="bc-distance">0.00</span>
+            <span class="bc-metric-lbl-compact">KM</span>
           </div>
           <div class="bc-metric-card-compact">
             <span class="bc-metric-val-compact" id="bc-duration">00:00</span>
@@ -275,51 +361,21 @@ function startRideTracking(routeName) {
 
       <!-- Controls -->
       <div class="bc-controls">
-        <!-- Active state: Pause button only -->
         <button class="bc-btn bc-btn-pause" id="btn-bc-pause" title="Pauzeer">
-          <i data-lucide="pause"></i>
+          <i data-lucide="pause" style="width:22px;height:22px;"></i>
         </button>
-
-        <!-- Paused state: Discard, Resume, Save buttons -->
-        <div id="bc-paused-controls" style="display: none; width: 100%; justify-content: center; gap: 20px; align-items: center;">
-          <!-- Discard Button -->
-          <button class="bc-btn bc-btn-discard" id="btn-bc-discard" title="Rit annuleren/verwerpen">
-            <i data-lucide="trash-2"></i>
+        <div id="bc-paused-controls" style="display:none;width:100%;justify-content:center;gap:24px;align-items:center;">
+          <button class="bc-btn bc-btn-discard" id="btn-bc-discard" title="Annuleren">
+            <i data-lucide="trash-2" style="width:20px;height:20px;"></i>
           </button>
-
-          <!-- Resume Button -->
           <button class="bc-btn bc-btn-resume" id="btn-bc-resume" title="Hervat">
-            <i data-lucide="play"></i>
+            <i data-lucide="play" style="width:22px;height:22px;"></i>
           </button>
-
-          <!-- Save Button -->
-          <button class="bc-btn bc-btn-save" id="btn-bc-save" title="Rit opslaan">
-            <i data-lucide="save"></i>
+          <button class="bc-btn bc-btn-save" id="btn-bc-save" title="Opslaan">
+            <i data-lucide="save" style="width:20px;height:20px;"></i>
           </button>
         </div>
       </div>
-    </div>
-
-    <!-- Companion Riders Side Panel -->
-    <div id="bc-companion-panel" style="
-      position: absolute;
-      top: 64px;
-      right: 10px;
-      width: 160px;
-      max-height: 50vh;
-      overflow-y: auto;
-      background: rgba(10, 15, 28, 0.82);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 10px;
-      padding: 8px;
-      color: #fff;
-      font-size: 11px;
-      display: none;
-      z-index: 800;
-    ">
-      <div style="font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.05em;">Rijders nabij</div>
-      <div id="bc-companion-list"></div>
     </div>
   `;
 
@@ -718,18 +774,19 @@ function initNavigationMap() {
     attributionControl: false
   }).setView([defaultLat, defaultLng], 14);
 
-  // Add dark maps layer
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19
+  // Stadia Alidade Smooth Dark — donkere tiles, wegen nauwelijks zichtbaar
+  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+    maxZoom: 20,
+    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
   }).addTo(bcMap);
 
-  // If a route was selected, render it
+  // Als een route geselecteerd is, teken deze in volt-green
   if (selectedRouteCoords && selectedRouteCoords.length > 0) {
     const latLngs = selectedRouteCoords.map(c => [c.lat, c.lng]);
     routePolyline = L.polyline(latLngs, {
-      color: 'rgba(0, 240, 255, 0.65)', // Cyan route path
-      weight: 5,
-      opacity: 0.8
+      color: 'rgba(212,255,0,0.55)', // volt-green route
+      weight: 4,
+      opacity: 0.9
     }).addTo(bcMap);
 
     bcMap.fitBounds(routePolyline.getBounds(), { padding: [15, 15] });
