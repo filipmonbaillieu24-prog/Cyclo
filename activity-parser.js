@@ -148,6 +148,7 @@ class ActivityParser {
     result.distanceKm = parseFloat((result.totalDistanceMeters / 1000).toFixed(2));
     result.durationFormatted = this.formatDuration(result.totalTimeSeconds);
     result.riderScore = this.calculateRiderScore(result);
+    result.tss = this.calculateTSS(result);
 
     return result;
   }
@@ -268,6 +269,7 @@ class ActivityParser {
     result.distanceKm = parseFloat((result.totalDistanceMeters / 1000).toFixed(2));
     result.durationFormatted = this.formatDuration(result.totalTimeSeconds);
     result.riderScore = this.calculateRiderScore(result);
+    result.tss = this.calculateTSS(result);
 
     return result;
   }
@@ -406,6 +408,7 @@ class ActivityParser {
     result.distanceKm = parseFloat((result.totalDistanceMeters / 1000).toFixed(2));
     result.durationFormatted = this.formatDuration(result.totalTimeSeconds);
     result.riderScore = this.calculateRiderScore(result);
+    result.tss = this.calculateTSS(result);
 
     return result;
   }
@@ -489,6 +492,67 @@ class ActivityParser {
 
     // Afronden en clamp naar 10–1000
     return Math.max(10, Math.min(1000, Math.round(raw)));
+  }
+
+  /**
+   * Berekent de TSS (Training Stress Score) op basis van de polymorfe fallback cascade:
+   * 1. Vermogen (TSS)
+   * 2. Hartslag (hrTSS)
+   * 3. Hoogtemeters / GPS-profiel (Estimated Power TSS via physics engine)
+   * 4. RPE (Rate of Perceived Exertion) default
+   */
+  static calculateTSS(ride) {
+    const ftp = (window.state && window.state.user && window.state.user.ftp) || 200;
+    const lthr = (window.state && window.state.user && window.state.user.lthr) || 160;
+    const weight = (window.state && window.state.user && window.state.user.weight) || 88;
+    const height = 181; // verankerd voor baseline
+
+    const durationHrs = (ride.totalTimeSeconds || 0) / 3600;
+
+    // 1. IF (avgPowerWatts) -> Bereken TSS
+    if (ride.avgPowerWatts && ride.avgPowerWatts > 0) {
+      const np = ride.avgPowerWatts * 1.04; // Schatting van NP (Normalized Power)
+      const intensityFactor = np / ftp;
+      const tss = ((ride.totalTimeSeconds || 0) * np * intensityFactor) / (ftp * 3600) * 100;
+      return Math.round(tss);
+    }
+
+    // 2. ELSE IF (avgHeartRate) -> Bereken hrTSS
+    if (ride.avgHeartRate && ride.avgHeartRate > 0) {
+      const intensityFactorHr = ride.avgHeartRate / lthr;
+      const hrTSS = durationHrs * Math.pow(intensityFactorHr, 2) * 100;
+      return Math.round(hrTSS);
+    }
+
+    // 3. ELSE IF (totalAscentMeters) -> Bereken Estimated Power TSS (via physics engine en lichaamslengte)
+    if (ride.totalAscentMeters && ride.totalAscentMeters > 0 && ride.distanceKm && ride.distanceKm > 0) {
+      const m = weight + 10; // Fietser + fiets (10 kg)
+      const g = 9.81;
+
+      // Gemiddelde snelheid in m/s
+      const avgSpeedMps = ((ride.distanceKm * 1000) / (ride.totalTimeSeconds || 3600));
+
+      // Aerodynamische weerstand op basis van verankerde lengte (181 cm) en gewicht
+      const CdA = 0.32;
+      const rho = 1.2; // Luchtdichtheid
+      const P_drag = 0.5 * CdA * rho * Math.pow(avgSpeedMps, 3);
+
+      // Rolweerstand (Crr = 0.005)
+      const Crr = 0.005;
+      const P_rolling = Crr * m * g * avgSpeedMps;
+
+      // Zwaartekracht vermogen voor het stijgen
+      const verticalSpeedMps = ride.totalAscentMeters / (ride.totalTimeSeconds || 3600);
+      const P_gravity = m * g * verticalSpeedMps;
+
+      const estimatedPower = P_drag + P_rolling + P_gravity;
+      const intensityFactorEst = estimatedPower / ftp;
+      const tssEst = durationHrs * Math.pow(intensityFactorEst, 2) * 100;
+      return Math.round(tssEst);
+    }
+
+    // 4. ELSE -> Default handmatige RPE-prompt (RPE 5 = 25 TSS/uur)
+    return Math.round(25 * durationHrs);
   }
 
   /**
@@ -647,6 +711,7 @@ class ActivityParser {
     result.distanceKm = parseFloat((result.totalDistanceMeters / 1000).toFixed(2));
     result.durationFormatted = this.formatDuration(result.totalTimeSeconds);
     result.riderScore = this.calculateRiderScore(result);
+    result.tss = this.calculateTSS(result);
 
     return result;
   }

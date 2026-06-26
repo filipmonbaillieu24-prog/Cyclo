@@ -6,6 +6,7 @@ export const elements = {
   logo: document.getElementById('nav-logo'),
   linkHome: document.getElementById('link-home'),
   linkDashboard: document.getElementById('link-dashboard'),
+  linkTraining: document.getElementById('link-training'),
   linkRides: document.getElementById('link-rides'),
   linkProfile: document.getElementById('btn-nav-profile'),
   navAuthItem: document.getElementById('nav-auth-item'),
@@ -19,6 +20,7 @@ export const elements = {
   sectionAuth: document.getElementById('section-auth'),
   sectionDashboard: document.getElementById('section-dashboard'),
   sectionRides: document.getElementById('section-rides'),
+  sectionTraining: document.getElementById('section-training'),
   sectionProfile: document.getElementById('section-profile'),
   
   // Hero Knoppen
@@ -161,8 +163,8 @@ export function showToast(message, type = 'info') {
 }
 
 // 6. ROUTING HELPER
-const ALL_SECTIONS = ['sectionHome','sectionFeed','sectionAuth','sectionDashboard','sectionRides','sectionProfile'];
-const ALL_NAV_LINKS = ['linkHome','linkDashboard','linkRides'];
+const ALL_SECTIONS = ['sectionHome','sectionFeed','sectionAuth','sectionDashboard','sectionRides','sectionProfile','sectionTraining'];
+const ALL_NAV_LINKS = ['linkHome','linkDashboard','linkRides','linkTraining'];
 
 export function navigateTo(section, onPageLoad = null) {
   // Verwijder actieve klasse van alle nav-links
@@ -174,7 +176,7 @@ export function navigateTo(section, onPageLoad = null) {
   // Mobiele nav bijwerken
   document.querySelectorAll('.mobile-nav-item').forEach(el => el.classList.remove('active'));
 
-  const requiresAuth = ['dashboard','rides','profile','feed'];
+  const requiresAuth = ['dashboard','rides','profile','feed','training'];
   if (requiresAuth.includes(section) && !state.user) {
     showToast('Log eerst in.', 'error');
     if (elements.sectionAuth) elements.sectionAuth.classList.add('active');
@@ -216,6 +218,13 @@ export function navigateTo(section, onPageLoad = null) {
     if (mob) mob.classList.add('active');
     if (typeof onPageLoad === 'function') onPageLoad();
     _hookPageTour('profile');
+  } else if (section === 'training') {
+    if (elements.sectionTraining) elements.sectionTraining.classList.add('active');
+    if (elements.linkTraining) elements.linkTraining.classList.add('active');
+    const mob = document.getElementById('mob-link-training');
+    if (mob) mob.classList.add('active');
+    if (typeof onPageLoad === 'function') onPageLoad();
+    _hookPageTour('training');
   }
 
   // Scroll naar boven

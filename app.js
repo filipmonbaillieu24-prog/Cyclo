@@ -55,6 +55,7 @@ import { initDesktopView } from './desktop-view.js';
 import { initMobileView } from './mobile-view.js';
 import { initStravaSync } from './strava-sync.js';
 import { initGarminSync } from './garmin-sync.js';
+import { initTrainingPage, loadTrainingPage } from './src/training/training-page.js';
 
 let activeRealtimeChannel = null;
 
@@ -658,6 +659,14 @@ function setupEventListeners() {
     });
   }
 
+  // Trainings Center knop in nav
+  if (elements.linkTraining) {
+    elements.linkTraining.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigateTo('training', loadTrainingPage);
+    });
+  }
+
   // Profiel uitlog knop op profielpagina
   const btnProfileLogout = document.getElementById('btn-profile-page-logout');
   if (btnProfileLogout) {
@@ -708,10 +717,11 @@ function setupEventListeners() {
 
   // Mobiele navigatie
   const mobLinks = [
-    ['mob-link-home',    () => state.user ? navigateTo('feed', loadFeedSection) : navigateTo('home')],
-    ['mob-link-planner', () => state.user ? navigateTo('dashboard', loadDashboardData) : (showToast('Log eerst in om de planner te gebruiken.', 'error'), navigateTo('auth'))],
-    ['mob-link-rides',   () => navigateTo('rides', loadDashboardData)],
-    ['mob-link-profile', () => navigateTo('profile', loadProfilePage)],
+    ['mob-link-home',     () => state.user ? navigateTo('feed', loadFeedSection) : navigateTo('home')],
+    ['mob-link-planner',  () => state.user ? navigateTo('dashboard', loadDashboardData) : (showToast('Log eerst in om de planner te gebruiken.', 'error'), navigateTo('auth'))],
+    ['mob-link-training', () => state.user ? navigateTo('training', loadTrainingPage) : (showToast('Log eerst in om het trainings center te bekijken.', 'error'), navigateTo('auth'))],
+    ['mob-link-rides',    () => navigateTo('rides', loadDashboardData)],
+    ['mob-link-profile',  () => navigateTo('profile', loadProfilePage)],
   ];
   mobLinks.forEach(([id, fn]) => {
     const el = document.getElementById(id);
@@ -1254,6 +1264,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   lucide.createIcons();
+  initTrainingPage();
   setupEventListeners();
   checkUserSession(loadDashboardData);
   // Expose voor ride delete callbacks en OAuth redirects

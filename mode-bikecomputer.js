@@ -4,6 +4,11 @@ import { saveActivity } from './activities.js';
 import { loadDashboardData } from './app.js';
 import { nutritionEngine } from './nutrition-engine.js';
 import { getSuggestedWorkoutForToday } from './training-engine.js';
+import { audioController } from './src/audio/audio-controller.js';
+import { thermalHydration } from './src/audio/thermal-hydration.js';
+import { routeTactics } from './src/audio/route-tactics.js';
+import { surfaceDynamics } from './src/audio/surface-dynamics.js';
+import { trafficOptimizer } from './src/audio/traffic-optimizer.js';
 import {
   registerCallbacks,
   connectHeartRate,
@@ -33,6 +38,7 @@ let heartRateValues = [];
 let powerValues = [];
 let currentHr = null;
 let currentPower = null;
+let currentSpeedKmh = 0;
 
 let wakeLock = null;
 
@@ -294,6 +300,16 @@ function startRideTracking(routeName) {
   powerValues = [];
   currentHr = null;
   currentPower = null;
+  currentSpeedKmh = 0;
+
+  // Reset/Initialize Audio Coach
+  try {
+    thermalHydration.reset();
+    surfaceDynamics.reset();
+    routeTactics.setRoute(selectedRouteCoords);
+  } catch (err) {
+    console.warn("Fout bij resetten audio coach:", err);
+  }
 
   // Request Wake Lock
   requestScreenWakeLock();
@@ -531,7 +547,7 @@ function onGpsSuccess(position) {
     return;
   }
 
-  const currentSpeedKmh = speed ? (speed * 3.6) : 0;
+  currentSpeedKmh = speed ? (speed * 3.6) : 0;
   
   // Update Speed display
   const speedEl = document.getElementById('bc-speed');
@@ -885,6 +901,45 @@ function startDurationTimer() {
       } else if (nutritionAlert.type === 'alert') {
         showToast(nutritionAlert.message, 'error');
       }
+    }
+
+    // Audio Coach Updates
+    try {
+      // 1. Update heart rate in audio controller (Silence in the Red Zone check)
+      const riderLthr = state.user?.lthr || 160;
+      audioController.updateHeartRate(currentHr || 80, riderLthr);
+
+      // 2. Hydration tracker update
+      const isSunny = state.weather?.condition === 'Helder' || 
+                      (state.weather?.condition && state.weather.condition.toLowerCase().includes('clear')) || 
+                      false;
+      thermalHydration.update(currentPower || 150, state.weather?.temp || 20, isSunny);
+
+      if (lastCoord) {
+        // 3. Wegdektransitie (Surface Dynamics)
+        if (selectedRouteCoords && selectedRouteCoords.length > 0) {
+          let closestIdx = 0;
+          let minDist = Infinity;
+          for (let i = 0; i < selectedRouteCoords.length; i++) {
+            const pt = selectedRouteCoords[i];
+            const d = calculateHaversineDistance(lastCoord.lat, lastCoord.lng, pt.lat, pt.lng);
+            if (d < minDist) {
+              minDist = d;
+              closestIdx = i;
+            }
+          }
+          const currentSurface = selectedRouteCoords[closestIdx].surface || 'asphalt';
+          surfaceDynamics.updateSurface(currentSurface);
+        }
+
+        // 4. Route tactics (Heuvels & Bochten)
+        routeTactics.updatePosition(lastCoord.lat, lastCoord.lng, currentSpeedKmh || 25);
+
+        // 5. Traffic lights green wave optimizer
+        trafficOptimizer.updatePacing(lastCoord.lat, lastCoord.lng, currentSpeedKmh || 25);
+      }
+    } catch (e) {
+      console.warn("Fout bij updaten audio-coach sensoren:", e);
     }
   }, 1000);
 }

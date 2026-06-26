@@ -969,7 +969,12 @@ async function calculateRoute() {
     const cueSheet = generateCueSheet(geoCoords, smoothEle, steps, pointSurfaces, distancesKm);
     
     currentRoute = {
-      coordinates: geoCoords.map(c => ({ lat: c[1], lng: c[0] })),
+      coordinates: geoCoords.map((c, idx) => ({
+        lat: c[1],
+        lng: c[0],
+        alt: smoothEle ? smoothEle[idx] : null,
+        surface: pointSurfaces ? pointSurfaces[idx] : 'asphalt'
+      })),
       distanceKm: distKm.toFixed(1),
       durationMin: Math.round(durMin),
       name: document.getElementById('route-name-input')?.value || 'Mijn Route',
