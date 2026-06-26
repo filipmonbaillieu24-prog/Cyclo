@@ -593,12 +593,7 @@ function handleIncomingTelemetry(data) {
 
   const latLng = [data.lat, data.lng];
   const tooltipContent = `
-    <div style="font-weight:700;color:#f8fafc;margin-bottom:2px;font-size:12px;">${data.full_name || '@' + data.username}</div>
-    <div style="display:flex;gap:8px;color:#94a3b8;font-size:10px;white-space:nowrap;">
-      <span style="color:#ef4444;">❤️ ${data.hr || 0}</span>
-      <span style="color:#d4ff00;">⚡ ${data.watts || 0}W</span>
-      <span style="color:#00b4d8;">🚴 ${data.speed || 0}</span>
-    </div>
+    <div style="font-weight:700;color:#f8fafc;font-size:12px;">${data.full_name || '@' + data.username}</div>
   `;
 
   let marker = companionMarkers[data.user_id];
@@ -774,10 +769,10 @@ function initNavigationMap() {
     attributionControl: false
   }).setView([defaultLat, defaultLng], 14);
 
-  // Stadia Alidade Smooth Dark — donkere tiles, wegen nauwelijks zichtbaar
-  L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+  // CARTO Dark Matter — free tiles, no API key required, sleek dark look
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 20,
-    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(bcMap);
 
   // Als een route geselecteerd is, teken deze in volt-green
