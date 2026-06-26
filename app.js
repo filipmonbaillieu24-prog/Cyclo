@@ -556,6 +556,18 @@ function setupEventListeners() {
       if (generateBtn) { generateBtn.disabled = false; generateBtn.innerHTML = '<i data-lucide="shuffle" style="width:13px;height:13px;"></i> Genereer'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
     });
 
+    // Route Engine Settings Change Bindings
+    ['route-opt-avoid-left', 'route-opt-rain-sync', 'route-opt-cadence', 'route-opt-network'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        state[id] = el.checked;
+        el.addEventListener('change', () => {
+          state[id] = el.checked;
+          showToast("Route-instelling bijgewerkt!", "info");
+        });
+      }
+    });
+
     // Import GPX knoppen
     const importGpxBtn = document.getElementById('btn-import-gpx');
     const gpxUploadInput = document.getElementById('route-gpx-upload');

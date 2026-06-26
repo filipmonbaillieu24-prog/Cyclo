@@ -376,7 +376,10 @@ function startRideTracking(routeName) {
       </div>
 
       <!-- Controls -->
-      <div class="bc-controls">
+      <div class="bc-controls" style="display:flex; gap:12px; justify-content:center; align-items:center; width:100%;">
+        <button class="bc-btn bc-btn-bailout" id="btn-bc-bailout" title="Bail-Out (Escape Route)">
+          <i data-lucide="life-buoy" style="width:22px;height:22px;"></i>
+        </button>
         <button class="bc-btn bc-btn-pause" id="btn-bc-pause" title="Pauzeer">
           <i data-lucide="pause" style="width:22px;height:22px;"></i>
         </button>
@@ -445,6 +448,7 @@ function startRideTracking(routeName) {
   // Bind Buttons
   document.getElementById('btn-bc-sensors').addEventListener('click', openSensorDialog);
   document.getElementById('btn-bc-pause').addEventListener('click', pauseRideTracking);
+  document.getElementById('btn-bc-bailout')?.addEventListener('click', triggerBailout);
 
   // Setup Paused Controls (Discard, Resume, Save)
   setupPausedControls();
@@ -1368,5 +1372,59 @@ function updateLiveNavigation() {
     instrEl.textContent = '🏁 Bestemming bereikt';
     distToEl.textContent = '';
     if (iconEl) iconEl.textContent = '🏁';
+  }
+}
+
+async function triggerBailout() {
+  if (!isRunning || isPaused) return;
+
+  showToast("🚨 Noodsituatie! Berekenen van snelste route naar startpunt...", "warning");
+  
+  // Importeer bailout-router
+  const { bailoutRouter } = await import('./src/routing/bailout-router.js').catch(() => ({}));
+  if (!bailoutRouter) {
+    showToast("Fout bij laden van de bailout router", "error");
+    return;
+  }
+
+  // Thuis/Start locatie = eerste coördinaat van het geselecteerde traject of de startpositie
+  let homeLoc = coordsArray[0] || lastCoord || { lat: 51.0504, lng: 3.7378 };
+  if (selectedRouteCoords && selectedRouteCoords.length > 0) {
+    homeLoc = selectedRouteCoords[0];
+  }
+
+  const currentLoc = lastCoord || { lat: 51.0504, lng: 3.7378 };
+
+  // Bepaal windrichting / weer
+  const weather = state.weather || { windDirection: 225 };
+
+  const bailoutCoords = bailoutRouter.generateBailoutRoute(currentLoc, homeLoc, weather);
+
+  // Update de kaartroute
+  selectedRouteCoords = bailoutCoords;
+  
+  // Herbereken de OSRM route met de nieuwe bailout waypoints
+  if (bcMap && bailoutCoords.length > 0) {
+    // Redraw polyline
+    if (routePolyline) {
+      bcMap.removeLayer(routePolyline);
+      routePolyline = null;
+    }
+    
+    // We kunnen de route tekenen en laden
+    const latLngs = bailoutCoords.map(c => [c.lat, c.lng]);
+    routePolyline = L.polyline(latLngs, { color: '#ef4444', weight: 5, dashArray: '8, 8' }).addTo(bcMap);
+    
+    // Reset route-tactics route
+    const { routeTactics } = await import('./src/audio/route-tactics.js').catch(() => ({}));
+    if (routeTactics) {
+      routeTactics.setRoute(bailoutCoords);
+    }
+  }
+
+  // Spreek gesproken melding uit via de audioDS
+  const { audioController } = await import('./src/audio/audio-controller.js').catch(() => ({}));
+  if (audioController) {
+    audioController.speak("Bail out geactiveerd. We rijden per direct terug naar huis via de kortste en meest windbeschutte asfaltweg.", "critical");
   }
 }

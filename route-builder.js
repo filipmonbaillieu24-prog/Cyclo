@@ -1300,12 +1300,17 @@ export async function generateRandomLoop(distanceKm, surfaceType = 'asphalt') {
   const startLng = center.lng;
 
   // Bereken straal in graden (1° lat ≈ 111 km)
-  const radiusKm = distanceKm / (2 * Math.PI * 0.75);
+  // Winding factor correctie: een gesloten lus met 4 tussenpunten en winding factor
+  // wordt correct geschaald via distanceKm / 9.6.
+  const radiusKm = distanceKm / 9.6;
   const radiusDeg = radiusKm / 111;
 
   // Aantal tussenpunten
   const numPoints = 4;
   const newWaypoints = [];
+
+  // Startpunt is begin van de route
+  newWaypoints.push(L.latLng(startLat, startLng));
 
   // Willekeurige rotatie zodat de lus elke keer anders is
   const baseAngle = Math.random() * 360;

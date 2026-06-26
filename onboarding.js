@@ -106,6 +106,10 @@ function stepProfile(el) {
             <option value="MTB"    ${user.bike_type==='MTB'    ?'selected':''}>🏔️ MTB</option>
           </select>
         </label>
+        <label class="ob-label" style="display:flex; align-items:center; gap:8px; margin-top:14px; cursor:pointer; font-weight:normal;">
+          <input id="ob-audio-consent" type="checkbox" checked style="width:auto; cursor:pointer; margin:0;">
+          <span>Activeer audio Directeur Sportif (gesproken coaching)</span>
+        </label>
       </div>
     </div>`;
 }
@@ -189,6 +193,19 @@ async function handleStepNext(step) {
         state.user.bike_type = bikeType;
       } catch(e) { console.warn('Profiel update mislukt:', e); }
     } else if (name && config.isDemoMode) { state.user.full_name = name; }
+
+    const audioConsent = document.getElementById('ob-audio-consent')?.checked;
+    if (audioConsent) {
+      if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(' ');
+        window.speechSynthesis.speak(u);
+      }
+      import('./src/audio/audio-controller.js').then(({ audioController }) => {
+        audioController.initAudio();
+        audioController.unmute();
+        audioController.speak("Welkom bij Cyclo. Jouw audio Directeur Sportif is nu actief.", "critical");
+      }).catch(e => console.warn(e));
+    }
   }
   step < TOTAL_STEPS ? renderWizardStep(step + 1) : finishOnboarding();
 }

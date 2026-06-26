@@ -286,6 +286,13 @@
   box-shadow: 0 0 16px var(--primary-glow);
 }
 
+/* Bailout — red */
+.bc-btn-bailout {
+  background: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
+}
+
 /* Secondary actions */
 .bc-btn-discard {
   background: rgba(255,255,255,0.05);

@@ -394,6 +394,26 @@
                   <i data-lucide="shuffle" style="width:13px;height:13px;"></i> Genereer
                 </button>
               </div>
+              <!-- Route Engine Premium Opties -->
+              <div style="margin-bottom:12px; padding:10px 12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:10px;">
+                <div style="font-size:11px; font-weight:700; color:var(--text-primary); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="sliders" style="width:13px; height:13px; color:var(--primary);"></i> Route Engine Instellingen
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:11px; color:var(--text-secondary);">
+                  <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                    <input type="checkbox" id="route-opt-avoid-left" checked> Vermijd Linksaf (70+)
+                  </label>
+                  <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                    <input type="checkbox" id="route-opt-rain-sync" checked> Asfalt-only bij regen
+                  </label>
+                  <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                    <input type="checkbox" id="route-opt-cadence" checked> Cadans-Flow (Obstakels weren)
+                  </label>
+                  <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                    <input type="checkbox" id="route-opt-network" checked> Knooppunten Bonus
+                  </label>
+                </div>
+              </div>
               <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
                 <input type="text" id="route-name-input" class="form-control" placeholder="Naam van de route..." style="flex:1;min-width:140px;">
                 <button class="btn btn-secondary btn-sm" id="btn-undo-waypoint" disabled>
