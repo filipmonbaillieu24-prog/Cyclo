@@ -2605,3 +2605,12 @@
     grid-template-columns: 1fr;
   }
 }
+
+.btn-week-nav, .btn-week-nav-today {
+  transition: all 0.2s;
+}
+
+.btn-week-nav:hover, .btn-week-nav-today:hover {
+  color: var(--primary) !important;
+  background: rgba(212,255,0,0.08) !important;
+}

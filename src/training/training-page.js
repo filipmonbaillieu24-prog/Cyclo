@@ -7,6 +7,7 @@ import { adaptiveScheduler } from './adaptive-scheduler.js';
 let localPlannedWorkouts = [];
 let localSlots = [];
 let localExceptions = [];
+let currentWeekOffset = 0;
 
 export function initTrainingPage() {
   const container = document.getElementById('section-training');
@@ -52,8 +53,16 @@ export function initTrainingPage() {
       <div class="training-row mt-4">
         <div class="training-panel-col-8">
           <div class="training-panel-header">
-            <h3>Wekelijkse Tijdlijn (ma - zo)</h3>
-            <span class="text-muted" style="font-size:11px;" id="training-week-lbl">Actuele Week</span>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <h3>Wekelijkse Tijdlijn</h3>
+              <div style="display:flex; align-items:center; gap:4px; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:16px; padding:2px 8px;">
+                <button class="btn-week-nav" id="btn-prev-week" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-weight:bold; padding:2px 6px;" title="Vorige week">&lt;</button>
+                <span id="week-range-lbl" style="font-size:10px; font-weight:700; color:var(--text-secondary); min-width:130px; text-align:center; white-space:nowrap;">Actuele Week</span>
+                <button class="btn-week-nav" id="btn-next-week" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-weight:bold; padding:2px 6px;" title="Volgende week">&gt;</button>
+              </div>
+              <button class="btn-week-nav-today" id="btn-today-week" style="background:rgba(255,255,255,0.05); border:1px solid var(--border-glass); border-radius:12px; color:var(--text-muted); cursor:pointer; font-size:9px; padding:2px 8px;">Vandaag</button>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-load-sample-workouts" style="background:rgba(212,255,0,0.05); border-color:rgba(212,255,0,0.2); display:none;">💡 Genereer trainingen</button>
           </div>
           <div class="training-week-grid" id="training-week-timeline">
             <!-- Dynamische workout-kaarten -->
@@ -206,6 +215,10 @@ export function initTrainingPage() {
             </select>
           </div>
           
+          <button type="button" class="btn btn-secondary" id="btn-generate-workout-route" style="background:rgba(212,255,0,0.05); border-color:var(--primary); color:var(--primary); display:flex; align-items:center; justify-content:center; gap:6px; margin-top:4px;">
+            🗺️ Route genereren voor deze training
+          </button>
+          
           <div style="display:flex; gap:10px; margin-top:12px;">
             <button type="button" class="btn btn-secondary" id="btn-delete-workout" style="display:none; background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); color:#ef4444; flex:1;">Verwijderen</button>
             <button type="submit" class="btn btn-primary" style="flex:2;">Opslaan</button>
@@ -243,6 +256,30 @@ export function initTrainingPage() {
   if (formWorkout) formWorkout.addEventListener('submit', handleSaveWorkout);
   const deleteWorkoutBtn = document.getElementById('btn-delete-workout');
   if (deleteWorkoutBtn) deleteWorkoutBtn.addEventListener('click', handleDeleteWorkout);
+
+  const generateRouteBtn = document.getElementById('btn-generate-workout-route');
+  if (generateRouteBtn) {
+    generateRouteBtn.addEventListener('click', () => {
+      const title = document.getElementById('workout-title').value || 'Mijn Training';
+      const type = document.getElementById('workout-type').value;
+      const duration = parseInt(document.getElementById('workout-duration').value) || 60;
+      
+      generateRouteForWorkout({ title, type, planned_duration_minutes: duration });
+    });
+  }
+
+  // Bind week navigation
+  const prevWeekBtn = document.getElementById('btn-prev-week');
+  const nextWeekBtn = document.getElementById('btn-next-week');
+  const todayWeekBtn = document.getElementById('btn-today-week');
+  
+  if (prevWeekBtn) prevWeekBtn.addEventListener('click', () => { currentWeekOffset--; renderTrainingDashboard(); });
+  if (nextWeekBtn) nextWeekBtn.addEventListener('click', () => { currentWeekOffset++; renderTrainingDashboard(); });
+  if (todayWeekBtn) todayWeekBtn.addEventListener('click', () => { currentWeekOffset = 0; renderTrainingDashboard(); });
+
+  // Bind sample workouts generator
+  const loadSampleBtn = document.getElementById('btn-load-sample-workouts');
+  if (loadSampleBtn) loadSampleBtn.addEventListener('click', handleLoadSampleWorkouts);
 
   // Sync workouts button
   const syncBtn = document.getElementById('btn-sync-workouts');
@@ -347,7 +384,10 @@ function renderWeekTimeline() {
   if (!timeline) return;
 
   const today = new Date();
-  const currentWeekRange = adaptiveScheduler.getWeekRange(today);
+  const targetDate = new Date();
+  targetDate.setDate(today.getDate() + currentWeekOffset * 7);
+  
+  const currentWeekRange = adaptiveScheduler.getWeekRange(targetDate);
   const weekDays = [];
   const start = new Date(currentWeekRange.start);
 
@@ -358,6 +398,26 @@ function renderWeekTimeline() {
   }
 
   const plannedWeekWorkouts = localPlannedWorkouts.filter(w => w.date >= currentWeekRange.start && w.date <= currentWeekRange.end);
+
+  // Update week range label
+  const rangeLbl = document.getElementById('week-range-lbl');
+  if (rangeLbl) {
+    const startD = new Date(currentWeekRange.start);
+    const endD = new Date(currentWeekRange.end);
+    const startStr = startD.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+    const endStr = endD.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+    rangeLbl.textContent = `${startStr} - ${endStr}`;
+  }
+
+  // Show sample workouts button if no planned workouts this week
+  const sampleBtn = document.getElementById('btn-load-sample-workouts');
+  if (sampleBtn) {
+    if (plannedWeekWorkouts.length === 0) {
+      sampleBtn.style.display = 'inline-block';
+    } else {
+      sampleBtn.style.display = 'none';
+    }
+  }
 
   // Filter en pas HRV readiness aan op de geplande workouts voor vandaag
   const readiness = state.user?.readiness_score || 72;
@@ -1038,4 +1098,98 @@ function renderTrainingZones() {
       </div>
     </div>
   `;
+}
+
+// ─── GENERATE ROUTE FOR WORKOUT ──────────────────────────────────────
+
+async function generateRouteForWorkout(workout) {
+  if (!workout) return;
+  
+  // Schat de afstand op basis van type en duur
+  let speed = 25; // km/h
+  const type = workout.type;
+  const duration = workout.planned_duration_minutes || 60;
+  
+  if (type === 'Recovery') speed = 20;
+  else if (type === 'Endurance') speed = 25;
+  else if (type === 'Tempo') speed = 28;
+  else if (type === 'Threshold') speed = 30;
+  else if (type === 'VO2 Max') speed = 32;
+  else if (type === 'Anaerobic') speed = 32;
+  
+  const distKm = Math.round((duration * speed) / 60);
+  
+  // Navigeer naar de planner
+  navigateTo('dashboard');
+  
+  // Wacht even tot de pagina en kaart geladen zijn
+  setTimeout(async () => {
+    try {
+      const rb = await import('../../route-builder.js');
+      if (rb && rb.generateRandomLoop) {
+        showToast(`Route van ${distKm} km wordt gegenereerd voor training: "${workout.title}"...`, "info");
+        await rb.generateRandomLoop(distKm, 'asphalt');
+      }
+    } catch (err) {
+      showToast("Fout bij genereren route: " + err.message, "error");
+    }
+  }, 500);
+}
+
+// ─── LOAD SAMPLE WORKOUTS FOR CURRENT/FUTURE WEEK ────────────────────
+
+async function handleLoadSampleWorkouts() {
+  const targetDate = new Date();
+  targetDate.setDate(targetDate.getDate() + currentWeekOffset * 7);
+  const currentWeekRange = adaptiveScheduler.getWeekRange(targetDate);
+  const monday = new Date(currentWeekRange.start);
+
+  const getD = (offset) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + offset);
+    return d.toISOString().split('T')[0];
+  };
+
+  const samples = [
+    { title: 'Z1 Base Recovery', type: 'Recovery', date: getD(0), planned_duration_minutes: 45, target_tss: 20, status: 'planned' },
+    { title: 'Z5 VO2 Max Intervals', type: 'Interval', date: getD(1), planned_duration_minutes: 75, target_tss: 80, status: 'planned' },
+    { title: 'Z1 Active Recovery', type: 'Recovery', date: getD(2), planned_duration_minutes: 40, target_tss: 18, status: 'planned' },
+    { title: 'Z4 Sweet Spot Threshold', type: 'Threshold', date: getD(3), planned_duration_minutes: 90, target_tss: 95, status: 'planned' },
+    { title: 'Z2 Aerobic Endurance', type: 'Endurance', date: getD(5), planned_duration_minutes: 180, target_tss: 120, status: 'planned' }
+  ];
+
+  try {
+    for (const s of samples) {
+      const newId = `w-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const payload = {
+        id: newId,
+        user_id: state.user.id,
+        date: s.date,
+        title: s.title,
+        type: s.type,
+        planned_duration_minutes: s.planned_duration_minutes,
+        target_tss: s.target_tss,
+        status: s.status
+      };
+      
+      if (config.isDemoMode) {
+        localPlannedWorkouts.push(payload);
+      } else {
+        const { error } = await config.supabaseClient
+          .from('planned_workouts')
+          .insert([payload]);
+        if (error) throw error;
+        localPlannedWorkouts.push(payload);
+      }
+    }
+
+    if (config.isDemoMode) {
+      localStorage.setItem('cyclo_planned_workouts', JSON.stringify(localPlannedWorkouts));
+    }
+
+    showToast("Voorbeeldtrainingen gegenereerd voor deze week!", "success");
+    renderTrainingDashboard();
+  } catch (err) {
+    showToast("Genereren mislukt: " + err.message, "error");
+  }
 }
