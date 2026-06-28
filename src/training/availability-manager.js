@@ -115,6 +115,31 @@ export const availabilityManager = {
   },
 
   /**
+   * Verwijdert een uitzondering
+   */
+  async deleteException(dateStr) {
+    if (config.isDemoMode) {
+      const exceptions = await this.fetchExceptions();
+      const filtered = exceptions.filter(e => e.date !== dateStr);
+      localStorage.setItem('cyclo_avail_exceptions', JSON.stringify(filtered));
+      return filtered;
+    }
+
+    try {
+      const { error } = await config.supabaseClient
+        .from('availability_exceptions')
+        .delete()
+        .eq('user_id', state.user.id)
+        .eq('date', dateStr);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error("Fout bij verwijderen uitzondering:", err.message);
+      throw err;
+    }
+  },
+
+  /**
    * Standaard slots: doordeweeks 60 minuten, weekend 180 minuten.
    */
   getDefaultSlots() {

@@ -104,11 +104,23 @@ export function initTrainingPage() {
           </div>
         </div>
       </div>
+
+      <!-- Trainingszones (Power & Heart Rate) -->
+      <div class="training-row mt-4">
+        <div class="training-panel-col-12">
+          <div class="training-panel-header">
+            <h3>Jouw Persoonlijke Trainingszones</h3>
+          </div>
+          <div class="zones-container" id="training-zones-container">
+            <!-- Dynamische zones -->
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Modal: Edit Slots -->
     <div class="modal-overlay" id="slots-modal">
-      <div class="modal-content glass-panel" style="max-width:480px;">
+      <div class="modal-content glass-panel" style="max-width:480px; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header">
           <h2 style="font-size:18px;">Wekelijkse Beschikbaarheid</h2>
           <button class="modal-close" id="btn-close-slots-modal">&times;</button>
@@ -118,6 +130,86 @@ export function initTrainingPage() {
             <!-- Dynamic inputs -->
           </div>
           <button type="submit" class="btn btn-primary mt-3">Opslaan & Bereken</button>
+        </form>
+
+        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.06); margin:16px 0;">
+        <h3 style="font-size:14px; font-weight:800; color:var(--text-primary);">Uitzondering Toevoegen (bijv. Vakantie/Ziek)</h3>
+        <form id="form-add-exception" style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+          <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label style="font-size:11px;">Datum</label>
+              <input type="date" id="exception-date" class="form-control" required style="background:rgba(0,0,0,0.2); border:1px solid var(--border-glass);">
+            </div>
+            <div class="form-group">
+              <label style="font-size:11px;">Status</label>
+              <select id="exception-status" class="form-control" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-glass);">
+                <option value="unavailable">Niet beschikbaar</option>
+                <option value="available">Beschikbaar</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label style="font-size:11px;">Opmerking (optioneel)</label>
+            <input type="text" id="exception-notes" class="form-control" placeholder="Bijv. Feestdag of Hersteldag" style="background:rgba(0,0,0,0.2); border:1px solid var(--border-glass);">
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm" style="align-self:flex-end;">Toevoegen</button>
+        </form>
+
+        <h3 style="font-size:13px; font-weight:800; color:var(--text-primary); margin-top:16px;">Actieve Uitzonderingen</h3>
+        <div id="exceptions-list" style="max-height:120px; overflow-y:auto; margin-top:8px; display:flex; flex-direction:column; gap:6px;">
+          <!-- Dynamische lijst -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Add/Edit Workout -->
+    <div class="modal-overlay" id="workout-modal">
+      <div class="modal-content glass-panel" style="max-width:400px;">
+        <div class="modal-header">
+          <h2 style="font-size:18px;" id="workout-modal-title">Training Plannen</h2>
+          <button class="modal-close" id="btn-close-workout-modal">&times;</button>
+        </div>
+        <form id="form-edit-workout" style="display:flex; flex-direction:column; gap:12px; margin-top:12px;">
+          <input type="hidden" id="workout-id">
+          <div class="form-group">
+            <label>Datum</label>
+            <input type="date" id="workout-date" class="form-control" required style="background:rgba(0,0,0,0.2); border:1px solid var(--border-glass);">
+          </div>
+          <div class="form-group">
+            <label>Titel</label>
+            <input type="text" id="workout-title" class="form-control" placeholder="Bijv. Sweet Spot Intervallen" required style="background:rgba(0,0,0,0.2); border:1px solid var(--border-glass);">
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="workout-type" class="form-control" required style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-glass);">
+              <option value="Recovery">Recovery</option>
+              <option value="Endurance">Endurance</option>
+              <option value="Tempo">Tempo</option>
+              <option value="Threshold">Threshold</option>
+              <option value="VO2 Max">VO2 Max</option>
+              <option value="Anaerobic">Anaerobic</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Duur (minuten)</label>
+            <input type="number" id="workout-duration" class="form-control" min="10" max="600" value="60" required style="background:rgba(0,0,0,0.2); border:1px solid var(--border-glass);">
+          </div>
+          <div class="form-group">
+            <label>Doel TSS</label>
+            <input type="number" id="workout-tss" class="form-control" min="5" max="500" value="50" required style="background:rgba(0,0,0,0.2); border:1px solid var(--border-glass);">
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="workout-status" class="form-control" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-glass);">
+              <option value="planned">Gepland</option>
+              <option value="completed">Voltooid</option>
+            </select>
+          </div>
+          
+          <div style="display:flex; gap:10px; margin-top:12px;">
+            <button type="button" class="btn btn-secondary" id="btn-delete-workout" style="display:none; background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3); color:#ef4444; flex:1;">Verwijderen</button>
+            <button type="submit" class="btn btn-primary" style="flex:2;">Opslaan</button>
+          </div>
         </form>
       </div>
     </div>
@@ -132,9 +224,25 @@ export function initTrainingPage() {
   if (editBtn && slotsModal) editBtn.addEventListener('click', () => {
     slotsModal.classList.add('active');
     renderSlotsModalForm();
+    renderExceptionsList();
   });
   if (closeSlotsBtn && slotsModal) closeSlotsBtn.addEventListener('click', () => slotsModal.classList.remove('active'));
   if (formSlots) formSlots.addEventListener('submit', handleSaveSlots);
+
+  // Bind exceptions
+  const formException = document.getElementById('form-add-exception');
+  if (formException) formException.addEventListener('submit', handleAddException);
+
+  // Bind workout modal
+  const workoutModal = document.getElementById('workout-modal');
+  const closeWorkoutBtn = document.getElementById('btn-close-workout-modal');
+  if (closeWorkoutBtn && workoutModal) {
+    closeWorkoutBtn.addEventListener('click', () => workoutModal.classList.remove('active'));
+  }
+  const formWorkout = document.getElementById('form-edit-workout');
+  if (formWorkout) formWorkout.addEventListener('submit', handleSaveWorkout);
+  const deleteWorkoutBtn = document.getElementById('btn-delete-workout');
+  if (deleteWorkoutBtn) deleteWorkoutBtn.addEventListener('click', handleDeleteWorkout);
 
   // Sync workouts button
   const syncBtn = document.getElementById('btn-sync-workouts');
@@ -229,6 +337,9 @@ function renderTrainingDashboard() {
 
   // Render PMC line chart
   renderPMCChart(pmc);
+
+  // Render Trainingszones
+  renderTrainingZones();
 }
 
 function renderWeekTimeline() {
@@ -305,6 +416,7 @@ function renderWeekTimeline() {
         <div class="training-day-header">
           <span class="day-name">${dayName}</span>
           <span class="day-num">${dayNum}</span>
+          <button class="btn-add-workout-day" data-date="${dStr}" title="Training toevoegen">+</button>
         </div>
         
         <div class="training-day-workouts-container" style="flex:1;min-height:80px;" id="timeline-${dStr}">
@@ -313,7 +425,7 @@ function renderWeekTimeline() {
             const cardClass = isCompleted ? 'workout-card completed' : (w.is_overloaded ? 'workout-card overloaded' : 'workout-card');
             
             return `
-              <div class="${cardClass}" draggable="true" data-workout-id="${w.id}">
+              <div class="${cardClass}" draggable="true" data-workout-id="${w.id}" style="cursor:pointer;">
                 <div class="d-flex justify-between align-center">
                   <span class="workout-title">${w.title}</span>
                   ${w.is_overloaded ? `<span style="color:#ff9800;font-size:12px;" title="Beschikbaarheid overschreden! Geplande duur ${w.planned_duration_minutes}m > max ${maxDur}m">⚠️</span>` : ''}
@@ -332,6 +444,22 @@ function renderWeekTimeline() {
       </div>
     `;
   }).join('');
+
+  // Bind click event on add-workout buttons
+  document.querySelectorAll('.btn-add-workout-day').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openWorkoutModal(null, btn.dataset.date);
+    });
+  });
+
+  // Bind click event on workout cards to edit
+  document.querySelectorAll('.workout-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openWorkoutModal(card.dataset.workoutId);
+    });
+  });
 
   // Bind drag & drop events
   setupDragAndDropEvents();
@@ -608,4 +736,306 @@ function generateMockWorkouts() {
     { id: 'w-4', title: 'Sweet Spot Threshold', type: 'Threshold', date: getD(3), planned_duration_minutes: 90, target_tss: 95, status: 'planned' },
     { id: 'w-5', title: 'Z2 Aerobic Endurance', type: 'Endurance', date: getD(5), planned_duration_minutes: 180, target_tss: 120, status: 'planned' }
   ];
+}
+
+// ─── EXCEPTIONS MANAGEMENT ───────────────────────────────────────────
+
+function renderExceptionsList() {
+  const container = document.getElementById('exceptions-list');
+  if (!container) return;
+
+  if (localExceptions.length === 0) {
+    container.innerHTML = `<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:12px 0;">Geen actieve uitzonderingen.</div>`;
+    return;
+  }
+
+  container.innerHTML = localExceptions.map(exc => {
+    const statusText = exc.is_available ? 'Beschikbaar' : 'Niet beschikbaar';
+    const statusClass = exc.is_available ? 'text-success' : 'text-danger';
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:var(--radius-sm); padding:6px 10px; font-size:11px;">
+        <div>
+          <strong>${new Date(exc.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}</strong>: 
+          <span class="${statusClass}">${statusText}</span>
+          ${exc.notes ? `<div style="font-size:9px;color:var(--text-muted);margin-top:2px;">${exc.notes}</div>` : ''}
+        </div>
+        <button type="button" class="btn btn-sm btn-secondary btn-delete-exception" data-date="${exc.date}" style="padding:2px 6px; font-size:9px; background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.2); color:#ef4444;">
+          Verwijder
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  // Bind delete buttons
+  document.querySelectorAll('.btn-delete-exception').forEach(btn => {
+    btn.addEventListener('click', () => handleDeleteException(btn.dataset.date));
+  });
+}
+
+async function handleAddException(e) {
+  e.preventDefault();
+  const dateStr = document.getElementById('exception-date').value;
+  const isAvailable = document.getElementById('exception-status').value === 'available';
+  const notes = document.getElementById('exception-notes').value.trim();
+
+  if (!dateStr) return;
+
+  try {
+    await availabilityManager.saveException(dateStr, isAvailable, notes);
+    localExceptions = await availabilityManager.fetchExceptions();
+    
+    // Clear fields
+    document.getElementById('exception-date').value = '';
+    document.getElementById('exception-notes').value = '';
+    
+    showToast("Uitzondering toegevoegd!", "success");
+    renderExceptionsList();
+    renderTrainingDashboard();
+  } catch (err) {
+    showToast("Uitzondering toevoegen mislukt: " + err.message, "error");
+  }
+}
+
+async function handleDeleteException(dateStr) {
+  try {
+    await availabilityManager.deleteException(dateStr);
+    localExceptions = await availabilityManager.fetchExceptions();
+    showToast("Uitzondering verwijderd!", "success");
+    renderExceptionsList();
+    renderTrainingDashboard();
+  } catch (err) {
+    showToast("Uitzondering verwijderen mislukt: " + err.message, "error");
+  }
+}
+
+// ─── PLANNED WORKOUTS MANAGEMENT ─────────────────────────────────────
+
+function openWorkoutModal(workoutId = null, dateStr = null) {
+  const modal = document.getElementById('workout-modal');
+  const titleEl = document.getElementById('workout-modal-title');
+  const idEl = document.getElementById('workout-id');
+  const dateEl = document.getElementById('workout-date');
+  const titleInput = document.getElementById('workout-title');
+  const typeEl = document.getElementById('workout-type');
+  const durationEl = document.getElementById('workout-duration');
+  const tssEl = document.getElementById('workout-tss');
+  const statusEl = document.getElementById('workout-status');
+  const deleteBtn = document.getElementById('btn-delete-workout');
+
+  if (!modal) return;
+
+  if (workoutId) {
+    // Edit modus
+    const w = localPlannedWorkouts.find(x => x.id === workoutId);
+    if (!w) return;
+
+    titleEl.textContent = "Training Aanpassen";
+    idEl.value = w.id;
+    dateEl.value = w.date;
+    titleInput.value = w.title;
+    typeEl.value = w.type;
+    durationEl.value = w.planned_duration_minutes;
+    tssEl.value = w.target_tss;
+    statusEl.value = w.status || 'planned';
+    deleteBtn.style.display = 'block';
+  } else {
+    // Add modus
+    titleEl.textContent = "Training Plannen";
+    idEl.value = "";
+    dateEl.value = dateStr || new Date().toISOString().split('T')[0];
+    titleInput.value = "";
+    typeEl.value = "Recovery";
+    durationEl.value = 60;
+    tssEl.value = 40;
+    statusEl.value = "planned";
+    deleteBtn.style.display = 'none';
+  }
+
+  modal.classList.add('active');
+}
+
+async function handleSaveWorkout(e) {
+  e.preventDefault();
+
+  const id = document.getElementById('workout-id').value;
+  const date = document.getElementById('workout-date').value;
+  const title = document.getElementById('workout-title').value.trim();
+  const type = document.getElementById('workout-type').value;
+  const duration = parseInt(document.getElementById('workout-duration').value) || 60;
+  const tss = parseInt(document.getElementById('workout-tss').value) || 40;
+  const status = document.getElementById('workout-status').value;
+
+  if (!date || !title) return;
+
+  const workoutPayload = {
+    user_id: state.user.id,
+    date,
+    title,
+    type,
+    planned_duration_minutes: duration,
+    target_tss: tss,
+    status
+  };
+
+  try {
+    if (id) {
+      // Update
+      workoutPayload.id = id;
+      if (config.isDemoMode) {
+        const idx = localPlannedWorkouts.findIndex(x => x.id === id);
+        if (idx !== -1) {
+          localPlannedWorkouts[idx] = { ...localPlannedWorkouts[idx], ...workoutPayload };
+        }
+      } else {
+        await config.supabaseClient
+          .from('planned_workouts')
+          .update(workoutPayload)
+          .eq('id', id);
+        // Sync lokaal
+        const idx = localPlannedWorkouts.findIndex(x => x.id === id);
+        if (idx !== -1) localPlannedWorkouts[idx] = { ...localPlannedWorkouts[idx], ...workoutPayload };
+      }
+      showToast("Training aangepast!", "success");
+    } else {
+      // Create
+      const newId = `w-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      workoutPayload.id = newId;
+      if (config.isDemoMode) {
+        localPlannedWorkouts.push(workoutPayload);
+      } else {
+        const { data, error } = await config.supabaseClient
+          .from('planned_workouts')
+          .insert([workoutPayload])
+          .select();
+        if (error) throw error;
+        if (data && data[0]) workoutPayload.id = data[0].id;
+        localPlannedWorkouts.push(workoutPayload);
+      }
+      showToast("Training gepland!", "success");
+    }
+
+    if (config.isDemoMode) {
+      localStorage.setItem('cyclo_planned_workouts', JSON.stringify(localPlannedWorkouts));
+    }
+
+    document.getElementById('workout-modal').classList.remove('active');
+    renderTrainingDashboard();
+  } catch (err) {
+    showToast("Fout bij opslaan training: " + err.message, "error");
+  }
+}
+
+async function handleDeleteWorkout() {
+  const id = document.getElementById('workout-id').value;
+  if (!id) return;
+
+  try {
+    if (config.isDemoMode) {
+      localPlannedWorkouts = localPlannedWorkouts.filter(x => x.id !== id);
+      localStorage.setItem('cyclo_planned_workouts', JSON.stringify(localPlannedWorkouts));
+    } else {
+      await config.supabaseClient
+        .from('planned_workouts')
+        .delete()
+        .eq('id', id);
+      localPlannedWorkouts = localPlannedWorkouts.filter(x => x.id !== id);
+    }
+
+    showToast("Training verwijderd!", "success");
+    document.getElementById('workout-modal').classList.remove('active');
+    renderTrainingDashboard();
+  } catch (err) {
+    showToast("Fout bij verwijderen training: " + err.message, "error");
+  }
+}
+
+// ─── RENDER TRAINING ZONES ───────────────────────────────────────────
+
+function renderTrainingZones() {
+  const container = document.getElementById('training-zones-container');
+  if (!container) return;
+
+  const ftp = state.user?.ftp || 200;
+  const lthr = state.user?.lthr || 160;
+
+  const powerZones = zoneCalculator.getPowerZones(ftp);
+  const hrZones = zoneCalculator.getHeartRateZones(lthr);
+
+  container.innerHTML = `
+    <!-- Power Zones Column -->
+    <div class="zones-column">
+      <div class="zones-header">
+        <span>Vermogenszones (Coggan)</span>
+        <span style="font-size:11px;color:var(--primary);">FTP: ${ftp} W</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z1">Z1</span>
+        <span class="zone-name">${powerZones.z1.label}</span>
+        <span class="zone-range">${powerZones.z1.min} - ${powerZones.z1.max} W</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z2">Z2</span>
+        <span class="zone-name">${powerZones.z2.label}</span>
+        <span class="zone-range">${powerZones.z2.min} - ${powerZones.z2.max} W</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z3">Z3</span>
+        <span class="zone-name">${powerZones.z3.label}</span>
+        <span class="zone-range">${powerZones.z3.min} - ${powerZones.z3.max} W</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z4">Z4</span>
+        <span class="zone-name">${powerZones.z4.label}</span>
+        <span class="zone-range">${powerZones.z4.min} - ${powerZones.z4.max} W</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z5">Z5</span>
+        <span class="zone-name">${powerZones.z5.label}</span>
+        <span class="zone-range">${powerZones.z5.min} - ${powerZones.z5.max} W</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z6">Z6</span>
+        <span class="zone-name">${powerZones.z6.label}</span>
+        <span class="zone-range">${powerZones.z6.min} - ${powerZones.z6.max} W</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z7">Z7</span>
+        <span class="zone-name">${powerZones.z7.label}</span>
+        <span class="zone-range">&gt; ${powerZones.z7.min} W</span>
+      </div>
+    </div>
+
+    <!-- Heart Rate Zones Column -->
+    <div class="zones-column">
+      <div class="zones-header">
+        <span>Hartslagzones (Friel)</span>
+        <span style="font-size:11px;color:var(--primary);">LTHR: ${lthr} bpm</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z1">Z1</span>
+        <span class="zone-name">${hrZones.z1.label}</span>
+        <span class="zone-range">${hrZones.z1.min} - ${hrZones.z1.max} bpm</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z2">Z2</span>
+        <span class="zone-name">${hrZones.z2.label}</span>
+        <span class="zone-range">${hrZones.z2.min} - ${hrZones.z2.max} bpm</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z3">Z3</span>
+        <span class="zone-name">${hrZones.z3.label}</span>
+        <span class="zone-range">${hrZones.z3.min} - ${hrZones.z3.max} bpm</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z4">Z4</span>
+        <span class="zone-name">${hrZones.z4.label}</span>
+        <span class="zone-range">${hrZones.z4.min} - ${hrZones.z4.max} bpm</span>
+      </div>
+      <div class="zone-row">
+        <span class="zone-badge zone-z5">Z5</span>
+        <span class="zone-name">${hrZones.z5.label}</span>
+        <span class="zone-range">${hrZones.z5.min} - ${hrZones.z5.max} bpm</span>
+      </div>
+    </div>
+  `;
 }
