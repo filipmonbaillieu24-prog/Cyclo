@@ -896,117 +896,127 @@ export function renderActivitiesList(loadDashboardDataCallback) {
 }
 
 export function showActivityDetails(activity, loadDashboardDataCallback) {
-  // Safe distance & speed parsing
-  const distance = parseFloat(activity.distance_km || 0);
-  const speed = parseFloat(activity.avg_speed_kmh || 0);
-  
-  // Update sidebar metrics en kaart (behoud originele werking op de achtergrond)
-  elements.metricDistance.textContent = distance.toFixed(1);
-  
-  const durSec = parseFloat(activity.duration_secs || 0);
-  const hours = Math.floor(durSec / 3600);
-  const minutes = Math.floor((durSec % 3600) / 60);
-  const seconds = Math.floor(durSec % 60);
-  const formattedDur = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
-  const formattedDurLabel = hours > 0 ? `${hours}u ${minutes}m` : `${minutes}m`;
-  elements.metricDuration.textContent = formattedDur;
-  
-  elements.metricAscent.textContent = activity.ascent_m || 0;
-  elements.metricSpeed.textContent = speed.toFixed(1);
-  elements.metricHr.textContent = activity.avg_heart_rate || '-';
-  elements.metricPower.textContent = activity.avg_power_watts || '-';
-  elements.calculatedRiderScore.textContent = activity.rider_score || 0;
+  try {
+    // Safe distance & speed parsing
+    const distance = parseFloat(activity.distance_km || 0);
+    const speed = parseFloat(activity.avg_speed_kmh || 0);
+    
+    // Update sidebar metrics en kaart (behoud originele werking op de achtergrond)
+    elements.metricDistance.textContent = distance.toFixed(1);
+    
+    const durSec = parseFloat(activity.duration_secs || 0);
+    const hours = Math.floor(durSec / 3600);
+    const minutes = Math.floor((durSec % 3600) / 60);
+    const seconds = Math.floor(durSec % 60);
+    const formattedDur = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
+    const formattedDurLabel = hours > 0 ? `${hours}u ${minutes}m` : `${minutes}m`;
+    elements.metricDuration.textContent = formattedDur;
+    
+    elements.metricAscent.textContent = activity.ascent_m || 0;
+    elements.metricSpeed.textContent = speed.toFixed(1);
+    elements.metricHr.textContent = activity.avg_heart_rate || '-';
+    elements.metricPower.textContent = activity.avg_power_watts || '-';
+    elements.calculatedRiderScore.textContent = activity.rider_score || 0;
 
-  updateWkgDisplay(activity.avg_power_watts);
-  
-  // Safe coordinates check
-  let coords = activity.coordinates;
-  if (typeof coords === 'string') {
-    try { coords = JSON.parse(coords); } catch (e) { coords = null; }
-  }
-  
-  if (coords && coords.length > 0) {
-    elements.routeMap.style.display = 'block';
-    window.ActivityParser.drawRouteOnLeaflet('route-map', coords);
-  } else {
-    elements.routeMap.style.display = 'none';
-  }
-  
-  elements.tcxResultPanel.style.display = 'block';
+    updateWkgDisplay(activity.avg_power_watts);
+    
+    // Safe coordinates check
+    let coords = activity.coordinates;
+    if (typeof coords === 'string') {
+      try { coords = JSON.parse(coords); } catch (e) { coords = null; }
+    }
+    
+    if (coords && coords.length > 0) {
+      elements.routeMap.style.display = 'block';
+      window.ActivityParser.drawRouteOnLeaflet('route-map', coords);
+    } else {
+      elements.routeMap.style.display = 'none';
+    }
+    
+    elements.tcxResultPanel.style.display = 'block';
 
-  // ─── Modal Openen met Details en Koppelfuncties ───────────────────────
-  const modal = getOrCreateActivityDetailsModal();
-  
-  // Vul titel en basale info in
-  document.getElementById('activity-detail-title').textContent = activity.name || 'Rit Details';
-  
-  // Safe date formatting
-  let formattedDate = 'Onbekende datum';
-  if (activity.date) {
-    try {
-      const parsedDate = new Date(activity.date);
-      if (!isNaN(parsedDate.getTime())) {
-        formattedDate = new Intl.DateTimeFormat('nl-NL', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        }).format(parsedDate);
+    // ─── Modal Openen met Details en Koppelfuncties ───────────────────────
+    const modal = getOrCreateActivityDetailsModal();
+    
+    // Vul titel en basale info in
+    document.getElementById('activity-detail-title').textContent = activity.name || 'Rit Details';
+    
+    // Safe date formatting
+    let formattedDate = 'Onbekende datum';
+    if (activity.date) {
+      try {
+        const parsedDate = new Date(activity.date);
+        if (!isNaN(parsedDate.getTime())) {
+          formattedDate = new Intl.DateTimeFormat('nl-NL', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          }).format(parsedDate);
+        }
+      } catch (e) {
+        console.warn("Fout bij formatteren datum in details:", e);
       }
-    } catch (e) {
-      console.warn("Fout bij formatteren datum in details:", e);
+    }
+
+    // W/kg
+    let wkgText = '';
+    const weight = state.user?.weight;
+    if (activity.avg_power_watts && weight && weight > 0) {
+      const wkg = (activity.avg_power_watts / weight).toFixed(2);
+      wkgText = `<span style="font-size: 11px; color: #ffd700; margin-left: 6px;">(${wkg} W/kg)</span>`;
+    }
+
+    document.getElementById('activity-detail-body').innerHTML = `
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">📅 Geüpload op: <strong>${formattedDate}</strong></div>
+      
+      <div class="activity-details-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+          <div style="font-size:10px; color:var(--text-muted);">🛣️ Afstand</div>
+          <div style="font-size:16px; font-weight:700; color:var(--primary); font-family:var(--font-display);">${parseFloat(activity.distance_km).toFixed(1)} km</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+          <div style="font-size:10px; color:var(--text-muted);">⏱️ Tijd</div>
+          <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${formattedDurLabel}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+          <div style="font-size:10px; color:var(--text-muted);">🏔️ Hoogtemeters</div>
+          <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.ascent_m} m</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+          <div style="font-size:10px; color:var(--text-muted);">💨 Gem. Snelheid</div>
+          <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${parseFloat(activity.avg_speed_kmh).toFixed(1)} km/u</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+          <div style="font-size:10px; color:var(--text-muted);">❤️ Gem. Hartslag</div>
+          <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.avg_heart_rate || '-'} bpm</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+          <div style="font-size:10px; color:var(--text-muted);">⚡ Gem. Vermogen</div>
+          <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.avg_power_watts || '-'} W ${wkgText}</div>
+        </div>
+      </div>
+      
+      <div style="background:rgba(212,255,0,0.05); border:1px solid rgba(212,255,0,0.2); border-radius:8px; padding:10px; text-align:center; font-weight:700; color:var(--primary); font-size:13px; font-family:var(--font-display);">
+        🏆 Rider Score: ${activity.rider_score} punten
+      </div>
+    `;
+
+    // Teken map in modal
+    drawDetailModalMap(activity.coordinates);
+
+    // Laad de koppelingsopties
+    renderActivityCoupling(activity, modal, loadDashboardDataCallback);
+
+    modal.classList.add('active');
+  } catch (err) {
+    console.error("Fout bij tonen rit details:", err);
+    if (typeof showToast === 'function') {
+      showToast("Kon rit details niet openen: " + err.message, "error");
+    } else {
+      alert("Kon rit details niet openen: " + err.message);
     }
   }
-
-  // W/kg
-  let wkgText = '';
-  const weight = state.user?.weight;
-  if (activity.avg_power_watts && weight && weight > 0) {
-    const wkg = (activity.avg_power_watts / weight).toFixed(2);
-    wkgText = `<span style="font-size: 11px; color: #ffd700; margin-left: 6px;">(${wkg} W/kg)</span>`;
-  }
-
-  document.getElementById('activity-detail-body').innerHTML = `
-    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">📅 Geüpload op: <strong>${formattedDate}</strong></div>
-    
-    <div class="activity-details-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-        <div style="font-size:10px; color:var(--text-muted);">🛣️ Afstand</div>
-        <div style="font-size:16px; font-weight:700; color:var(--primary); font-family:var(--font-display);">${parseFloat(activity.distance_km).toFixed(1)} km</div>
-      </div>
-      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-        <div style="font-size:10px; color:var(--text-muted);">⏱️ Tijd</div>
-        <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${formattedDurLabel}</div>
-      </div>
-      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-        <div style="font-size:10px; color:var(--text-muted);">🏔️ Hoogtemeters</div>
-        <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.ascent_m} m</div>
-      </div>
-      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-        <div style="font-size:10px; color:var(--text-muted);">💨 Gem. Snelheid</div>
-        <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${parseFloat(activity.avg_speed_kmh).toFixed(1)} km/u</div>
-      </div>
-      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-        <div style="font-size:10px; color:var(--text-muted);">❤️ Gem. Hartslag</div>
-        <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.avg_heart_rate || '-'} bpm</div>
-      </div>
-      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-        <div style="font-size:10px; color:var(--text-muted);">⚡ Gem. Vermogen</div>
-        <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.avg_power_watts || '-'} W ${wkgText}</div>
-      </div>
-    </div>
-    
-    <div style="background:rgba(212,255,0,0.05); border:1px solid rgba(212,255,0,0.2); border-radius:8px; padding:10px; text-align:center; font-weight:700; color:var(--primary); font-size:13px; font-family:var(--font-display);">
-      🏆 Rider Score: ${activity.rider_score} punten
-    </div>
-  `;
-
-  // Teken map in modal
-  drawDetailModalMap(activity.coordinates);
-
-  // Laad de koppelingsopties
-  renderActivityCoupling(activity, modal, loadDashboardDataCallback);
-
-  modal.classList.add('active');
+}
 }
 
 export async function deleteActivity(activityId, loadDashboardDataCallback) {
