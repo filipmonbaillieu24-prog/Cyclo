@@ -21,6 +21,7 @@ let waypointMarkers = [];
 let currentRoute = null;
 let onWaypointChangeCb = null;
 let elevationChartInstance = null;
+let currentRouteRequestId = 0;
 
 let routeViewMode = 'surface';
 let lastCalculatedGeoCoords = null;
@@ -70,7 +71,7 @@ export function initRouteBuilder(containerId, options = {}) {
 }
 
 // ─── Voeg waypoint toe ────────────────────────────
-function addWaypoint(latlng) {
+function addWaypoint(latlng, triggerRoute = true) {
   const idx = waypoints.length;
   waypoints.push(latlng);
   
@@ -99,7 +100,7 @@ function addWaypoint(latlng) {
   waypointMarkers.push(marker);
   updateLastMarker();
   
-  if (waypoints.length >= 2) calculateRoute();
+  if (waypoints.length >= 2 && triggerRoute) calculateRoute();
   updateBuilderUI();
 }
 
@@ -678,6 +679,9 @@ function drawRoutePolylines(geoCoords, pointSurfaces, windClasses) {
 async function calculateRoute() {
   if (waypoints.length < 2) return;
   
+  currentRouteRequestId++;
+  const requestId = currentRouteRequestId;
+  
   const coords = waypoints.map(p => `${p.lng},${p.lat}`).join(';');
   const url    = `${OSRM_BIKE_URL}/${coords}?overview=full&geometries=geojson&steps=true&annotations=nodes`;
   
@@ -687,6 +691,8 @@ async function calculateRoute() {
   try {
     const res  = await fetch(url);
     const data = await res.json();
+    
+    if (requestId !== currentRouteRequestId) return;
     
     if (data.code !== 'Ok' || !data.routes?.length) {
       if (statusEl) statusEl.textContent = 'Geen route gevonden.';
@@ -727,8 +733,10 @@ async function calculateRoute() {
             'Content-Type': 'application/x-www-form-urlencoded'
           }
         });
+        if (requestId !== currentRouteRequestId) return;
         if (overpassRes.ok) {
           const overpassData = await overpassRes.json();
+          if (requestId !== currentRouteRequestId) return;
           if (overpassData.elements) {
             for (const el of overpassData.elements) {
               if (el.type === 'way' && el.nodes && el.tags) {
@@ -780,6 +788,7 @@ async function calculateRoute() {
     if (geoCoords.length > 0) {
       try {
         windData = await fetchWeatherData(geoCoords[0][1], geoCoords[0][0]);
+        if (requestId !== currentRouteRequestId) return;
       } catch (err) {
         console.warn('Kon winddata niet ophalen:', err);
       }
@@ -891,6 +900,7 @@ async function calculateRoute() {
     // ─── Klimdetectie & Hoogteprofiel integratie ──────
     if (statusEl) statusEl.textContent = 'Hoogtedata ophalen...';
     const elevations = await fetchElevations(geoCoords);
+    if (requestId !== currentRouteRequestId) return;
     
     const climbs = detectClimbs(geoCoords, elevations);
     
@@ -1340,8 +1350,9 @@ export async function generateRandomLoop(distanceKm, surfaceType = 'asphalt') {
 
   // Voeg alle waypoints toe (zonder individuele routing tussenin — calculateRoute doet dit na de laatste)
   for (const wp of newWaypoints) {
-    addWaypoint(wp);
+    addWaypoint(wp, false);
   }
+  calculateRoute();
 
   // Toon feedback
   import('./state.js').then(st => {
