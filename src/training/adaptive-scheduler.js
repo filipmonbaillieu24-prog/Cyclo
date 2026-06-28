@@ -162,5 +162,137 @@ export const adaptiveScheduler = {
       start: monday.toISOString().split('T')[0],
       end: sunday.toISOString().split('T')[0]
     };
+  },
+
+  /**
+   * Genereert een adaptief trainingsschema voor een week op basis van CTL
+   */
+  generateWeeklyPlan(ctl, slots, exceptions, weekStartDate) {
+    const monday = new Date(weekStartDate);
+    const getD = (offset) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + offset);
+      return d.toISOString().split('T')[0];
+    };
+
+    // Bepaal week TSS doel op basis van CTL
+    const baseCTL = ctl || 20;
+    // Progressief overload doel: CTL * 7 * 1.15
+    let weeklyTargetTSS = Math.round(baseCTL * 7 * 1.15);
+    weeklyTargetTSS = Math.max(120, Math.min(650, weeklyTargetTSS));
+
+    // Slots mapping per dag (1-7)
+    const slotMap = {};
+    for (let i = 1; i <= 7; i++) {
+      const s = (slots || []).find(x => x.day_of_week === i);
+      slotMap[i] = s ? s.max_duration_minutes : (i >= 6 ? 180 : 60);
+    }
+
+    // Exceptions mapping
+    const excMap = {};
+    (exceptions || []).forEach(e => {
+      excMap[e.date] = e.is_available;
+    });
+
+    const workouts = [];
+    let allocatedTSS = 0;
+
+    // We willen maximaal 2 intensieve sessies per week om overtraining te voorkomen
+    let intensitySessionsScheduled = 0;
+
+    // Loop over de 7 dagen van de week (0 = Maandag, 6 = Zondag)
+    for (let i = 0; i < 7; i++) {
+      const dateStr = getD(i);
+      const isAvailable = excMap[dateStr] !== undefined ? excMap[dateStr] : true;
+      const maxDur = slotMap[i + 1] || 0;
+
+      // Rustdag als niet beschikbaar of max duration <= 0
+      if (!isAvailable || maxDur <= 0) {
+        continue;
+      }
+
+      // Bepaal workout type en intensiteit op basis van dag en resterend TSS budget
+      let type = 'Endurance';
+      let title = 'Z2 Duurtraining';
+      let duration = Math.min(maxDur, i >= 5 ? 120 : 60);
+      let tss = Math.round(duration * 0.6); // default endurance TSS
+
+      if (i === 0) {
+        // Maandag: Actief herstel of rustdag
+        type = 'Recovery';
+        title = 'Z1 Actief Herstel';
+        duration = Math.min(maxDur, 40);
+        tss = 20;
+      } else if (i === 1 && intensitySessionsScheduled < 2 && maxDur >= 60) {
+        // Dinsdag: VO2 Max of Threshold
+        type = 'Interval';
+        title = 'Z5 VO2 Max Intervallen';
+        duration = Math.min(maxDur, 75);
+        tss = 80;
+        intensitySessionsScheduled++;
+      } else if (i === 3 && intensitySessionsScheduled < 2 && maxDur >= 60) {
+        // Donderdag: Sweet Spot
+        type = 'Threshold';
+        title = 'Z4 Sweet Spot Threshold';
+        duration = Math.min(maxDur, 90);
+        tss = 90;
+        intensitySessionsScheduled++;
+      } else if (i === 5 || i === 6) {
+        // Weekend: Lange duurtraining
+        type = 'Endurance';
+        title = 'Z2 Aerobe Duurtraining';
+        duration = Math.min(maxDur, 180);
+        // Geef een groter deel van de resterende TSS aan de duurtraining
+        tss = Math.min(200, Math.round(duration * 0.65));
+      } else {
+        // Andere dagen: Rustige duurtraining of recovery
+        if (maxDur < 60) {
+          type = 'Recovery';
+          title = 'Z1 Actief Herstel';
+          duration = maxDur;
+          tss = Math.round(duration * 0.4);
+        } else {
+          type = 'Endurance';
+          title = 'Z2 Aerobe Basistraining';
+          duration = Math.min(maxDur, 60);
+          tss = 40;
+        }
+      }
+
+      workouts.push({
+        id: `w-auto-${Date.now()}-${i}-${Math.floor(Math.random() * 100)}`,
+        date: dateStr,
+        title,
+        type,
+        planned_duration_minutes: duration,
+        target_tss: tss,
+        status: 'planned',
+        is_auto_adjusted: true
+      });
+
+      allocatedTSS += tss;
+    }
+
+    // Pas de TSS en duur proportioneel aan om dicht bij het wekelijkse target te komen (indien nodig)
+    if (allocatedTSS > 0 && Math.abs(allocatedTSS - weeklyTargetTSS) > 30) {
+      const ratio = weeklyTargetTSS / allocatedTSS;
+      workouts.forEach(w => {
+        if (w.type !== 'Recovery') {
+          const oldTss = w.target_tss;
+          w.target_tss = Math.max(25, Math.round(w.target_tss * ratio));
+          w.planned_duration_minutes = Math.max(30, Math.round(w.planned_duration_minutes * (w.target_tss / oldTss)));
+          // Zorg dat het binnen de max duration slot past
+          const dayNum = new Date(w.date).getDay();
+          const dayIdx = dayNum === 0 ? 7 : dayNum;
+          const maxD = slotMap[dayIdx];
+          if (w.planned_duration_minutes > maxD) {
+            w.planned_duration_minutes = maxD;
+            w.target_tss = Math.round(maxD * (w.target_tss / w.planned_duration_minutes));
+          }
+        }
+      });
+    }
+
+    return workouts;
   }
 };

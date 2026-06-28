@@ -215,6 +215,10 @@ export function initTrainingPage() {
             </select>
           </div>
           
+          <div id="workout-link-section" style="margin-top:12px;">
+            <!-- Dynamisch gevuld -->
+          </div>
+          
           <button type="button" class="btn btn-secondary" id="btn-generate-workout-route" style="background:rgba(212,255,0,0.05); border-color:var(--primary); color:var(--primary); display:flex; align-items:center; justify-content:center; gap:6px; margin-top:4px;">
             🗺️ Route genereren voor deze training
           </button>
@@ -898,6 +902,7 @@ function openWorkoutModal(workoutId = null, dateStr = null) {
     tssEl.value = w.target_tss;
     statusEl.value = w.status || 'planned';
     deleteBtn.style.display = 'block';
+    renderLinkSection(w);
   } else {
     // Add modus
     titleEl.textContent = "Training Plannen";
@@ -909,6 +914,8 @@ function openWorkoutModal(workoutId = null, dateStr = null) {
     tssEl.value = 40;
     statusEl.value = "planned";
     deleteBtn.style.display = 'none';
+    const linkSec = document.getElementById('workout-link-section');
+    if (linkSec) linkSec.innerHTML = '';
   }
 
   modal.classList.add('active');
@@ -924,6 +931,7 @@ async function handleSaveWorkout(e) {
   const duration = parseInt(document.getElementById('workout-duration').value) || 60;
   const tss = parseInt(document.getElementById('workout-tss').value) || 40;
   const status = document.getElementById('workout-status').value;
+  const linkedActivityId = document.getElementById('linked-activity-id')?.value || null;
 
   if (!date || !title) return;
 
@@ -934,7 +942,8 @@ async function handleSaveWorkout(e) {
     type,
     planned_duration_minutes: duration,
     target_tss: tss,
-    status
+    status,
+    associated_activity_id: linkedActivityId || null
   };
 
   try {
@@ -1142,34 +1151,27 @@ async function handleLoadSampleWorkouts() {
   const targetDate = new Date();
   targetDate.setDate(targetDate.getDate() + currentWeekOffset * 7);
   const currentWeekRange = adaptiveScheduler.getWeekRange(targetDate);
-  const monday = new Date(currentWeekRange.start);
 
-  const getD = (offset) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + offset);
-    return d.toISOString().split('T')[0];
-  };
+  // Bereken CTL op basis van activiteitengeschiedenis
+  const pmc = adaptiveScheduler.recalculatePMC(state.activities || [], 30);
+  const latestPMC = pmc[pmc.length - 1] || { ctl: 20 };
+  const ctl = latestPMC.ctl || 20;
 
-  const samples = [
-    { title: 'Z1 Base Recovery', type: 'Recovery', date: getD(0), planned_duration_minutes: 45, target_tss: 20, status: 'planned' },
-    { title: 'Z5 VO2 Max Intervals', type: 'Interval', date: getD(1), planned_duration_minutes: 75, target_tss: 80, status: 'planned' },
-    { title: 'Z1 Active Recovery', type: 'Recovery', date: getD(2), planned_duration_minutes: 40, target_tss: 18, status: 'planned' },
-    { title: 'Z4 Sweet Spot Threshold', type: 'Threshold', date: getD(3), planned_duration_minutes: 90, target_tss: 95, status: 'planned' },
-    { title: 'Z2 Aerobic Endurance', type: 'Endurance', date: getD(5), planned_duration_minutes: 180, target_tss: 120, status: 'planned' }
-  ];
+  // Genereer adaptief schema via de planner
+  const plan = adaptiveScheduler.generateWeeklyPlan(ctl, localSlots, localExceptions, currentWeekRange.start);
 
   try {
-    for (const s of samples) {
+    for (const w of plan) {
       const newId = `w-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const payload = {
         id: newId,
         user_id: state.user.id,
-        date: s.date,
-        title: s.title,
-        type: s.type,
-        planned_duration_minutes: s.planned_duration_minutes,
-        target_tss: s.target_tss,
-        status: s.status
+        date: w.date,
+        title: w.title,
+        type: w.type,
+        planned_duration_minutes: w.planned_duration_minutes,
+        target_tss: w.target_tss,
+        status: w.status
       };
       
       if (config.isDemoMode) {
@@ -1187,9 +1189,94 @@ async function handleLoadSampleWorkouts() {
       localStorage.setItem('cyclo_planned_workouts', JSON.stringify(localPlannedWorkouts));
     }
 
-    showToast("Voorbeeldtrainingen gegenereerd voor deze week!", "success");
+    showToast("Adaptief trainingsschema gegenereerd op basis van jouw fitheid en beschikbaarheid!", "success");
     renderTrainingDashboard();
   } catch (err) {
     showToast("Genereren mislukt: " + err.message, "error");
+  }
+}
+
+// ─── RENDER LINK SECTION FOR MANUAL COUPLING ──────────────────────────
+
+function renderLinkSection(w) {
+  const container = document.getElementById('workout-link-section');
+  if (!container) return;
+
+  const associatedId = w.associated_activity_id;
+  const activities = state.activities || [];
+
+  if (associatedId) {
+    const act = activities.find(a => a.id === associatedId);
+    if (act) {
+      const dist = act.distanceKm || (act.distance ? (act.distance / 1000) : 0);
+      container.innerHTML = `
+        <div style="background: rgba(212,255,0,0.04); border: 1px solid rgba(212,255,0,0.2); border-radius: 6px; padding: 10px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+            <span>🔗 Gekoppeld aan rit:</span>
+            <button type="button" class="btn btn-sm btn-secondary" id="btn-unlink-activity" style="padding: 2px 6px; font-size: 9px; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.2); color: #ef4444; border-radius: 4px; cursor: pointer;">Ontkoppelen</button>
+          </div>
+          <div style="color: var(--primary); font-weight: 700; font-size: 12px; margin: 2px 0;">${act.name || 'Rit'}</div>
+          <div style="color: var(--text-muted); display: flex; gap: 10px;">
+            <span>⏱️ ${Math.round(act.totalTimeSeconds / 60 || act.movingTimeSeconds / 60 || 0)}m</span>
+            <span>🛣️ ${dist.toFixed(1)} km</span>
+            <span>⚡ ${act.tss || 0} TSS</span>
+          </div>
+          <input type="hidden" id="linked-activity-id" value="${associatedId}">
+        </div>
+      `;
+      
+      const unlinkBtn = document.getElementById('btn-unlink-activity');
+      if (unlinkBtn) {
+        unlinkBtn.addEventListener('click', () => {
+          w.associated_activity_id = null;
+          w.status = 'planned';
+          document.getElementById('workout-status').value = 'planned';
+          renderLinkSection(w);
+        });
+      }
+      return;
+    }
+  }
+
+  // Als niet gekoppeld: toon dropdown van beschikbare (niet-gekoppelde) ritten
+  const linkedIds = localPlannedWorkouts.filter(x => x.id !== w.id && x.associated_activity_id).map(x => x.associated_activity_id);
+  const unlinkedActivities = activities.filter(a => !linkedIds.includes(a.id));
+
+  if (unlinkedActivities.length === 0) {
+    container.innerHTML = `
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); border-radius: 6px; padding: 10px; font-size: 11px; color: var(--text-muted); text-align: center;">
+        Geen voltooide ritten beschikbaar om te koppelen.
+        <input type="hidden" id="linked-activity-id" value="">
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); border-radius: 6px; padding: 10px; font-size: 11px; display: flex; flex-direction: column; gap: 6px;">
+      <label style="font-weight: 700; color: var(--text-secondary);">Koppel aan een voltooide rit:</label>
+      <select id="select-link-activity" class="form-control" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-glass); font-size: 11px; padding: 4px; color: var(--text-primary);">
+        <option value="">-- Kies een rit om te koppelen --</option>
+        ${unlinkedActivities.map(a => {
+          const dStr = new Date(a.date || a.startTime).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+          const dist = a.distanceKm || (a.distance ? (a.distance / 1000) : 0);
+          return `<option value="${a.id}">${dStr} - ${a.name || 'Rit'} (${dist.toFixed(1)} km, ${a.tss || 0} TSS)</option>`;
+        }).join('')}
+      </select>
+      <input type="hidden" id="linked-activity-id" value="">
+    </div>
+  `;
+
+  const select = document.getElementById('select-link-activity');
+  if (select) {
+    select.addEventListener('change', () => {
+      const val = select.value;
+      document.getElementById('linked-activity-id').value = val;
+      if (val) {
+        document.getElementById('workout-status').value = 'completed';
+      } else {
+        document.getElementById('workout-status').value = 'planned';
+      }
+    });
   }
 }
