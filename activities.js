@@ -1027,7 +1027,6 @@ export function showActivityDetails(activity, loadDashboardDataCallback) {
     }
   }
 }
-}
 
 export async function deleteActivity(activityId, loadDashboardDataCallback) {
   if (!confirm("Weet je zeker dat je deze rit wilt verwijderen? Dit zal je Rider Score ook verlagen.")) return;
