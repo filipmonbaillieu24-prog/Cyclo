@@ -896,8 +896,12 @@ export function renderActivitiesList(loadDashboardDataCallback) {
 }
 
 export function showActivityDetails(activity, loadDashboardDataCallback) {
+  // Safe distance & speed parsing
+  const distance = parseFloat(activity.distance_km || 0);
+  const speed = parseFloat(activity.avg_speed_kmh || 0);
+  
   // Update sidebar metrics en kaart (behoud originele werking op de achtergrond)
-  elements.metricDistance.textContent = parseFloat(activity.distance_km).toFixed(1);
+  elements.metricDistance.textContent = distance.toFixed(1);
   
   const durSec = parseFloat(activity.duration_secs || 0);
   const hours = Math.floor(durSec / 3600);
@@ -907,17 +911,23 @@ export function showActivityDetails(activity, loadDashboardDataCallback) {
   const formattedDurLabel = hours > 0 ? `${hours}u ${minutes}m` : `${minutes}m`;
   elements.metricDuration.textContent = formattedDur;
   
-  elements.metricAscent.textContent = activity.ascent_m;
-  elements.metricSpeed.textContent = parseFloat(activity.avg_speed_kmh).toFixed(1);
+  elements.metricAscent.textContent = activity.ascent_m || 0;
+  elements.metricSpeed.textContent = speed.toFixed(1);
   elements.metricHr.textContent = activity.avg_heart_rate || '-';
   elements.metricPower.textContent = activity.avg_power_watts || '-';
-  elements.calculatedRiderScore.textContent = activity.rider_score;
+  elements.calculatedRiderScore.textContent = activity.rider_score || 0;
 
   updateWkgDisplay(activity.avg_power_watts);
   
-  if (activity.coordinates && activity.coordinates.length > 0) {
+  // Safe coordinates check
+  let coords = activity.coordinates;
+  if (typeof coords === 'string') {
+    try { coords = JSON.parse(coords); } catch (e) { coords = null; }
+  }
+  
+  if (coords && coords.length > 0) {
     elements.routeMap.style.display = 'block';
-    window.ActivityParser.drawRouteOnLeaflet('route-map', activity.coordinates);
+    window.ActivityParser.drawRouteOnLeaflet('route-map', coords);
   } else {
     elements.routeMap.style.display = 'none';
   }
@@ -928,13 +938,24 @@ export function showActivityDetails(activity, loadDashboardDataCallback) {
   const modal = getOrCreateActivityDetailsModal();
   
   // Vul titel en basale info in
-  document.getElementById('activity-detail-title').textContent = activity.name;
+  document.getElementById('activity-detail-title').textContent = activity.name || 'Rit Details';
   
-  const formattedDate = new Intl.DateTimeFormat('nl-NL', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  }).format(new Date(activity.date));
+  // Safe date formatting
+  let formattedDate = 'Onbekende datum';
+  if (activity.date) {
+    try {
+      const parsedDate = new Date(activity.date);
+      if (!isNaN(parsedDate.getTime())) {
+        formattedDate = new Intl.DateTimeFormat('nl-NL', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        }).format(parsedDate);
+      }
+    } catch (e) {
+      console.warn("Fout bij formatteren datum in details:", e);
+    }
+  }
 
   // W/kg
   let wkgText = '';

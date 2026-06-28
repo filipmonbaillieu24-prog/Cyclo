@@ -576,13 +576,17 @@ class ActivityParser {
   static activeMap = null;
 
   static drawRouteOnLeaflet(mapDivId, coordinates, strokeColor = "#d4ff00") {
-    if (!coordinates || coordinates.length === 0) return;
+    let coords = coordinates;
+    if (typeof coords === 'string') {
+      try { coords = JSON.parse(coords); } catch (e) { coords = null; }
+    }
+    if (!coords || coords.length === 0) return;
     if (typeof L === 'undefined') {
       console.error("Leaflet is niet geladen.");
       return;
     }
 
-    const latLngs = coordinates.map(c => [c.lat, c.lng]);
+    const latLngs = coords.map(c => [c.lat, c.lng]);
 
     try {
       if (!this.activeMap) {
