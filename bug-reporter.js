@@ -218,6 +218,10 @@ function renderBugForm() {
           <option value="Bluetooth/Sensoren">Bluetooth / Sensoren</option>
           <option value="Route-Builder">Route Builder</option>
           <option value="UI/Layout">UI / Layout</option>
+          <option value="Trainings-Center">Trainings Center</option>
+          <option value="Audio/Coaching">Audio / Coaching</option>
+          <option value="Strava/Sync">Strava / Synchronisatie</option>
+          <option value="Algemeen/Overig">Algemeen / Overig</option>
         </select>
       </div>
       
