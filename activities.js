@@ -831,11 +831,21 @@ export function renderActivitiesList(loadDashboardDataCallback) {
     const actDiv = document.createElement('div');
     actDiv.className = 'activity-item';
     
-    const formattedDate = new Intl.DateTimeFormat('nl-NL', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    }).format(new Date(act.date));
+    let formattedDate = 'Onbekende datum';
+    if (act.date) {
+      try {
+        const parsedDate = new Date(act.date);
+        if (!isNaN(parsedDate.getTime())) {
+          formattedDate = new Intl.DateTimeFormat('nl-NL', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          }).format(parsedDate);
+        }
+      } catch (e) {
+        console.warn("Fout bij formatteren datum in lijst:", e);
+      }
+    }
 
     const durSec = parseFloat(act.duration_secs || 0);
     const hours = Math.floor(durSec / 3600);

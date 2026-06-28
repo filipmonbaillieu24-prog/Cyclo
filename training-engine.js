@@ -59,8 +59,8 @@ export function calculateHrTSS(durationMin, avgHr, maxHr) {
 export async function recalculateTrainingMetrics(userId) {
   if (!userId) return [];
   
-  // Verzamel alle ritten van de gebruiker
-  const activities = [...(state.activities || [])];
+  // Verzamel alle ritten van de gebruiker die een geldige datum hebben
+  const activities = (state.activities || []).filter(act => act.date && !isNaN(new Date(act.date).getTime()));
   if (activities.length === 0) {
     state.trainingMetrics = [];
     return [];
