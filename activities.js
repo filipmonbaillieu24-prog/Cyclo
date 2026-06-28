@@ -886,7 +886,7 @@ export function renderActivitiesList(loadDashboardDataCallback) {
       </div>
     `;
 
-    actDiv.querySelector('.activity-title').addEventListener('click', () => showActivityDetails(act));
+    actDiv.querySelector('.activity-title').addEventListener('click', () => showActivityDetails(act, loadDashboardDataCallback));
     actDiv.querySelector('.btn-delete-activity').addEventListener('click', () => deleteActivity(act.id, loadDashboardDataCallback));
 
     elements.activitiesListContainer.appendChild(actDiv);
@@ -895,14 +895,17 @@ export function renderActivitiesList(loadDashboardDataCallback) {
   lucide.createIcons();
 }
 
-export function showActivityDetails(activity) {
+export function showActivityDetails(activity, loadDashboardDataCallback) {
+  // Update sidebar metrics en kaart (behoud originele werking op de achtergrond)
   elements.metricDistance.textContent = parseFloat(activity.distance_km).toFixed(1);
   
   const durSec = parseFloat(activity.duration_secs || 0);
   const hours = Math.floor(durSec / 3600);
   const minutes = Math.floor((durSec % 3600) / 60);
   const seconds = Math.floor(durSec % 60);
-  elements.metricDuration.textContent = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
+  const formattedDur = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
+  const formattedDurLabel = hours > 0 ? `${hours}u ${minutes}m` : `${minutes}m`;
+  elements.metricDuration.textContent = formattedDur;
   
   elements.metricAscent.textContent = activity.ascent_m;
   elements.metricSpeed.textContent = parseFloat(activity.avg_speed_kmh).toFixed(1);
@@ -910,7 +913,6 @@ export function showActivityDetails(activity) {
   elements.metricPower.textContent = activity.avg_power_watts || '-';
   elements.calculatedRiderScore.textContent = activity.rider_score;
 
-  // W/kg
   updateWkgDisplay(activity.avg_power_watts);
   
   if (activity.coordinates && activity.coordinates.length > 0) {
@@ -922,15 +924,68 @@ export function showActivityDetails(activity) {
   
   elements.tcxResultPanel.style.display = 'block';
 
-  // Navigeer eerst naar Mijn Ritten pagina als we er niet al zijn
-  const ridesSection = document.getElementById('section-rides');
-  if (ridesSection && !ridesSection.classList.contains('active')) {
-    import('./state.js').then(({ navigateTo }) => navigateTo('rides'));
-    setTimeout(() => elements.routeMap.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
-  } else {
-    elements.routeMap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // ─── Modal Openen met Details en Koppelfuncties ───────────────────────
+  const modal = getOrCreateActivityDetailsModal();
+  
+  // Vul titel en basale info in
+  document.getElementById('activity-detail-title').textContent = activity.name;
+  
+  const formattedDate = new Intl.DateTimeFormat('nl-NL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(new Date(activity.date));
+
+  // W/kg
+  let wkgText = '';
+  const weight = state.user?.weight;
+  if (activity.avg_power_watts && weight && weight > 0) {
+    const wkg = (activity.avg_power_watts / weight).toFixed(2);
+    wkgText = `<span style="font-size: 11px; color: #ffd700; margin-left: 6px;">(${wkg} W/kg)</span>`;
   }
-  showToast(`Rit "${activity.name}" geladen!`, "success");
+
+  document.getElementById('activity-detail-body').innerHTML = `
+    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">📅 Geüpload op: <strong>${formattedDate}</strong></div>
+    
+    <div class="activity-details-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+        <div style="font-size:10px; color:var(--text-muted);">🛣️ Afstand</div>
+        <div style="font-size:16px; font-weight:700; color:var(--primary); font-family:var(--font-display);">${parseFloat(activity.distance_km).toFixed(1)} km</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+        <div style="font-size:10px; color:var(--text-muted);">⏱️ Tijd</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${formattedDurLabel}</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+        <div style="font-size:10px; color:var(--text-muted);">🏔️ Hoogtemeters</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.ascent_m} m</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+        <div style="font-size:10px; color:var(--text-muted);">💨 Gem. Snelheid</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${parseFloat(activity.avg_speed_kmh).toFixed(1)} km/u</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+        <div style="font-size:10px; color:var(--text-muted);">❤️ Gem. Hartslag</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.avg_heart_rate || '-'} bpm</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+        <div style="font-size:10px; color:var(--text-muted);">⚡ Gem. Vermogen</div>
+        <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.avg_power_watts || '-'} W ${wkgText}</div>
+      </div>
+    </div>
+    
+    <div style="background:rgba(212,255,0,0.05); border:1px solid rgba(212,255,0,0.2); border-radius:8px; padding:10px; text-align:center; font-weight:700; color:var(--primary); font-size:13px; font-family:var(--font-display);">
+      🏆 Rider Score: ${activity.rider_score} punten
+    </div>
+  `;
+
+  // Teken map in modal
+  drawDetailModalMap(activity.coordinates);
+
+  // Laad de koppelingsopties
+  renderActivityCoupling(activity, modal, loadDashboardDataCallback);
+
+  modal.classList.add('active');
 }
 
 export async function deleteActivity(activityId, loadDashboardDataCallback) {
@@ -1164,5 +1219,249 @@ export function renderClubActivities() {
       </div>
     `;
     container.appendChild(card);
+  });
+}
+
+// ─── RIDE DETAILS MODAL & COUPLING ────────────────────────────────────
+
+let detailMapInstance = null;
+
+function getOrCreateActivityDetailsModal() {
+  let modal = document.getElementById('activity-details-modal');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.id = 'activity-details-modal';
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-content glass-panel" style="max-width:550px; max-height:90vh; overflow-y:auto; padding:20px; border:1px solid var(--border-glass);">
+      <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:10px; margin-bottom:12px;">
+        <h2 style="font-size:18px; color:var(--text-primary);" id="activity-detail-title">Rit Details</h2>
+        <button class="modal-close" id="btn-close-activity-details" style="background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer;">&times;</button>
+      </div>
+      <div id="activity-detail-body" style="display:flex; flex-direction:column; gap:12px;">
+        <!-- Dynamische stats -->
+      </div>
+      <div id="activity-detail-map-container" style="display:none; height:200px; width:100%; border-radius:12px; border:1px solid var(--border-glass); margin-top:12px; overflow:hidden; position:relative;">
+        <div id="activity-detail-map" style="height:100%; width:100%;"></div>
+      </div>
+      
+      <hr style="border:0; border-top:1px solid rgba(255,255,255,0.06); margin:16px 0;">
+      
+      <div id="activity-coupling-section">
+        <!-- Koppelingen en dropdown -->
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Bind close event
+  modal.querySelector('#btn-close-activity-details').addEventListener('click', () => {
+    modal.classList.remove('active');
+  });
+
+  return modal;
+}
+
+function drawDetailModalMap(coordinates) {
+  const container = document.getElementById('activity-detail-map-container');
+  if (!coordinates || coordinates.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'block';
+
+  // Wacht tot de modal getoond is om de map correct te kunnen laden
+  setTimeout(() => {
+    try {
+      if (detailMapInstance) {
+        detailMapInstance.remove();
+        detailMapInstance = null;
+      }
+      
+      detailMapInstance = L.map('activity-detail-map', { zoomControl: false }).setView([coordinates[0].lat, coordinates[0].lng], 13);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: 'OpenStreetMap'
+      }).addTo(detailMapInstance);
+
+      const latlngs = coordinates.map(p => [p.lat, p.lng]);
+      const polyline = L.polyline(latlngs, { color: '#d4ff00', weight: 4 }).addTo(detailMapInstance);
+      detailMapInstance.fitBounds(polyline.getBounds(), { padding: [10, 10] });
+    } catch (e) {
+      console.warn("Fout bij laden detail map:", e);
+    }
+  }, 150);
+}
+
+async function fetchPlannedWorkoutsForCoupling() {
+  if (config.isDemoMode) {
+    return JSON.parse(localStorage.getItem('cyclo_planned_workouts') || '[]');
+  } else {
+    try {
+      const { data } = await config.supabaseClient
+        .from('planned_workouts')
+        .select('*')
+        .eq('user_id', state.user.id);
+      return data || [];
+    } catch (e) {
+      return [];
+    }
+  }
+}
+
+async function updateWorkoutCoupling(workoutId, activityId) {
+  if (config.isDemoMode) {
+    const stored = JSON.parse(localStorage.getItem('cyclo_planned_workouts') || '[]');
+    const idx = stored.findIndex(x => x.id === workoutId);
+    if (idx !== -1) {
+      stored[idx].associated_activity_id = activityId;
+      stored[idx].status = activityId ? 'completed' : 'planned';
+    }
+    localStorage.setItem('cyclo_planned_workouts', JSON.stringify(stored));
+  } else {
+    await config.supabaseClient
+      .from('planned_workouts')
+      .update({
+        associated_activity_id: activityId,
+        status: activityId ? 'completed' : 'planned'
+      })
+      .eq('id', workoutId);
+  }
+}
+
+async function updateGroupRideCoupling(rideId, activityId) {
+  if (config.isDemoMode) {
+    const stored = JSON.parse(localStorage.getItem('cyclo_mock_rides') || '[]');
+    const idx = stored.findIndex(x => x.id === rideId);
+    if (idx !== -1) {
+      stored[idx].activity_id = activityId;
+    }
+    localStorage.setItem('cyclo_mock_rides', JSON.stringify(stored));
+    // Update local state.rides
+    const localIdx = state.rides.findIndex(x => x.id === rideId);
+    if (localIdx !== -1) state.rides[localIdx].activity_id = activityId;
+  } else {
+    await config.supabaseClient
+      .from('rides')
+      .update({ activity_id: activityId })
+      .eq('id', rideId);
+    // Update local state.rides
+    const localIdx = state.rides.findIndex(x => x.id === rideId);
+    if (localIdx !== -1) state.rides[localIdx].activity_id = activityId;
+  }
+}
+
+async function renderActivityCoupling(activity, modal, loadDashboardDataCallback) {
+  const container = document.getElementById('activity-coupling-section');
+  if (!container) return;
+
+  container.innerHTML = `<span style="font-size:11px;color:var(--text-muted);">Laden van koppelingen...</span>`;
+
+  // Zoek eventuele bestaande koppeling met groepsritten
+  const coupledRide = state.rides.find(r => r.activity_id === activity.id);
+
+  // Zoek eventuele bestaande koppeling met trainingen
+  const workouts = await fetchPlannedWorkoutsForCoupling();
+  const coupledWorkout = workouts.find(w => w.associated_activity_id === activity.id);
+
+  if (coupledRide) {
+    container.innerHTML = `
+      <div style="background: rgba(212,255,0,0.04); border: 1px solid rgba(212,255,0,0.2); border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; font-size:12px;">
+          <span>🔗 Gekoppeld aan groepsrit:</span>
+          <button type="button" class="btn btn-sm btn-secondary" id="btn-unlink-activity-from-ride" style="padding: 3px 8px; font-size: 10px; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.2); color: #ef4444; border-radius: 6px; cursor: pointer;">Ontkoppelen</button>
+        </div>
+        <div style="color: var(--primary); font-weight: 700; font-size: 13px;">${coupledRide.title} (${new Date(coupledRide.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })})</div>
+      </div>
+    `;
+
+    document.getElementById('btn-unlink-activity-from-ride').addEventListener('click', async () => {
+      showToast("Ontkoppelen...", "info");
+      await updateGroupRideCoupling(coupledRide.id, null);
+      showToast("Ontkoppeld van groepsrit!", "success");
+      if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
+      renderActivityCoupling(activity, modal, loadDashboardDataCallback);
+    });
+    return;
+  }
+
+  if (coupledWorkout) {
+    container.innerHTML = `
+      <div style="background: rgba(212,255,0,0.04); border: 1px solid rgba(212,255,0,0.2); border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; font-size:12px;">
+          <span>🔗 Gekoppeld aan training:</span>
+          <button type="button" class="btn btn-sm btn-secondary" id="btn-unlink-activity-from-workout" style="padding: 3px 8px; font-size: 10px; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.2); color: #ef4444; border-radius: 6px; cursor: pointer;">Ontkoppelen</button>
+        </div>
+        <div style="color: var(--primary); font-weight: 700; font-size: 13px;">${coupledWorkout.title} (${new Date(coupledWorkout.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })})</div>
+      </div>
+    `;
+
+    document.getElementById('btn-unlink-activity-from-workout').addEventListener('click', async () => {
+      showToast("Ontkoppelen...", "info");
+      await updateWorkoutCoupling(coupledWorkout.id, null);
+      showToast("Ontkoppeld van training!", "success");
+      if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
+      renderActivityCoupling(activity, modal, loadDashboardDataCallback);
+    });
+    return;
+  }
+
+  // Geen koppeling: toon select dropdown
+  const unlinkedRides = state.rides.filter(r => !r.activity_id);
+  const unlinkedWorkouts = workouts.filter(w => !w.associated_activity_id);
+
+  if (unlinkedRides.length === 0 && unlinkedWorkouts.length === 0) {
+    container.innerHTML = `
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); border-radius: 12px; padding: 12px 16px; text-align: center; font-size: 12px; color: var(--text-muted);">
+        Geen geplande groepsritten of trainingen beschikbaar om aan te koppelen.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+      <label style="font-weight: 700; font-size: 12px; color: var(--text-secondary);">Koppel aan een geplande groepsrit of training:</label>
+      <select id="select-activity-coupling" class="form-control" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-glass); font-size: 11px; color: var(--text-primary); padding: 6px;">
+        <option value="">-- Kies een groepsrit of training --</option>
+        ${unlinkedRides.length > 0 ? `
+          <optgroup label="Groepsritten">
+            ${unlinkedRides.map(r => `<option value="ride:${r.id}">${new Date(r.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} - Groepsrit: ${r.title}</option>`).join('')}
+          </optgroup>
+        ` : ''}
+        ${unlinkedWorkouts.length > 0 ? `
+          <optgroup label="Trainingen">
+            ${unlinkedWorkouts.map(w => `<option value="workout:${w.id}">${new Date(w.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} - Training: ${w.title}</option>`).join('')}
+          </optgroup>
+        ` : ''}
+      </select>
+      <button class="btn btn-primary btn-sm mt-1" id="btn-save-activity-coupling" style="align-self: flex-end; padding: 4px 12px;">Koppelen</button>
+    </div>
+  `;
+
+  document.getElementById('btn-save-activity-coupling').addEventListener('click', async () => {
+    const val = document.getElementById('select-activity-coupling').value;
+    if (!val) {
+      showToast("Selecteer eerst een groepsrit of training.", "error");
+      return;
+    }
+
+    const [type, id] = val.split(':');
+    showToast("Koppelen...", "info");
+
+    try {
+      if (type === 'ride') {
+        await updateGroupRideCoupling(id, activity.id);
+        showToast("Succesvol gekoppeld aan groepsrit!", "success");
+      } else if (type === 'workout') {
+        await updateWorkoutCoupling(id, activity.id);
+        showToast("Succesvol gekoppeld aan training!", "success");
+      }
+      
+      if (typeof loadDashboardDataCallback === 'function') loadDashboardDataCallback();
+      renderActivityCoupling(activity, modal, loadDashboardDataCallback);
+    } catch (err) {
+      showToast("Koppelen mislukt: " + err.message, "error");
+    }
   });
 }
