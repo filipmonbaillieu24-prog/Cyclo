@@ -201,20 +201,68 @@ export async function evaluateAndAdaptPlan(userId) {
   monday.setDate(diff);
   monday.setHours(0,0,0,0);
   const weekStartStr = monday.toISOString().split('T')[0];
+  const weekEndStr = new Date(monday.getTime() + 6 * 86400000).toISOString().split('T')[0];
   
-  let plannedTss = 300;
+  // 1. Haal de echte geplande trainingen op voor deze week
+  let currentWorkouts = [];
+  if (config.supabaseClient && !config.isDemoMode) {
+    try {
+      const { data } = await config.supabaseClient
+        .from('planned_workouts')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('date', weekStartStr)
+        .lte('date', weekEndStr);
+      if (data) currentWorkouts = data;
+    } catch(e) {
+      console.warn('Fout bij ophalen planned workouts in engine:', e);
+    }
+  } else {
+    try {
+      const allPlanned = JSON.parse(localStorage.getItem('cyclo_planned_workouts') || '[]');
+      currentWorkouts = allPlanned.filter(w => w.date >= weekStartStr && w.date <= weekEndStr);
+    } catch(e) {}
+  }
+  
+  let plannedTss = currentWorkouts.reduce((sum, w) => sum + (w.target_tss || 0), 0);
+  if (plannedTss === 0) plannedTss = 150; // fallback doel
+  
+  // Bereken werkelijke TSS van de ritten in DEZE actuele week
   let actualTss = 0;
+  const thisWeekActivities = (state.activities || []).filter(act => {
+    const actDate = new Date(act.date || act.startTime).toISOString().split('T')[0];
+    return actDate >= weekStartStr && actDate <= weekEndStr;
+  });
+  actualTss = thisWeekActivities.reduce((sum, act) => sum + (act.tss || 0), 0);
+  
+  // Map de echte trainingen naar blocks voor de widget op de planner-pagina
+  const days = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
+  let trainingBlocks = currentWorkouts.map(w => {
+    const dayName = days[new Date(w.date).getDay()];
+    
+    let targetPower = '—';
+    if (w.type === 'Recovery') targetPower = '≤55% FTP';
+    else if (w.type === 'Endurance') targetPower = '56-75% FTP';
+    else if (w.type === 'Tempo') targetPower = '76-90% FTP';
+    else if (w.type === 'Threshold') targetPower = '91-105% FTP';
+    else if (w.type === 'VO2 Max' || w.type === 'Interval') targetPower = '106-120% FTP';
+    else if (w.type === 'Anaerobic') targetPower = '>120% FTP';
+    
+    return {
+      day: dayName,
+      type: w.type,
+      target: w.title,
+      durationMin: w.planned_duration_minutes,
+      targetPower: `${targetPower} (${w.target_tss} TSS)`
+    };
+  });
+  
+  // Sorteer de blocks chronologisch (Maandag t/m Zondag)
+  const dayOrder = { 'Maandag': 1, 'Dinsdag': 2, 'Woensdag': 3, 'Donderdag': 4, 'Vrijdag': 5, 'Zaterdag': 6, 'Zondag': 7 };
+  trainingBlocks.sort((a, b) => (dayOrder[a.day] || 9) - (dayOrder[b.day] || 9));
+  
   let adjustmentType = 'on_track';
   let notes = 'Je training ligt perfect op schema! Houd deze CTL vast.';
-  let trainingBlocks = [
-    { day: 'Dinsdag', type: 'Intervals', target: '2x20m Sweetspot', durationMin: 75, targetPower: '88-93% FTP' },
-    { day: 'Donderdag', type: 'Tempo', target: '60m Tempo Ride', durationMin: 60, targetPower: '76-90% FTP' },
-    { day: 'Zaterdag', type: 'Duur', target: '3h Endurance Ride', durationMin: 180, targetPower: '56-75% FTP' }
-  ];
-  
-  // Bereken werkelijke TSS van de afgelopen 7 dagen
-  const last7Days = metrics.slice(-7);
-  actualTss = last7Days.reduce((sum, m) => sum + m.tss, 0);
   
   // Evalueer fitheidsverlies (CTL drop in de afgelopen week)
   const ctl7DaysAgo = metrics.length >= 7 ? metrics[metrics.length - 7].ctl : 0;
@@ -224,22 +272,12 @@ export async function evaluateAndAdaptPlan(userId) {
   // Scenario 2: Oververmoeidheid (TSB < -30 EN HRV readiness < 40%)
   if (currentTsb < -30 && todayReadiness < 40) {
     adjustmentType = 'rest_days';
-    notes = `⚠️ Critically Overfatigued! TSB is zeer laag (${currentTsb.toFixed(1)}) en je HRV readiness is ${todayReadiness}%. We hebben je komende trainingen omgezet naar rustdagen en lichte herstelritten om overtraining te voorkomen.`;
-    trainingBlocks = [
-      { day: 'Dinsdag', type: 'Rust', target: 'Volledige rust', durationMin: 0, targetPower: '—' },
-      { day: 'Donderdag', type: 'Herstel', target: '30m Actief herstel', durationMin: 30, targetPower: '≤50% FTP' },
-      { day: 'Zaterdag', type: 'Herstel', target: '45m Actief herstel', durationMin: 45, targetPower: '≤50% FTP' }
-    ];
+    notes = `⚠️ Critically Overfatigued! TSB is zeer laag (${currentTsb.toFixed(1)}) en je HRV readiness is ${todayReadiness}%. Overweeg extra rustdagen of herstelritten te nemen om overtraining te voorkomen.`;
   }
   // Scenario 1: CTL achterstand (Fitheidsverlies > 5 punten)
   else if (ctlDrop > 5) {
     adjustmentType = 'reduce_intensity';
-    notes = `📉 Fitheidsverlies gedetecteerd (CTL is met ${ctlDrop.toFixed(1)} punten gedaald). We hebben de intensiteit van je eerstvolgende intervaltraining met 15% verlaagd om blessures te voorkomen en de opbouw rustiger te maken.`;
-    trainingBlocks = [
-      { day: 'Dinsdag', type: 'Herstel-Intervals', target: '3x10m Light Tempo', durationMin: 60, targetPower: '70-75% FTP (15% verlaagd)' },
-      { day: 'Donderdag', type: 'Tempo', target: '45m Light Tempo Ride', durationMin: 45, targetPower: '75-80% FTP' },
-      { day: 'Zaterdag', type: 'Duur', target: '2h Endurance Ride', durationMin: 120, targetPower: '56-75% FTP' }
-    ];
+    notes = `📉 Fitheidsverlies gedetecteerd (CTL is met ${ctlDrop.toFixed(1)} punten gedaald). Bouw de trainingen deze week rustig op om blessures te voorkomen.`;
   }
   
   const planRecord = {
