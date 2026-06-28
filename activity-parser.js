@@ -586,7 +586,11 @@ class ActivityParser {
       return;
     }
 
-    const latLngs = coords.map(c => [c.lat, c.lng]);
+    const latLngs = coords.map(c => {
+      const lat = c.lat !== undefined ? c.lat : c[0];
+      const lng = c.lng !== undefined ? c.lng : c[1];
+      return [lat, lng];
+    });
 
     try {
       if (!this.activeMap) {

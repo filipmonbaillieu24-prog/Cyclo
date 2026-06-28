@@ -967,7 +967,7 @@ async function handleSaveWorkout(e) {
       showToast("Training aangepast!", "success");
     } else {
       // Create
-      const newId = `w-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const newId = generateUUID();
       workoutPayload.id = newId;
       if (config.isDemoMode) {
         localPlannedWorkouts.push(workoutPayload);
@@ -1162,7 +1162,7 @@ async function handleLoadSampleWorkouts() {
 
   try {
     for (const w of plan) {
-      const newId = `w-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const newId = generateUUID();
       const payload = {
         id: newId,
         user_id: state.user.id,
@@ -1279,4 +1279,14 @@ function renderLinkSection(w) {
       }
     });
   }
+}
+
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
 }

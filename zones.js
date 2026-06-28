@@ -274,23 +274,38 @@ export function comparePeriods(activities, days = 30) {
 // ─── Hoogteprofiel uit coordinates ───────────────────────────────────────────
 
 export function buildElevationData(coordinates) {
-  if (!coordinates || coordinates.length < 2) return null;
+  let coords = coordinates;
+  if (typeof coords === 'string') {
+    try { coords = JSON.parse(coords); } catch (e) { coords = null; }
+  }
+  if (!coords || coords.length < 2) return null;
 
   let dist = 0;
   const labels = [];
   const elevs  = [];
 
-  for (let i = 0; i < coordinates.length; i++) {
-    const c = coordinates[i];
+  for (let i = 0; i < coords.length; i++) {
+    const c = coords[i];
+    if (!c) continue;
+    
+    const lat = c.lat !== undefined ? c.lat : c[0];
+    const lng = c.lng !== undefined ? c.lng : c[1];
+    const alt = c.alt !== undefined ? c.alt : (c.elevation !== undefined ? c.elevation : c[2]);
+
     if (i > 0) {
-      const prev = coordinates[i - 1];
-      const dlat = (c[0] - prev[0]) * 111000;
-      const dlng = (c[1] - prev[1]) * 111000 * Math.cos(prev[0] * Math.PI / 180);
-      dist += Math.sqrt(dlat * dlat + dlng * dlng) / 1000;
+      const prev = coords[i - 1];
+      if (prev) {
+        const prevLat = prev.lat !== undefined ? prev.lat : prev[0];
+        const prevLng = prev.lng !== undefined ? prev.lng : prev[1];
+        
+        const dlat = (lat - prevLat) * 111000;
+        const dlng = (lng - prevLng) * 111000 * Math.cos(prevLat * Math.PI / 180);
+        dist += Math.sqrt(dlat * dlat + dlng * dlng) / 1000;
+      }
     }
-    if (i % Math.max(1, Math.floor(coordinates.length / 100)) === 0 || i === coordinates.length - 1) {
+    if (i % Math.max(1, Math.floor(coords.length / 100)) === 0 || i === coords.length - 1) {
       labels.push(dist.toFixed(1));
-      elevs.push(c[2] || 0);
+      elevs.push(alt || 0);
     }
   }
   return { labels, elevs };

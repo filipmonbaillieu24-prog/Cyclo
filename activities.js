@@ -1286,7 +1286,11 @@ function getOrCreateActivityDetailsModal() {
 
 function drawDetailModalMap(coordinates) {
   const container = document.getElementById('activity-detail-map-container');
-  if (!coordinates || coordinates.length === 0) {
+  let coords = coordinates;
+  if (typeof coords === 'string') {
+    try { coords = JSON.parse(coords); } catch (e) { coords = null; }
+  }
+  if (!coords || coords.length === 0) {
     container.style.display = 'none';
     return;
   }
@@ -1300,12 +1304,19 @@ function drawDetailModalMap(coordinates) {
         detailMapInstance = null;
       }
       
-      detailMapInstance = L.map('activity-detail-map', { zoomControl: false }).setView([coordinates[0].lat, coordinates[0].lng], 13);
+      const firstLat = coords[0].lat !== undefined ? coords[0].lat : coords[0][0];
+      const firstLng = coords[0].lng !== undefined ? coords[0].lng : coords[0][1];
+      
+      detailMapInstance = L.map('activity-detail-map', { zoomControl: false }).setView([firstLat, firstLng], 13);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: 'OpenStreetMap'
       }).addTo(detailMapInstance);
 
-      const latlngs = coordinates.map(p => [p.lat, p.lng]);
+      const latlngs = coords.map(p => {
+        const lat = p.lat !== undefined ? p.lat : p[0];
+        const lng = p.lng !== undefined ? p.lng : p[1];
+        return [lat, lng];
+      });
       const polyline = L.polyline(latlngs, { color: '#d4ff00', weight: 4 }).addTo(detailMapInstance);
       detailMapInstance.fitBounds(polyline.getBounds(), { padding: [10, 10] });
     } catch (e) {
