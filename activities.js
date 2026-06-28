@@ -912,7 +912,7 @@ export function showActivityDetails(activity, loadDashboardDataCallback) {
     const speed = parseFloat(activity.avg_speed_kmh || 0);
     
     // Update sidebar metrics en kaart (behoud originele werking op de achtergrond)
-    elements.metricDistance.textContent = distance.toFixed(1);
+    if (elements.metricDistance) elements.metricDistance.textContent = distance.toFixed(1);
     
     const durSec = parseFloat(activity.duration_secs || 0);
     const hours = Math.floor(durSec / 3600);
@@ -920,13 +920,13 @@ export function showActivityDetails(activity, loadDashboardDataCallback) {
     const seconds = Math.floor(durSec % 60);
     const formattedDur = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
     const formattedDurLabel = hours > 0 ? `${hours}u ${minutes}m` : `${minutes}m`;
-    elements.metricDuration.textContent = formattedDur;
+    if (elements.metricDuration) elements.metricDuration.textContent = formattedDur;
     
-    elements.metricAscent.textContent = activity.ascent_m || 0;
-    elements.metricSpeed.textContent = speed.toFixed(1);
-    elements.metricHr.textContent = activity.avg_heart_rate || '-';
-    elements.metricPower.textContent = activity.avg_power_watts || '-';
-    elements.calculatedRiderScore.textContent = activity.rider_score || 0;
+    if (elements.metricAscent) elements.metricAscent.textContent = activity.ascent_m || 0;
+    if (elements.metricSpeed) elements.metricSpeed.textContent = speed.toFixed(1);
+    if (elements.metricHr) elements.metricHr.textContent = activity.avg_heart_rate || '-';
+    if (elements.metricPower) elements.metricPower.textContent = activity.avg_power_watts || '-';
+    if (elements.calculatedRiderScore) elements.calculatedRiderScore.textContent = activity.rider_score || 0;
 
     updateWkgDisplay(activity.avg_power_watts);
     
@@ -937,19 +937,20 @@ export function showActivityDetails(activity, loadDashboardDataCallback) {
     }
     
     if (coords && coords.length > 0) {
-      elements.routeMap.style.display = 'block';
+      if (elements.routeMap) elements.routeMap.style.display = 'block';
       window.ActivityParser.drawRouteOnLeaflet('route-map', coords);
     } else {
-      elements.routeMap.style.display = 'none';
+      if (elements.routeMap) elements.routeMap.style.display = 'none';
     }
     
-    elements.tcxResultPanel.style.display = 'block';
+    if (elements.tcxResultPanel) elements.tcxResultPanel.style.display = 'block';
 
     // ─── Modal Openen met Details en Koppelfuncties ───────────────────────
     const modal = getOrCreateActivityDetailsModal();
     
     // Vul titel en basale info in
-    document.getElementById('activity-detail-title').textContent = activity.name || 'Rit Details';
+    const titleEl = modal.querySelector('#activity-detail-title');
+    if (titleEl) titleEl.textContent = activity.name || 'Rit Details';
     
     // Safe date formatting
     let formattedDate = 'Onbekende datum';
@@ -976,40 +977,43 @@ export function showActivityDetails(activity, loadDashboardDataCallback) {
       wkgText = `<span style="font-size: 11px; color: #ffd700; margin-left: 6px;">(${wkg} W/kg)</span>`;
     }
 
-    document.getElementById('activity-detail-body').innerHTML = `
-      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">📅 Geüpload op: <strong>${formattedDate}</strong></div>
-      
-      <div class="activity-details-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-          <div style="font-size:10px; color:var(--text-muted);">🛣️ Afstand</div>
-          <div style="font-size:16px; font-weight:700; color:var(--primary); font-family:var(--font-display);">${parseFloat(activity.distance_km).toFixed(1)} km</div>
+    const bodyEl = modal.querySelector('#activity-detail-body');
+    if (bodyEl) {
+      bodyEl.innerHTML = `
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">📅 Geüpload op: <strong>${formattedDate}</strong></div>
+        
+        <div class="activity-details-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+            <div style="font-size:10px; color:var(--text-muted);">🛣️ Afstand</div>
+            <div style="font-size:16px; font-weight:700; color:var(--primary); font-family:var(--font-display);">${parseFloat(activity.distance_km || 0).toFixed(1)} km</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+            <div style="font-size:10px; color:var(--text-muted);">⏱️ Tijd</div>
+            <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${formattedDurLabel}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+            <div style="font-size:10px; color:var(--text-muted);">🏔️ Hoogtemeters</div>
+            <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.ascent_m || 0} m</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+            <div style="font-size:10px; color:var(--text-muted);">💨 Gem. Snelheid</div>
+            <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${parseFloat(activity.avg_speed_kmh || 0).toFixed(1)} km/u</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+            <div style="font-size:10px; color:var(--text-muted);">❤️ Gem. Hartslag</div>
+            <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.avg_heart_rate || '-'} bpm</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
+            <div style="font-size:10px; color:var(--text-muted);">⚡ Gem. Vermogen</div>
+            <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.avg_power_watts || '-'} W ${wkgText}</div>
+          </div>
         </div>
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-          <div style="font-size:10px; color:var(--text-muted);">⏱️ Tijd</div>
-          <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${formattedDurLabel}</div>
+        
+        <div style="background:rgba(212,255,0,0.05); border:1px solid rgba(212,255,0,0.2); border-radius:8px; padding:10px; text-align:center; font-weight:700; color:var(--primary); font-size:13px; font-family:var(--font-display);">
+          🏆 Rider Score: ${activity.rider_score || 0} punten
         </div>
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-          <div style="font-size:10px; color:var(--text-muted);">🏔️ Hoogtemeters</div>
-          <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.ascent_m} m</div>
-        </div>
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-          <div style="font-size:10px; color:var(--text-muted);">💨 Gem. Snelheid</div>
-          <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${parseFloat(activity.avg_speed_kmh).toFixed(1)} km/u</div>
-        </div>
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-          <div style="font-size:10px; color:var(--text-muted);">❤️ Gem. Hartslag</div>
-          <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.avg_heart_rate || '-'} bpm</div>
-        </div>
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:8px; padding:8px 12px;">
-          <div style="font-size:10px; color:var(--text-muted);">⚡ Gem. Vermogen</div>
-          <div style="font-size:16px; font-weight:700; color:var(--text-primary); font-family:var(--font-display);">${activity.avg_power_watts || '-'} W ${wkgText}</div>
-        </div>
-      </div>
-      
-      <div style="background:rgba(212,255,0,0.05); border:1px solid rgba(212,255,0,0.2); border-radius:8px; padding:10px; text-align:center; font-weight:700; color:var(--primary); font-size:13px; font-family:var(--font-display);">
-        🏆 Rider Score: ${activity.rider_score} punten
-      </div>
-    `;
+      `;
+    }
 
     // Teken map in modal
     drawDetailModalMap(activity.coordinates);
@@ -1416,13 +1420,23 @@ async function renderActivityCoupling(activity, modal, loadDashboardDataCallback
   const coupledWorkout = workouts.find(w => w.associated_activity_id === activity.id);
 
   if (coupledRide) {
+    let coupledRideDateStr = 'Onbekende datum';
+    if (coupledRide.date) {
+      try {
+        const d = new Date(coupledRide.date);
+        if (!isNaN(d.getTime())) {
+          coupledRideDateStr = d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+        }
+      } catch (e) {}
+    }
+
     container.innerHTML = `
       <div style="background: rgba(212,255,0,0.04); border: 1px solid rgba(212,255,0,0.2); border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
         <div style="font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; font-size:12px;">
           <span>🔗 Gekoppeld aan groepsrit:</span>
           <button type="button" class="btn btn-sm btn-secondary" id="btn-unlink-activity-from-ride" style="padding: 3px 8px; font-size: 10px; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.2); color: #ef4444; border-radius: 6px; cursor: pointer;">Ontkoppelen</button>
         </div>
-        <div style="color: var(--primary); font-weight: 700; font-size: 13px;">${coupledRide.title} (${new Date(coupledRide.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })})</div>
+        <div style="color: var(--primary); font-weight: 700; font-size: 13px;">${coupledRide.title} (${coupledRideDateStr})</div>
       </div>
     `;
 
@@ -1437,13 +1451,23 @@ async function renderActivityCoupling(activity, modal, loadDashboardDataCallback
   }
 
   if (coupledWorkout) {
+    let coupledWorkoutDateStr = 'Onbekende datum';
+    if (coupledWorkout.date) {
+      try {
+        const d = new Date(coupledWorkout.date);
+        if (!isNaN(d.getTime())) {
+          coupledWorkoutDateStr = d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+        }
+      } catch (e) {}
+    }
+
     container.innerHTML = `
       <div style="background: rgba(212,255,0,0.04); border: 1px solid rgba(212,255,0,0.2); border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
         <div style="font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; font-size:12px;">
           <span>🔗 Gekoppeld aan training:</span>
           <button type="button" class="btn btn-sm btn-secondary" id="btn-unlink-activity-from-workout" style="padding: 3px 8px; font-size: 10px; background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.2); color: #ef4444; border-radius: 6px; cursor: pointer;">Ontkoppelen</button>
         </div>
-        <div style="color: var(--primary); font-weight: 700; font-size: 13px;">${coupledWorkout.title} (${new Date(coupledWorkout.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })})</div>
+        <div style="color: var(--primary); font-weight: 700; font-size: 13px;">${coupledWorkout.title} (${coupledWorkoutDateStr})</div>
       </div>
     `;
 
@@ -1477,12 +1501,34 @@ async function renderActivityCoupling(activity, modal, loadDashboardDataCallback
         <option value="">-- Kies een groepsrit of training --</option>
         ${unlinkedRides.length > 0 ? `
           <optgroup label="Groepsritten">
-            ${unlinkedRides.map(r => `<option value="ride:${r.id}">${new Date(r.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} - Groepsrit: ${r.title}</option>`).join('')}
+            ${unlinkedRides.map(r => {
+              let rDateStr = 'Onbekende datum';
+              if (r.date) {
+                try {
+                  const d = new Date(r.date);
+                  if (!isNaN(d.getTime())) {
+                    rDateStr = d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+                  }
+                } catch (e) {}
+              }
+              return `<option value="ride:${r.id}">${rDateStr} - Groepsrit: ${r.title || 'Zonder titel'}</option>`;
+            }).join('')}
           </optgroup>
         ` : ''}
         ${unlinkedWorkouts.length > 0 ? `
           <optgroup label="Trainingen">
-            ${unlinkedWorkouts.map(w => `<option value="workout:${w.id}">${new Date(w.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })} - Training: ${w.title}</option>`).join('')}
+            ${unlinkedWorkouts.map(w => {
+              let wDateStr = 'Onbekende datum';
+              if (w.date) {
+                try {
+                  const d = new Date(w.date);
+                  if (!isNaN(d.getTime())) {
+                    wDateStr = d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+                  }
+                } catch (e) {}
+              }
+              return `<option value="workout:${w.id}">${wDateStr} - Training: ${w.title || 'Zonder titel'}</option>`;
+            }).join('')}
           </optgroup>
         ` : ''}
       </select>
